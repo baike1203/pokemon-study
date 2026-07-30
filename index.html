@@ -130,6 +130,10 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .storage-warn { position: fixed; top: 0; left: 0; right: 0; z-index: 220; display: none;
   background: #FFE08A; color: #7a4f00; font-size: 15px; line-height: 1.4; padding: 8px 12px;
   text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+/* 未检测到中文朗读嗓音时的家长提示条 */
+.tts-warn { position: fixed; top: 0; left: 0; right: 0; z-index: 230; display: none;
+  background: #FFD0D6; color: #8a2330; font-size: 15px; line-height: 1.45; padding: 8px 12px;
+  text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
 
 /* 家长设置里的开关（测试模式） */
 .switch { flex: 0 0 auto; width: 84px; height: 46px; border-radius: 999px; border: none;
@@ -440,6 +444,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 <body>
 
 <div id="storageWarn" class="storage-warn">⚠️ 当前浏览器无法保存进度，做完任务也不会保留。请改用电脑局域网网址（如 http://192.168.0.133:8000/index.html）打开，或在平板上装一个「本地服务器」APP 后用网址打开。</div>
+<div id="ttsWarn" class="tts-warn">🔇 未检测到中文朗读语音，所以"听一听"没声音。家长请在平板「设置 → 语言和输入法 → 文字转语音(TTS)输出」里装好「中文(普通话)」语音包，或改用 Chrome 浏览器打开。装好后刷新本页面即可。</div>
 
 <!-- 家长设置齿轮（右下角悬浮，正式版保留） -->
 <div id="gearBtn" title="家长设置（调整数学难度）">⚙️</div>
@@ -820,7 +825,10 @@ function loadVoices(){
 }
 function renderVoiceSelect(){
   const sel = document.getElementById("voiceSel"); if (!sel) return;
-  if (ZH_VOICES.length < 2){ sel.style.display = "none"; return; } // 只有一个中文嗓音就隐藏选择器
+  const tw = document.getElementById("ttsWarn");
+  if (ZH_VOICES.length === 0){ if (tw) tw.style.display = ""; sel.style.display = "none"; return; } // 没中文嗓音→提示家长装语音包
+  if (tw) tw.style.display = "none";
+  if (ZH_VOICES.length < 2){ sel.style.display = "none"; return; } // 只有 1 个中文嗓音→不显示切换器（无需切换）
   sel.style.display = "";
   sel.innerHTML = "";
   ZH_VOICES.forEach(v => {
@@ -844,6 +852,9 @@ function speak(text, rate = 0.9){
 if (window.speechSynthesis){
   speechSynthesis.onvoiceschanged = loadVoices;   // 安卓/Chrome 常异步加载嗓音，加载完再挑一次
   loadVoices();
+  // 部分安卓浏览器首次 getVoices() 返回空、稍后才异步就绪，且不触发 onvoiceschanged，这里兜底重试
+  setTimeout(loadVoices, 600);
+  setTimeout(loadVoices, 2000);
   const sel = document.getElementById("voiceSel");
   if (sel) sel.addEventListener("change", () => {
     state.voiceName = sel.value || null;
@@ -851,6 +862,9 @@ if (window.speechSynthesis){
     saveState();
     speak("你好，我是你的学习伙伴，我们一起加油！"); // 切换后试听
   });
+} else {
+  // 浏览器完全不支持语音朗读（极老版本）→ 也提示家长
+  const tw = document.getElementById("ttsWarn"); if (tw) tw.style.display = "";
 }
 
 /* ==================== 4. 通用 UI ==================== */
