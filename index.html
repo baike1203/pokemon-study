@@ -1529,7 +1529,7 @@ function openPokeDetail(id){
     </div>
     <div style="margin:10px 0">
       <button class="big-btn blue" id="pokeSpeak">🔊 听一听</button>
-      <button class="big-btn ${isPartner?'gray':'blue'}" id="pokePartner">${isPartner?'✖ 取消今日伙伴':'🤝 设为今日伙伴'}</button>
+      <button class="big-btn ${isPartner?'gray':'blue'}" id="pokePartner">${isPartner?'🔄 换一个伙伴':'🤝 设为今日伙伴'}</button>
     </div>`);
   $("#pokeSpeak").addEventListener("click", ()=>{ sfx.click(); speak(`${POKEMON[did-1]}。${typeTxt}属性宝可梦。${pd.d||''}`); });
   $("#pokePartner").addEventListener("click", ()=>{
@@ -1720,7 +1720,7 @@ function renderPartner(){
 /* 设置今日伙伴 */
 function setPartner(id){ state.partnerId = id; saveState(); renderPartner(); toast("已设为今日伙伴 ⭐"); }
 /* 取消今日伙伴 */
-function unsetPartner(){ state.partnerId = null; saveState(); renderPartner(); toast("已取消今日伙伴"); }
+function unsetPartner(){ state.partnerId = null; saveState(); renderPartner(); toast("已换伙伴，去图鉴选一只新的吧 🤝"); }
 /* 伙伴气泡 */
 function partnerSay(text){ const b=$("#partnerBubble"); b.textContent=text; b.classList.add("show"); setTimeout(()=>b.classList.remove("show"), 3200); }
 /* 拖动伙伴挂件 */
