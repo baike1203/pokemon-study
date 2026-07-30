@@ -338,6 +338,87 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
   .dialog h2 { font-size: 30px; }
 }
 
+/* 平板矮屏适配（希沃 V2 Pro 等 1280×800 横屏）：全局缩小字号/间距/按钮，一屏装下不滚动 */
+@media (max-height: 860px) {
+  body { font-size: 18px; }
+  /* 头部压扁 */
+  header { height: 58px; padding: 0 12px; border-bottom-width: 3px; }
+  #appTitle { font-size: 24px; min-height: 42px; letter-spacing: 0; }
+  #appTitle .edit-hint { font-size: 15px; }
+  .hdr-right { gap: 8px; }
+  #voiceSel { height: 36px; font-size: 14px; padding: 0 10px; min-height: 36px; max-width: 160px; }
+  #ballCounter { padding: 4px 14px 4px 10px; min-height: 40px; gap: 6px; }
+  #ballCounter .ball-icon { width: 26px; height: 26px; }
+  #ballCount { font-size: 22px; }
+  /* 导航栏压扁 */
+  nav { height: 68px; border-top-width: 3px; }
+  nav button { font-size: 19px; gap: 1px; }
+  nav button .nav-icon { font-size: 28px; }
+  /* 主内容区上移 */
+  main { top: 58px; bottom: 68px; }
+  /* 状态��缩小 */
+  .status-line { font-size: 16px; padding: 4px 12px; margin-bottom: 6px; }
+  /* 任务卡片缩小 */
+  .task-card { border-radius: 22px; padding: 14px 10px; min-height: 140px; gap: 4px; box-shadow: 0 8px 18px rgba(120,90,70,.14); }
+  .task-card:active { transform: translateY(-5px) scale(1.03); }
+  .task-card .icon { font-size: 38px; }
+  .task-card .name { font-size: 22px; }
+  .task-card .desc { font-size: 15px; }
+  .task-card.done::after { width: 40px; height: 40px; top: -8px; right: -6px; font-size: 20px; border-width: 3px; }
+  /* 弹窗整体压缩 */
+  .overlay { padding: 10px; }
+  .dialog { border-radius: 24px; padding: 16px 16px 18px; max-height: calc(100vh - 40px); border-width: 4px; }
+  .dialog h2 { font-size: 26px; margin-bottom: 8px; }
+  .dialog .close-x { width: 42px; height: 42px; font-size: 22px; top: 8px; right: 8px; }
+  /* 大按钮缩小 */
+  .big-btn { min-height: 50px; min-width: 130px; padding: 9px 24px; font-size: 21px; margin: 5px; box-shadow: 0 4px 0 #C0403F, 0 5px 10px rgba(0,0,0,.14); }
+  .big-btn:active { transform: translateY(3px); }
+  /* 答题区大幅压缩（核心：一屏放下题目+4选项+反馈） */
+  .quiz-progress { font-size: 17px; margin-bottom: 6px; }
+  .quiz-question { font-size: 46px; margin: 6px 0 10px; min-height: 56px; letter-spacing: 2px; }
+  .quiz-question.small { font-size: 30px; letter-spacing: 1px; }
+  .quiz-sub { font-size: 16px; margin-bottom: 8px; }
+  .opt-btn { min-height: 58px; border-radius: 18px; border-width: 3px; font-size: 26px; box-shadow: 0 3px 0 #ecc98d; }
+  .opt-btn:active { transform: translateY(2px); }
+  .feedback-line { font-size: 16px; margin-top: 6px; padding: 4px 0; }
+  .opt-grid { gap: 8px; }
+  /* 宝可梦详情横向布局缩小 */
+  .poke-detail { gap: 14px; align-items: flex-start; }
+  .pd-left img { width: 150px; height: 150px; }
+  .poke-name { font-size: 24px; margin-top: 4px; }
+  .pd-right .poke-info { padding: 10px 14px; }
+  .pi-row { font-size: 17px; gap: 8px; margin: 5px 0; }
+  .pi-desc { font-size: 16px; line-height: 1.5; margin-top: 6px; }
+  .type-chip { font-size: 16px; padding: 2px 10px; margin: 1px 5px 1px 0; border-width: 1.5px; }
+  /* 抽卡弹窗 */
+  #gachaResult .poke-name { font-size: 28px; }
+  #gachaResult .pd-left img { width: 150px; height: 150px; }
+  /* 图鉴网格 */
+  .dex-grid { gap: 6px; }
+  .dex-cell { width: 72px; height: 82px; }
+  .dex-cell img { width: 48px; height: 48px; }
+  .dex-cell span { font-size: 11px; }
+  /* 拼音格子 */
+  .py-cell { padding: 6px 10px; font-size: 18px; }
+  .py-cell small { font-size: 13px; }
+  .py-tabs button { font-size: 17px; padding: 6px 14px; }
+  /* 齿轮按钮 */
+  #gearBtn { width: 44px; height: 44px; font-size: 22px; line-height: 42px; bottom: 76px; right: 10px; }
+  /* 伙伴挂件 */
+  #partnerWidget { width: 70px; height: 70px; bottom: 160px; right: 8px; }
+  /* 成就墙 */
+  .ach-grid { gap: 8px; }
+  .ach-card { padding: 8px 10px; }
+  .ach-card .ach-name { font-size: 15px; }
+  .ach-card .ach-icon { font-size: 28px; }
+  /* 进化链 */
+  .evo-bar { height: 20px; }
+  .evo-dot { width: 32px; height: 32px; }
+  .evo-dot img { width: 28px; height: 28px; }
+  /* 设置弹窗内按钮 */
+  .set-diff-btn { padding: 10px 16px; font-size: 18px; margin: 5px 0; }
+}
+
 /* ---------- 宝可梦基本信息卡片（属性/身高/体重/简介） ---------- */
 .poke-info { text-align:left; background:#FBF6EC; border:3px solid #ece2cf; border-radius:20px;
   padding:14px 18px; margin:14px auto; max-width:480px; box-shadow:0 6px 16px rgba(0,0,0,.06); }
