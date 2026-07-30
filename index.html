@@ -444,7 +444,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 <body>
 
 <div id="storageWarn" class="storage-warn">⚠️ 当前浏览器无法保存进度，做完任务也不会保留。请改用电脑局域网网址（如 http://192.168.0.133:8000/index.html）打开，或在平板上装一个「本地服务器」APP 后用网址打开。</div>
-<div id="ttsWarn" class="tts-warn">🔇 当前没有可用的中文朗读语音，所以"听一听"没声音。家长请点右下角 ⚙️ →「云端中文语音」，填入你的 Cloudflare Worker 地址（Edge-TTS 中转，免费、无需密钥），保存后朗读就能正常发声。</div>
+<div id="ttsWarn" class="tts-warn">🔇 设备没有系统中文语音，已自动改用云端语音（Edge-TTS）。若仍听不到声音，请确认平板音量已打开、未静音。</div>
 
 <!-- 家长设置齿轮（右下角悬浮，正式版保留） -->
 <div id="gearBtn" title="家长设置（调整数学难度）">⚙️</div>
@@ -722,7 +722,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.14";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.15";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -839,7 +839,7 @@ function renderVoiceSelect(){
   });
   sel.value = CURRENT_VOICE ? CURRENT_VOICE.name : "";
 }
-function hasCloudTTS(){ return !!(state.ttsWorker); }
+function hasCloudTTS(){ return true; }  // 本站内置 /api/tts 常驻可用（免密钥 Edge-TTS），无需再判断是否填了 Worker
 function speak(text, rate = 0.9){
   // 优先用系统中文嗓音（平板系统装了中文 TTS 时）
   if (window.speechSynthesis && CURRENT_VOICE){
@@ -860,30 +860,46 @@ function speak(text, rate = 0.9){
    前端只把文字 POST 到自己的 Worker，Worker 去合成 mp3 返回；前端不暴露任何厂商密钥 */
 let _ttsAudio = null;
 async function speakWorker(text, rate = 0.9, onErr, onInfo, onBlob){
-  if (!state.ttsWorker){ if (onErr) onErr("未填写云端语音 Worker 地址"); return; }
-  try{
-    const base = state.ttsWorker.replace(/\/+$/,"");
-    if (!/^https?:\/\//i.test(base)){ if (onErr) onErr("Worker 地址需以 http(s):// 开头"); return; }
-    if (onInfo) onInfo("🔄 正在请求云端语音…");
-    const resp = await fetch(base + "/v1/audio/speech", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input: text, voice: "zh-CN-XiaoxiaoNeural", speed: rate })
-    });
-    if (!resp.ok){
-      let msg = "Worker 返回错误 " + resp.status;
-      try { const j = await resp.json(); if (j && j.error && j.error.message) msg += "：" + j.error.message; } catch(e){}
-      if (onErr) onErr(msg);
-      console.warn("TTS Worker 失败", resp.status, msg);
+  // 候选地址：优先用户填的 Worker；兜底用本站同域名 /api/tts（免跨域，平板最稳）
+  const bases = [];
+  if (state.ttsWorker){
+    const b = state.ttsWorker.replace(/\/+$/,"");
+    if (/^https?:\/\//i.test(b)) bases.push(b);
+  }
+  bases.push("/api/tts");
+  let lastErr = null;
+  for (let i = 0; i < bases.length; i++){
+    const base = bases[i];
+    const isFallback = (i === bases.length - 1) && bases.length > 1;
+    try{
+      if (onInfo) onInfo(isFallback ? "🔄 改用本站内置语音…" : "🔄 正在请求云端语音…");
+      const resp = await fetch(base + "/v1/audio/speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: text, voice: "zh-CN-XiaoxiaoNeural", speed: rate })
+      });
+      if (!resp.ok){
+        let msg = (isFallback ? "本站语音" : "云端语音") + "返回错误 " + resp.status;
+        try { const j = await resp.json(); if (j && j.error && j.error.message) msg += "：" + j.error.message; } catch(e){}
+        lastErr = msg;
+        if (i < bases.length - 1) continue;
+        if (onErr) onErr(msg);
+        return;
+      }
+      const ct = resp.headers.get("content-type") || "(无)";
+      const blob = await resp.blob();
+      if (onInfo) onInfo((isFallback ? "✅ 本站语音：" : "✅ 云端语音：") + "已收到音频 " + (blob.size/1024).toFixed(1) + " KB(" + ct + ")");
+      if (blob.size < 200){ lastErr = "返回的音频过小(" + blob.size + "字节)"; if (i < bases.length - 1) continue; if (onErr) onErr(lastErr); return; }
+      if (onBlob) onBlob(blob);
+      playAudioBlob(blob, onErr, onInfo);
+      return;
+    }catch(e){
+      lastErr = "请求失败：" + (e && e.message ? e.message : e);
+      if (i < bases.length - 1) continue;
+      if (onErr) onErr(lastErr + (bases.length > 1 ? "（已尝试本站内置语音仍失败）" : ""));
       return;
     }
-    const ct = resp.headers.get("content-type") || "(无)";
-    const blob = await resp.blob();
-    if (onInfo) onInfo("✅ 已收到音频：" + (blob.size/1024).toFixed(1) + " KB，类型 " + ct);
-    if (blob.size < 200){ if (onErr) onErr("返回的音频过小(" + blob.size + "字节)，可能不是有效音频"); return; }
-    if (onBlob) onBlob(blob);
-    playAudioBlob(blob, onErr, onInfo);
-  }catch(e){ if (onErr) onErr("请求失败：" + (e && e.message ? e.message : e)); console.warn("TTS Worker 异常", e); }
+  }
 }
 // 用带事件监听的 <audio> 播放，能区分「解码失败/被拦截/正常播放结束」
 function playAudioBlob(blob, onErr, onInfo){
@@ -1144,9 +1160,9 @@ function openSettings(){
     </div>
     <div style="margin-top:16px;font-size:22px;color:#9b8676">当前难度：<b id="setCur" style="color:#F58A1F">${names[cur]}</b></div>
     <div style="margin-top:22px;border-top:2px dashed #e6d7c3;padding-top:16px">
-      <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">平板无系统语音时启用（Edge-TTS 经 Cloudflare Worker 中转，免费、无需密钥）</span></div>
+      <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">Edge-TTS 语音（免密钥）。留空则用本站内置语音（最稳，推荐）；也可填自己的 Worker 地址</span></div>
       <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
-        <input id="ttsWorker" placeholder="Worker 地址，如 https://my-tts.workers.dev" value="${state.ttsWorker||''}" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
+        <input id="ttsWorker" placeholder="可选：填自己的 Worker 地址；留空用本站内置语音" value="${state.ttsWorker||''}" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
         <div style="display:flex;gap:12px;justify-content:center;margin-top:4px">
           <button class="big-btn blue" id="ttsSave" style="min-width:120px">保存</button>
           <button class="big-btn yellow" id="ttsTest" style="min-width:120px">测试发音</button>
