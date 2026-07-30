@@ -786,8 +786,19 @@ let state = loadState();
 if (state.name === "小宝"){ state.name = "苏打"; saveState(); }   // 默认名字由「小宝」改为「苏打」（仅影响仍用旧默认名的存档）
 let quizToken = 0;          // 答题会话令牌：每开新一题/新一场自增，旧回调据此失效（防止切换时旧计时器串场）
 let activeModule = null;    // 当前打开的学习模块（家长设置齿轮借此判断是否要按新难度重开数学）
-function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); return s; } catch(e){ return defaultState(); } }
-function saveState(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){ /* 某些浏览器/方式下 localStorage 不可用，忽略写入错误，保证不中断交互 */ } }
+function loadState(){
+  // 1) 优先 localStorage（线上 https 环境可用）
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) { const s = Object.assign(defaultState(), JSON.parse(raw)); return s; } } catch(e){}
+  // 2) 回退到 APK 原生桥（SharedPreferences，离线 file:// 也可靠）
+  try { if (window.PokeBridge && window.PokeBridge.loadGame){ const raw = window.PokeBridge.loadGame(); if (raw) { const s = Object.assign(defaultState(), JSON.parse(raw)); return s; } } } catch(e){}
+  return defaultState();
+}
+function saveState(){
+  const json = JSON.stringify(state);
+  try { localStorage.setItem(STORE_KEY, json); } catch(e){ /* 某些浏览器/方式下 localStorage 不可用，忽略 */ }
+  // 同步写入 APK 原生存储保底（不影响网页端）
+  try { if (window.PokeBridge && window.PokeBridge.saveGame) window.PokeBridge.saveGame(json); } catch(e){}
+}
 /* 检测当前环境是否允许本地存储（file:// 被部分浏览器禁用时会失败） */
 function storageWorks(){
   try { const k = "pokeStudyTest"; localStorage.setItem(k, "1"); localStorage.removeItem(k); return true; }
@@ -1015,6 +1026,7 @@ function starBurst(cx, cy, n = 18){
 /* 获得精灵球：飞球动画 + 计数 */
 function gainBall(count = 1){
   state.balls += count; saveState(); sfx.reward();
+  renderHeader(); renderBalls();   // 立即刷新顶部球数 + 超级/大师球显示
   starBurst(window.innerWidth/2, window.innerHeight/2, 22);
   const fb = $("#flyBall"); const target = $("#ballCounter").getBoundingClientRect();
   fb.style.display = "block"; fb.style.transition = "none";
@@ -1062,7 +1074,7 @@ function renderTasks(){
 function completeTask(key){
   if (state.daily.done[key]) return;
   state.daily.done[key] = true; saveState();
-  gainBall(1); renderTasks();
+  gainBall(1); renderTasks(); renderHeader(); renderDex();
   checkAchievements();
   const allDone = TASKS.every(t => state.daily.done[t.key]);
   if (allDone && !state.daily.celebrated){

@@ -13,6 +13,7 @@ import android.content.ContentUris;
 import android.database.Cursor;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.content.SharedPreferences;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -72,7 +73,8 @@ public class MainActivity extends Activity {
         ws.setAllowFileAccess(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
         ws.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        ws.setCacheMode(WebSettings.LOAD_DEFAULT);
+        // 关键：APK 直接读线上最新页面，禁用缓存避免平板一直用旧版（旧版可能有球数 Bug）
+        ws.setCacheMode(WebSettings.LOAD_NO_CACHE);
 
         // 暴露给网页的 JS 桥：PokeBridge.exportSave(json)
         webView.addJavascriptInterface(new PokeJSBridge(), "PokeBridge");
@@ -119,6 +121,7 @@ public class MainActivity extends Activity {
             }
         });
 
+        webView.clearCache(true);
         webView.loadUrl(LIVE_URL);
     }
 
@@ -159,6 +162,30 @@ public class MainActivity extends Activity {
 
     /** JS 桥：把进度 JSON 写入平板"下载"目录 */
     private class PokeJSBridge {
+        private static final String PREFS = "poke_save_prefs";
+        private static final String KEY = "save_json";
+
+        /** 原生持久化：写入 SharedPreferences（WebView 的 localStorage 在 file:// 离线模式下可能失效，这里做保底） */
+        @JavascriptInterface
+        public void saveGame(String json) {
+            try {
+                SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                sp.edit().putString(KEY, json).apply();
+            } catch (Exception ignored) {}
+        }
+
+        /** 原生持久化：同步返回已存进度 JSON（供网页在 localStorage 取不到时回退使用） */
+        @JavascriptInterface
+        public String loadGame() {
+            try {
+                SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                String v = sp.getString(KEY, null);
+                return v == null ? "" : v;
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
             @JavascriptInterface
             public void exportSave(String json, String filename) {
                 try {
