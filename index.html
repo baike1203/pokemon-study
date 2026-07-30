@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>宝可梦学习工作台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
    宝可梦学习工作台 - 样式表（视觉优化版 v3 + 新功能）
@@ -66,7 +69,8 @@ header {
 /* 顶部红栏居中时钟 */
 #hdrClock {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-  color: #fff; font-size: 30px; font-weight: bold; letter-spacing: 2px;
+  color: #fff; font-size: 32px; font-weight: 600; letter-spacing: 3px;
+  font-family: "Fredoka", "Comic Sans MS", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 2px 0 rgba(0,0,0,.22), 0 4px 10px rgba(0,0,0,.28);
   pointer-events: none; white-space: nowrap;
@@ -495,7 +499,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 
 <header>
   <div id="appTitle" title="点击修改名字"><span id="titleText">苏打的宝可梦冒险</span><span class="edit-hint">✏️</span></div>
-  <div id="hdrClock" title="当前时间">--:--:--</div>
+  <div id="hdrClock" title="当前时间">--:--</div>
   <div class="hdr-right">
     <select id="voiceSel" title="选择朗读语音" aria-label="选择朗读语音" style="display:none"></select>
     <div id="ballCounter"><div class="pokeball"></div><span class="x">×</span><span class="num" id="ballNum">0</span></div>
@@ -786,7 +790,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.24";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.25";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1488,7 +1492,7 @@ function ballInfoToast(type){
   void t.offsetWidth; // 强制重排，确保动画生效
   t.classList.add("show");
   clearTimeout(t._timer);
-  t._timer = setTimeout(()=>t.classList.remove("show"), 5200);
+  t._timer = setTimeout(()=>t.classList.remove("show"), 3000);
 }
 /* ---------- 大师球：点选图鉴中任意未点亮宝可梦直接收服 ---------- */
 let masterPick = false;
@@ -1978,7 +1982,7 @@ function tickClock(){
   if (!el) return;
   const d = new Date();
   const p = n => String(n).padStart(2,"0");
-  el.textContent = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  el.textContent = `${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 /* ==================== 启动流程 ==================== */
