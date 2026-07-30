@@ -212,7 +212,7 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .dex-cell .dex-no { font-size: 15px; color: #c2b2a2; display: block; }
 .evo-bar { height: 10px; background: #eee; border-radius: 999px; margin: 5px 6px 2px; overflow: hidden; }
 .evo-fill { height: 100%; background: linear-gradient(90deg, #FFD54F, #FF8FB1); border-radius: 999px; transition: .4s; }
-.evo-text { font-size: 15px; color: #B5762E; margin-bottom: 2px; }
+.evo-text { font-size: 13px; color: #B5762E; margin-bottom: 2px; }
 .evo-text.done { color: #3F9D3F; font-weight: bold; }
 
 /* ---------- 底部导航 ---------- */
@@ -402,6 +402,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
   .dex-cell img { width: 56px; height: 56px; }
   .dex-cell .dex-name { font-size: 15px; }
   .dex-cell .dex-no { font-size: 12px; }
+  .evo-text { font-size: 11px; }
   /* 拼音格子 */
   .py-cell { padding: 6px 10px; font-size: 18px; }
   .py-cell small { font-size: 13px; }
@@ -672,6 +673,10 @@ const EVO_CHAINS = [
 /* 进化所需重复次数：[链长2]需2只；[链长3]需2只进2星、再3只进最终（累计5只） */
 const EVO_REQ = { 2:[2], 3:[2,3] };
 function chainOf(id){ for (const c of EVO_CHAINS) if (c[0] === id) return c; return null; }
+/* 以下为按任意形态查询进化链的辅助函数（支持伊布分支） */
+function chainOfId(id){ for (const c of EVO_CHAINS){ if (c.flat().includes(id)) return c; } return null; }
+function chainPos(id){ const c=chainOfId(id); if(!c) return -1; for(let i=0;i<c.length;i++){ if(c[i]===id) return i; if(Array.isArray(c[i])&&c[i].includes(id)) return i; } return -1; }
+function nextForms(id){ const c=chainOfId(id); const p=chainPos(id); if(!c||p<0||p>=c.length-1) return null; const nx=c[p+1]; return Array.isArray(nx)?nx.slice():[nx]; }
 
 /* ---------- 基础形态判断：用于盲盒抽取时优先给出未进化的宝可梦 ----------
    基础形态 = 每条进化链的第一个编号 + 不在任何进化链里的独立宝可梦。
@@ -722,7 +727,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.17";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.18";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1326,27 +1331,26 @@ function alreadyDone(title){ openDialog(`<h2>${title}</h2><div style="font-size:
 window.__closeAndReward = function(key){ sfx.click(); closeDialog(); completeTask(key); };
 
 /* ==================== 6. 进化系统 ==================== */
-/* 某基础编号当前应显示的形态编号（已进化则取进化形态） */
-function displayId(id){
-  if (state.evoForm && state.evoForm[id]) return state.evoForm[id];
-  const c = chainOf(id); if (!c) return id;
-  return c[state.evoStage[id] || 0];
-}
-/* 尝试进化：累计抽中次数达标则进阶，返回 {from,to} 或 null */
+/* 显示用：现在每种形态都是独立图鉴条目，直接返回自身编号即可 */
+function displayId(id){ return id; }
+/* 尝试进化：累计“该形态自身”被抽到的次数达标则进阶，返回 {from,to} 或 null。
+   进化时把下一形态加入图鉴（保持常亮，符合“捕捉过就一直点亮”的设定）。 */
 function tryEvolve(id){
-  const chain = chainOf(id); if (!chain) return null;
-  const stage = state.evoStage[id] || 0;
-  if (stage >= chain.length - 1) return null;
-  const req = EVO_REQ[chain.length];
-  let need = 0; for (let i=0;i<=stage;i++) need += req[i]; // 累计所需
+  const c = chainOfId(id); if (!c) return null;
+  const pos = chainPos(id); if (pos < 0 || pos >= c.length - 1) return null;
+  const req = EVO_REQ[c.length]; if (!req) return null;
+  const need = req[pos];
   const have = state.copyCount[id] || 0;
   if (have >= need){
-    let nextId = chain[stage+1];
-    if (Array.isArray(nextId)) nextId = nextId[rnd(0,nextId.length-1)]; // 伊布分支随机
-    state.evoStage[id] = stage + 1;
-    if (Array.isArray(chain[stage+1])) state.evoForm[id] = nextId;
+    const nxt = nextForms(id);
+    // 优先进化到“尚未拥有的”形态；若下一形态已全部拥有，视为已进化完成，不再触发
+    const candidates = nxt.filter(n=>!state.dex.includes(n));
+    if (candidates.length === 0) return null;
+    const to = candidates[rnd(0, candidates.length-1)]; // 伊布分支随机
+    if (!state.dex.includes(to)) state.dex.push(to);
+    if (Array.isArray(c[pos+1])) state.evoForm[c[0]] = to; // 记录伊布分支选择
     saveState();
-    return { from: chain[stage], to: nextId };
+    return { from: id, to: to };
   }
   return null;
 }
@@ -1366,16 +1370,17 @@ function renderDex(){
     const cell = document.createElement("div");
     cell.className = "dex-cell " + (owned ? "owned" : "locked");
     if (owned){
-      const did = displayId(id), stage = state.evoStage[id]||0, chain = chainOf(id);
+      const nxt = nextForms(id);
       let prog = "";
-      if (chain && stage < chain.length - 1){
-        const req = EVO_REQ[chain.length]; let need=0; for(let i=0;i<=stage;i++) need+=req[i];
+      if (nxt){
+        const c = chainOfId(id);
+        const req = EVO_REQ[c.length];
+        const need = req ? req[chainPos(id)] : 0;
         const have = state.copyCount[id]||0;
-        prog = `<div class="evo-bar"><div class="evo-fill" style="width:${Math.min(100, have/need*100)}%"></div></div><div class="evo-text">${have}/${need} 即将进化</div>`;
-      } else if (chain && stage >= chain.length - 1){
-        prog = `<div class="evo-text done">★ 已进化完成</div>`;
+        if (nxt.some(n=>state.dex.includes(n))) prog = `<div class="evo-text done">★ 已进化完成</div>`;
+        else prog = `<div class="evo-bar"><div class="evo-fill" style="width:${Math.min(100, have/need*100)}%"></div></div><div class="evo-text">${have}/${need} 即将进化</div>`;
       }
-      cell.innerHTML = `<img src="${spriteUrl(did)}" loading="lazy"><span class="dex-name">${POKEMON[did-1]}</span><span class="dex-no">No.${String(id).padStart(3,"0")}</span>${prog}`;
+      cell.innerHTML = `<img src="${spriteUrl(id)}" loading="lazy"><span class="dex-name">${POKEMON[id-1]}</span><span class="dex-no">No.${String(id).padStart(3,"0")}</span>${prog}`;
       cell.addEventListener("click", ()=>openPokeDetail(id));
     } else {
       cell.innerHTML = `<img src="${spriteUrl(id)}" loading="lazy"><span class="dex-name">???</span><span class="dex-no">No.${String(id).padStart(3,"0")}</span>`;
@@ -1427,20 +1432,26 @@ function openPokeDetail(id){
    ① 65% 概率从"未收集"池中抽 → 其中 85% 优先基础形态
    ② 剩余 35% 从全部 151 只里抽 → 其中 80% 优先基础形态
    效果：早期几乎只出基础形态，进化形态只在收集后期或运气差时才出现 */
-function pickBaseFirst(pool){
-  /* 从给定池子里，高概率返回一只基础形态宝可梦 */
-  const bases = pool.filter(isBaseForm);
-  if (bases.length && Math.random() < 0.8) return bases[rnd(0, bases.length-1)];
-  return pool[rnd(0, pool.length-1)];
+/* 可抽卡池：①基础形态（含无进化链的独立宝可梦）；②已通过进化获得过的形态。
+   进化前的形态不会被直接抽到，必须先抽到基础形态并进化解锁。 */
+function drawableIds(){
+  const res = [];
+  for (let i=1;i<=151;i++){
+    if (isBaseForm(i)) res.push(i);
+    else if (state.dex.includes(i)) res.push(i); // 只有已进化获得的形态才能再次抽到
+  }
+  return res;
 }
 function drawPokemon({ guaranteedUncollected = false } = {}){
-  const uncollected = []; for (let i=1;i<=151;i++) if (!state.dex.includes(i)) uncollected.push(i);
-  // 大师球/超级球：必定未收集
-  if (guaranteedUncollected) return uncollected.length ? pickBaseFirst(uncollected) : null;
-  // 普通精灵球：65% 未收集 + 基础形态优先
-  if (uncollected.length > 0 && Math.random() < 0.65) return pickBaseFirst(uncollected);
-  // 兜底：从全部151只里抽，仍然优先基础形态
-  return pickBaseFirst(Array.from({length:151},(_,i)=>i+1));
+  let pool = drawableIds();
+  if (guaranteedUncollected) pool = pool.filter(id=>!state.dex.includes(id));
+  if (pool.length === 0) return null;
+  // 普通精灵球：若池中还有未收集宝可梦，65% 优先给未收集的；否则从可抽池随机（多为重复，用于进化）
+  const uncollected = pool.filter(id=>!state.dex.includes(id));
+  if (!guaranteedUncollected && uncollected.length > 0 && Math.random() < 0.65){
+    return uncollected[rnd(0, uncollected.length-1)];
+  }
+  return pool[rnd(0, pool.length-1)];
 }
 /* 打开盲盒：ballType = normal|master|super */
 function openGacha(ballType){
