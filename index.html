@@ -198,6 +198,7 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .mini-ball.super .b2  { background: linear-gradient(180deg, #7AA7EC 0 46%, #2b2b2b 46% 54%, #fff 54% 100%); }
 .mini-ball .label { font-size: 21px; font-weight: bold; color: #7a5b00; background: #FFFDF8; padding: 6px 14px; border-radius: 999px; border: 2px solid #F4D49A; box-shadow: 0 3px 8px rgba(180,150,110,.2); }
 .mini-ball:disabled { filter: grayscale(1); opacity: .5; cursor: default; }
+.mini-ball.is-empty { filter: grayscale(1); opacity: .5; }
 /* 图鉴操作按钮行（冒险/成就/备份） */
 .dex-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px; }
 
@@ -1417,8 +1418,8 @@ function renderBalls(){
   if(m) m.textContent = `大师球×${state.masterBalls}`;
   if(s) s.textContent = `超级球×${state.superBalls}`;
   const mb=$("#masterBtn"), sb=$("#superBtn");
-  if(mb) mb.disabled = state.masterBalls<=0;
-  if(sb) sb.disabled = state.superBalls<=0;
+  if(mb) mb.classList.toggle("is-empty", state.masterBalls<=0);
+  if(sb) sb.classList.toggle("is-empty", state.superBalls<=0);
 }
 /* 球获取方法提示（自动消失，仅在没有球、点击灰色球时触发） */
 function ballInfoToast(type){
@@ -1464,6 +1465,20 @@ function exitMasterPick(){
   renderDex();
 }
 function captureWithMaster(id){
+  if (!masterPick || state.dex.includes(id)) return;
+  const name = POKEMON[id-1];
+  // 先弹确认框，避免误点消耗大师球
+  openDialog(`<h2 style="color:#9B5DE5">🟣 用大师球收服？</h2>
+    <div class="poke-detail"><div class="pd-left"><img src="${spriteUrl(id)}" style="width:200px;height:200px;image-rendering:pixelated"><div class="poke-name">${name}</div></div>
+    <div class="pd-right"><div style="font-size:24px;line-height:1.7">确定要用 <b>1 个大师球</b><br>直接收服它吗？</div></div></div>
+    <div style="display:flex;gap:14px;justify-content:center;margin-top:6px">
+      <button class="big-btn gray" id="mcCancel">再看看</button>
+      <button class="big-btn yellow" id="mcOk">🟣 确定收服</button>
+    </div>`, {closable:false});
+  $("#mcCancel").onclick = ()=>{ sfx.click(); closeDialog(); /* 保留点选模式，可换一只 */ };
+  $("#mcOk").onclick = ()=>{ sfx.click(); closeDialog(); doCaptureWithMaster(id); };
+}
+function doCaptureWithMaster(id){
   if (!masterPick || state.dex.includes(id)) return;
   state.dex.push(id);
   state.copyCount[id] = 1;
@@ -1569,10 +1584,13 @@ function revealGacha(id, isNew, ballType){
   if (ballType==="normal"){ if (isNew) state.balls--; else state.balls++; /* 重复退款 */ }
   else if (ballType==="master") state.masterBalls--;
   else if (ballType==="super") state.superBalls--;
-  // 剩余球数文案：在“再开一个”按钮旁提示，让孩子知道还剩多少
+  // 剩余球数文案 + 是否还能“再开一个”：按“本次使用的球类型”判断，而非普通精灵球
   const remText = ballType==="master" ? `剩 ${state.masterBalls} 个大师球`
                : ballType==="super"  ? `剩 ${state.superBalls} 个超级球`
                : `剩 ${state.balls} 个精灵球`;
+  const canAgain = ballType==="master" ? state.masterBalls>0
+                : ballType==="super"  ? state.superBalls>0
+                : state.balls>0;
   let evolved = null;
   if (isNew){ state.dex.push(id); state.copyCount[id]=1; state.evoStage[id]=0; }
   else { state.copyCount[id]=(state.copyCount[id]||0)+1; evolved = tryEvolve(id); }
@@ -1588,10 +1606,10 @@ function revealGacha(id, isNew, ballType){
         <div class="pd-right">${pokeInfoHTML(displayId(id))}</div>
       </div>
       <button class="big-btn" id="gOk">收入图鉴 📕</button>
-      ${state.balls>0?'<button class="big-btn yellow" id="gAgain">再开一个！（'+remText+'）</button>':''}</div>`, {closable:false});
+      ${canAgain?'<button class="big-btn yellow" id="gAgain">再开一个！（'+remText+'）</button>':''}</div>`, {closable:false});
     speak(`哇！收服了${POKEMON[displayId(id)-1]}！`);
     $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); checkAll151(); checkAchievements(); renderDex(); };
-    if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); openGacha("normal"); };
+    if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); openGacha(ballType); };
   } else if (evolved){
     confetti(120); sfx.fanfare();
     openDialog(`<h2 style="color:var(--poke-red)">🌟 进化！</h2>
@@ -1603,12 +1621,15 @@ function revealGacha(id, isNew, ballType){
     $("#gOk2").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); };
   } else {
     sfx.reward(); starBurst(window.innerWidth/2, window.innerHeight/2, 14);
+    const dupMsg = ballType==="normal"
+      ? "这只宝可梦你已经有了！<br>再送你一个精灵球～ 🎁"
+      : `这只宝可梦你已经有了！<br>用${ballType==="master"?"大师球":"超级球"}再试一次吧～`;
     openDialog(`<div id="gachaResult"><div><img src="${spriteUrl(displayId(id))}" style="filter:saturate(.7)"></div>
       <div class="poke-name">${POKEMON[displayId(id)-1]}</div>
-      <div style="font-size:26px;margin:8px 0">这只宝可梦你已经有了！<br>再送你一个精灵球～ 🎁</div>
-      <button class="big-btn yellow" id="gOk">好耶，再开一次！（${remText}）</button></div>`, {closable:false});
-    speak("这只宝可梦你已经有了，再送你一个精灵球！");
-    $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); openGacha("normal"); };
+      <div style="font-size:26px;margin:8px 0">${dupMsg}</div>
+      ${canAgain?'<button class="big-btn yellow" id="gOk">好耶，再开一次！（'+remText+'）</button>':''}</div>`, {closable:false});
+    speak(ballType==="normal" ? "这只宝可梦你已经有了，再送你一个精灵球！" : "这只宝可梦你已经有了，再试一次吧！");
+    if ($("#gOk")) $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); openGacha(ballType); };
   }
 }
 
