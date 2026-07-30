@@ -555,6 +555,18 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
    10. 成就墙 + 导出导入
    ============================================================ */
 
+/* ==================== 0. 全局错误捕获（平板调试用，出错会显示红条） ==================== */
+function showBugBanner(msg){
+  try {
+    let b = document.getElementById("bugBanner");
+    if (!b){ b = document.createElement("div"); b.id = "bugBanner"; b.style.cssText="position:fixed;left:8px;right:8px;bottom:8px;z-index:9999;background:#c0392b;color:#fff;font:13px/1.45 monospace;padding:10px 12px;border-radius:10px;white-space:pre-wrap;max-height:42vh;overflow:auto;box-shadow:0 4px 12px rgba(0,0,0,.35)"; document.body.appendChild(b); }
+    b.textContent = "⚠️ 出错（请截图给爸爸）：\n" + String(msg);
+    clearTimeout(b._t); b._t = setTimeout(()=>{ if(b) b.remove(); }, 15000);
+  } catch(e){}
+}
+window.addEventListener("error", e => { showBugBanner((e.error && e.error.stack) || e.message || e); });
+window.addEventListener("unhandledrejection", e => { showBugBanner("Promise 异常: " + ((e.reason && (e.reason.stack || e.reason.message)) || e.reason)); });
+
 /* ==================== 1. 数据区 ==================== */
 
 /* 拼音数据 [拼音, 朗读示例字] */
@@ -748,7 +760,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.22";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.23";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1008,20 +1020,26 @@ function starBurst(cx, cy, n = 18){
   }
 }
 
-/* 获得精灵球：飞球动画 + 计数 */
+/* 获得精灵球：先同步更新计数与界面（防弹），动画包 try/catch 不影响逻辑 */
 function gainBall(count = 1){
-  state.balls += count; saveState(); sfx.reward();
-  starBurst(window.innerWidth/2, window.innerHeight/2, 22);
-  const fb = $("#flyBall"); const target = $("#ballCounter").getBoundingClientRect();
-  fb.style.display = "block"; fb.style.transition = "none";
-  fb.style.left = (window.innerWidth/2-26)+"px"; fb.style.top = (window.innerHeight/2-26)+"px"; fb.style.transform = "scale(1.6)";
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    fb.style.transition = "all .8s cubic-bezier(.4,-0.2,.6,1)";
-    fb.style.left = (target.left+target.width/2-26)+"px"; fb.style.top = (target.top+target.height/2-26)+"px"; fb.style.transform = "scale(.6)";
-  }));
-  setTimeout(()=>{ fb.style.display="none"; renderHeader();
-    const bc = $("#ballCounter"); bc.style.transform="scale(1.15)"; bc.style.transition="transform .15s"; setTimeout(()=>bc.style.transform="",180);
-  }, 850);
+  try { state.balls += count; saveState(); } catch(e){}
+  try { renderHeader(); renderDex(); } catch(e){}   // 立即刷新右上角球数 + 抽卡按钮标签
+  try { sfx.reward(); } catch(e){}
+  try { starBurst(window.innerWidth/2, window.innerHeight/2, 22); } catch(e){}
+  try {
+    const fb = $("#flyBall"), bc = $("#ballCounter");
+    if (!fb || !bc) return;
+    const target = bc.getBoundingClientRect();
+    fb.style.display = "block"; fb.style.transition = "none";
+    fb.style.left = (window.innerWidth/2-26)+"px"; fb.style.top = (window.innerHeight/2-26)+"px"; fb.style.transform = "scale(1.6)";
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      fb.style.transition = "all .8s cubic-bezier(.4,-0.2,.6,1)";
+      fb.style.left = (target.left+target.width/2-26)+"px"; fb.style.top = (target.top+target.height/2-26)+"px"; fb.style.transform = "scale(.6)";
+    }));
+    setTimeout(()=>{ try { fb.style.display="none"; renderHeader();
+      bc.style.transform="scale(1.15)"; bc.style.transition="transform .15s"; setTimeout(()=>bc.style.transform="",180);
+    } catch(e){} }, 850);
+  } catch(e){}
 }
 
 /* 彩带 + 庆祝大字 */
@@ -1057,14 +1075,17 @@ function renderTasks(){
 
 function completeTask(key){
   if (state.daily.done[key]) return;
-  state.daily.done[key] = true; saveState();
-  gainBall(1); renderTasks();
-  checkAchievements();
+  state.daily.done[key] = true;
+  try { saveState(); } catch(e){}
+  // 先同步刷新所有相关界面（无论下方动画/语音是否异常，计数、任务卡、抽卡标签都立即可见）
+  try { renderTasks(); renderHeader(); renderDex(); renderBalls(); } catch(e){}
+  try { gainBall(1); } catch(e){ showBugBanner("gainBall: " + (e && (e.stack||e.message) || e)); }
+  try { checkAchievements(); } catch(e){}
   const allDone = TASKS.every(t => state.daily.done[t.key]);
   if (allDone && !state.daily.celebrated){
-    state.daily.celebrated = true; saveState();
-    onAllTasksDone(); // 连续全勤统计 + 大师球
-    setTimeout(() => bigCelebrate("今日任务全部完成！你真棒！"), 1100);
+    state.daily.celebrated = true; try { saveState(); } catch(e){}
+    try { onAllTasksDone(); } catch(e){} // 连续全勤统计 + 大师球
+    setTimeout(() => { try { bigCelebrate("今日任务全部完成！你真棒！"); } catch(e){} }, 1100);
   }
 }
 
@@ -1351,7 +1372,12 @@ function poemQuiz(){
   show();
 }
 function alreadyDone(title){ openDialog(`<h2>${title}</h2><div style="font-size:64px;margin:14px 0">✔️</div><div style="font-size:28px">今天的任务已经完成啦，<br>明天 0 点后再来挑战吧！</div><button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">好的</button>`); }
-window.__closeAndReward = function(key){ sfx.click(); closeDialog(); completeTask(key); };
+window.__closeAndReward = function(key){
+  try { sfx.click(); } catch(e){}
+  try { closeDialog(); } catch(e){}
+  try { completeTask(key); }
+  catch(e){ showBugBanner("completeTask(" + key + "): " + (e && (e.stack || e.message) || e)); }
+};
 
 /* ==================== 6. 进化系统 ==================== */
 /* 显示用：现在每种形态都是独立图鉴条目，直接返回自身编号即可 */
