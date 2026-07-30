@@ -747,7 +747,9 @@ function defaultState(){
     partnerId: null,        // 今日伙伴基础编号
     voiceName: null,        // 用户手动选过的中文朗读嗓音（null=自动挑最自然的）
     mathDiff: "10",         // 数学闯关难度（家长设置齿轮调整）：10/20/50/100/mul/div
-    testMode: false         // 测试模式（家长设置内输入密码 112233 开启，开启后首页显示测试按钮条）
+    testMode: false,        // 测试模式（家长设置内输入密码 112233 开启，开启后首页显示测试按钮条）
+    azureRegion: "",        // 云端中文语音（Azure TTS）区域，如 eastasia / southeastasia
+    azureKey: ""            // 云端中文语音订阅密钥（平板无系统语音时回退用，留空=不启用）
   };
 }
 let state = loadState();
@@ -826,7 +828,7 @@ function loadVoices(){
 function renderVoiceSelect(){
   const sel = document.getElementById("voiceSel"); if (!sel) return;
   const tw = document.getElementById("ttsWarn");
-  if (ZH_VOICES.length === 0){ if (tw) tw.style.display = ""; sel.style.display = "none"; return; } // 没中文嗓音→提示家长装语音包
+  if (ZH_VOICES.length === 0){ if (tw && !hasCloudTTS()) tw.style.display = ""; sel.style.display = "none"; return; } // 没中文嗓音且没配云端→提示家长
   if (tw) tw.style.display = "none";
   if (ZH_VOICES.length < 2){ sel.style.display = "none"; return; } // 只有 1 个中文嗓音→不显示切换器（无需切换）
   sel.style.display = "";
@@ -837,17 +839,46 @@ function renderVoiceSelect(){
   });
   sel.value = CURRENT_VOICE ? CURRENT_VOICE.name : "";
 }
+function hasCloudTTS(){ return !!(state.azureRegion && state.azureKey); }
 function speak(text, rate = 0.9){
+  // 优先用系统中文嗓音（平板系统装了中文 TTS 时）
+  if (window.speechSynthesis && CURRENT_VOICE){
+    try{
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "zh-CN";
+      u.voice = CURRENT_VOICE;
+      u.rate = rate; u.pitch = 1.1; u.volume = 1;
+      speechSynthesis.speak(u);
+      return;
+    }catch(e){}
+  }
+  // 平板系统无中文嗓音时，回退到云端中文语音（Azure TTS，需家长在设置里填密钥）
+  if (hasCloudTTS()){ speakAzure(text, rate); return; }
+}
+/* 云端中文语音：微软 Azure TTS（REST，需 region + key）。不依赖平板系统，定制系统/无中文语音包也能发声 */
+let _azureAudio = null;
+async function speakAzure(text, rate = 0.9){
   try{
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "zh-CN";
-    if (CURRENT_VOICE) u.voice = CURRENT_VOICE;   // 用挑选出的自然嗓音
-    u.rate = rate;      // 语速：0.9 略慢，适合小孩跟读
-    u.pitch = 1.1;      // 音调略高，更童趣、不生硬
-    u.volume = 1;
-    speechSynthesis.speak(u);
-  }catch(e){}
+    const region = state.azureRegion, key = state.azureKey;
+    const xmlEscape = s => s.replace(/[<>&'"]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;","'":"&apos;",'"':"&quot;"}[c]));
+    const ssml = `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='zh-CN'>`+
+                 `<voice name='zh-CN-XiaoxiaoNeural'><prosody rate='${rate}' pitch='+10%'>${xmlEscape(text)}</prosody></voice></speak>`;
+    const resp = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+      method: "POST",
+      headers: {
+        "Ocp-Apim-Subscription-Key": key,
+        "Content-Type": "application/ssml+xml",
+        "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3"
+      },
+      body: ssml
+    });
+    if (!resp.ok){ console.warn("Azure TTS 失败", resp.status); return; }
+    const blob = await resp.blob();
+    if (_azureAudio){ try{ _azureAudio.pause(); }catch(e){} }
+    _azureAudio = new Audio(URL.createObjectURL(blob));
+    _azureAudio.play().catch(e=>{});
+  }catch(e){ console.warn("Azure TTS 异常", e); }
 }
 if (window.speechSynthesis){
   speechSynthesis.onvoiceschanged = loadVoices;   // 安卓/Chrome 常异步加载嗓音，加载完再挑一次
@@ -863,8 +894,8 @@ if (window.speechSynthesis){
     speak("你好，我是你的学习伙伴，我们一起加油！"); // 切换后试听
   });
 } else {
-  // 浏览器完全不支持语音朗读（极老版本）→ 也提示家长
-  const tw = document.getElementById("ttsWarn"); if (tw) tw.style.display = "";
+  // 浏览器完全不支持 speechSynthesis（极老版本）→ 若也没配云端 TTS，提示家长
+  const tw = document.getElementById("ttsWarn"); if (tw && !hasCloudTTS()) tw.style.display = "";
 }
 
 /* ==================== 4. 通用 UI ==================== */
@@ -1094,6 +1125,18 @@ function openSettings(){
     </div>
     <div style="margin-top:16px;font-size:22px;color:#9b8676">当前难度：<b id="setCur" style="color:#F58A1F">${names[cur]}</b></div>
     <div style="margin-top:22px;border-top:2px dashed #e6d7c3;padding-top:16px">
+      <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">平板无系统语音时启用（微软 Azure，需免费密钥）</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
+        <input id="azureRegion" placeholder="区域，如 eastasia / southeastasia" value="${state.azureRegion||''}" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
+        <input id="azureKey" placeholder="订阅密钥（Subscription Key）" value="${state.azureKey||''}" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:4px">
+          <button class="big-btn blue" id="azureSave" style="min-width:120px">保存</button>
+          <button class="big-btn yellow" id="azureTest" style="min-width:120px">测试发音</button>
+        </div>
+        <div id="azureStatus" style="font-size:16px;color:#3F9D3F;min-height:20px"></div>
+      </div>
+    </div>
+    <div style="margin-top:22px;border-top:2px dashed #e6d7c3;padding-top:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
         <div style="font-size:22px;color:#9b8676">🛠 测试模式<span style="font-size:15px;color:#bbb;display:block">开启后首页显示测试按钮（加球/重置）</span></div>
         <button class="switch ${state.testMode?'on':''}" id="testSwitch" role="switch" aria-checked="${state.testMode}"><span class="knob"></span></button>
@@ -1111,6 +1154,16 @@ function openSettings(){
       setTimeout(()=>{ closeDialog(); activeModule="math"; mathTask(); }, 700);
     }
   }));
+  // 云端中文语音（Azure TTS）配置
+  const azRegion = $("#azureRegion"), azKey = $("#azureKey"), azStatus = $("#azureStatus");
+  function saveCloud(){
+    state.azureRegion = (azRegion.value||"").trim();
+    state.azureKey = (azKey.value||"").trim();
+    saveState();
+    const tw = document.getElementById("ttsWarn"); if (tw) tw.style.display = "none"; // 配好云端后隐藏提示条
+  }
+  $("#azureSave").addEventListener("click", ()=>{ sfx.click(); saveCloud(); azStatus.textContent = "✅ 已保存，朗读将使用云端语音"; });
+  $("#azureTest").addEventListener("click", ()=>{ sfx.click(); saveCloud(); azStatus.textContent = "🔊 正在试听…"; speakAzure("你好，我是你的学习伙伴，我们一起加油！", 0.9); });
   $("#setClose").addEventListener("click", ()=>{ sfx.click(); closeDialog(); });
   // 测试模式开关：开启需输入密码 112233，关闭直接切换
   const testSwitch = $("#testSwitch");
