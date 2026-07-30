@@ -1796,11 +1796,13 @@ function openBackup(){
     <button class="big-btn yellow" id="copyBtn">📋 复制进度</button>
     <hr style="margin:14px 0;border:none;border-top:2px dashed #e3d8c2">
     <textarea id="ioText" style="width:100%;height:140px;font-size:16px;border-radius:12px;border:2px solid #e3d8c2;padding:8px">${data}</textarea>
-    <div style="margin-top:10px"><button class="big-btn" id="impBtn">⬆️ 导入进度</button><input type="file" id="impFile" accept="application/json,.json" style="margin-top:10px;font-size:18px"></div>`);
+    <div style="margin-top:10px"><button class="big-btn" id="impBtn">⬆️ 导入进度</button><input type="file" id="impFile" accept="application/json,.json" style="margin-top:10px;font-size:18px"></div>
+    <button class="big-btn blue" id="impLatestBtn" style="margin-top:10px">📂 导入下载目录里最新的进度</button>`);
   $("#expBtn").addEventListener("click", ()=>{
     const json = JSON.stringify(state,null,2);
     const d = new Date();
-    const fn = `pokemon-save-${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}.json`;
+    const p = n => String(n).padStart(2,"0");
+    const fn = `pokemon-save-${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;
     if (window.PokeBridge && window.PokeBridge.exportSave){      // APK(WebView) 走原生写入下载目录
       window.PokeBridge.exportSave(json, fn);
     } else {                                                      // 普通浏览器走 blob 下载
@@ -1811,6 +1813,10 @@ function openBackup(){
   $("#copyBtn").addEventListener("click", ()=>{ if(navigator.clipboard) navigator.clipboard.writeText(data); toast("已复制到剪贴板"); });
   $("#impBtn").addEventListener("click", ()=>{ doImport($("#ioText").value.trim()); });
   $("#impFile").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>doImport(r.result); r.readAsText(f); });
+  $("#impLatestBtn").addEventListener("click", ()=>{
+    if (window.PokeBridge && window.PokeBridge.importLatest){ window.PokeBridge.importLatest(); }
+    else { toast("此功能仅限 APP 内使用，请用「选择文件」导入"); }
+  });
 }
 function doImport(txt){
   try{

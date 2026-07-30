@@ -8,6 +8,8 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.content.ContentUris;
+import android.database.Cursor;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.webkit.JavascriptInterface;
@@ -182,6 +184,41 @@ public class MainActivity extends Activity {
                 }
             } catch (Exception e) {
                 showToast("导出失败：" + e.getMessage());
+            }
+        }
+
+        /** 直接读取"下载"目录里最新的 pokemon-save 进度文件并导入（APP 内一键导入，省去选文件） */
+        @JavascriptInterface
+        public void importLatest() {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                showToast("当前系统版本请改用「选择文件」导入");
+                return;
+            }
+            try {
+                Uri uri = null;
+                String name = null;
+                try (Cursor c = getContentResolver().query(
+                        MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                        new String[]{MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME},
+                        MediaStore.Downloads.DISPLAY_NAME + " LIKE ?",
+                        new String[]{"pokemon-save-%"},
+                        MediaStore.Downloads.DATE_MODIFIED + " DESC")) {
+                    if (c != null && c.moveToFirst()) {
+                        long id = c.getLong(c.getColumnIndexOrThrow(MediaStore.Downloads._ID));
+                        name = c.getString(c.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME));
+                        uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id);
+                    }
+                }
+                if (uri == null) {
+                    showToast("下载目录未找到 pokemon-save 进度文件，请改用选择文件");
+                    return;
+                }
+                String text = readUriText(uri);
+                final String js = "doImport(" + JSONObject.quote(text) + ")";
+                webView.evaluateJavascript(js, null);
+                showToast("已自动导入：" + name);
+            } catch (Exception e) {
+                showToast("自动导入失败，请改用选择文件：" + e.getMessage());
             }
         }
 
