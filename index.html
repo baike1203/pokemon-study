@@ -398,10 +398,10 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
   #gachaResult .poke-name { font-size: 28px; }
   #gachaResult .pd-left img { width: 150px; height: 150px; }
   /* 图鉴网格 */
-  .dex-grid { gap: 6px; }
-  .dex-cell { width: 72px; height: 82px; }
-  .dex-cell img { width: 48px; height: 48px; }
-  .dex-cell span { font-size: 11px; }
+  .dex-grid { gap: 8px; }
+  .dex-cell img { width: 56px; height: 56px; }
+  .dex-cell .dex-name { font-size: 15px; }
+  .dex-cell .dex-no { font-size: 12px; }
   /* 拼音格子 */
   .py-cell { padding: 6px 10px; font-size: 18px; }
   .py-cell small { font-size: 13px; }
@@ -722,7 +722,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.16";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.17";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
