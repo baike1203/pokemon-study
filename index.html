@@ -444,7 +444,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 <body>
 
 <div id="storageWarn" class="storage-warn">⚠️ 当前浏览器无法保存进度，做完任务也不会保留。请改用电脑局域网网址（如 http://192.168.0.133:8000/index.html）打开，或在平板上装一个「本地服务器」APP 后用网址打开。</div>
-<div id="ttsWarn" class="tts-warn">🔇 当前没有可用的中文朗读语音，所以"听一听"没声音。家长请点右下角 ⚙️ →「云端中文语音」，填入科大讯飞的 APPID / APIKey / APISecret（免费、手机号注册即可），填好并保存后朗读就能正常发声。</div>
+<div id="ttsWarn" class="tts-warn">🔇 当前没有可用的中文朗读语音，所以"听一听"没声音。家长请点右下角 ⚙️ →「云端中文语音」，填入你的 Cloudflare Worker 地址（Edge-TTS 中转，免费、无需密钥），保存后朗读就能正常发声。</div>
 
 <!-- 家长设置齿轮（右下角悬浮，正式版保留） -->
 <div id="gearBtn" title="家长设置（调整数学难度）">⚙️</div>
@@ -748,9 +748,7 @@ function defaultState(){
     voiceName: null,        // 用户手动选过的中文朗读嗓音（null=自动挑最自然的）
     mathDiff: "10",         // 数学闯关难度（家长设置齿轮调整）：10/20/50/100/mul/div
     testMode: false,        // 测试模式（家长设置内输入密码 112233 开启，开启后首页显示测试按钮条）
-    xfyAppId: "",          // 云端中文语音（科大讯飞 TTS）APPID
-    xfyKey: "",             // 云端中文语音（科大讯飞 TTS）APIKey
-    xfySecret: ""           // 云端中文语音（科大讯飞 TTS）APISecret（三者齐备才启用；留空=不启用）
+    ttsWorker: ""           // 云端中文语音 Worker 地址（Edge-TTS 中转，留空=不启用；填 https://xxx.workers.dev）
   };
 }
 let state = loadState();
@@ -840,7 +838,7 @@ function renderVoiceSelect(){
   });
   sel.value = CURRENT_VOICE ? CURRENT_VOICE.name : "";
 }
-function hasCloudTTS(){ return !!(state.xfyAppId && state.xfyKey && state.xfySecret); }
+function hasCloudTTS(){ return !!(state.ttsWorker); }
 function speak(text, rate = 0.9){
   // 优先用系统中文嗓音（平板系统装了中文 TTS 时）
   if (window.speechSynthesis && CURRENT_VOICE){
@@ -854,67 +852,27 @@ function speak(text, rate = 0.9){
       return;
     }catch(e){}
   }
-  // 平板系统无中文嗓音时，回退到云端中文语音（科大讯飞 TTS，需家长在设置里填 APPID/APIKey/APISecret）
-  if (hasCloudTTS()){ speakXfy(text, rate); return; }
+  // 平板无系统中文嗓音 → 回退到云端 Edge-TTS（Cloudflare Worker 中转，免费、无需密钥）
+  if (hasCloudTTS()){ speakWorker(text, rate); return; }
 }
-/* 云端中文语音：科大讯飞 TTS（WebSocket 流式，需 APPID + APIKey + APISecret）。
-   不依赖平板系统、国内手机号即可注册，定制系统也能发声（仅 https/安全上下文可用） */
-let _xfyAudio = null;
-async function speakXfy(text, rate = 0.9){
-  if (!hasCloudTTS()) return;
-  const appId = state.xfyAppId, apiKey = state.xfyKey, apiSecret = state.xfySecret;
-  const host = "tts-api.xfyun.cn";
-  const date = new Date().toUTCString();
-  const signatureOrigin = `host: ${host}\ndate: ${date}\nGET /v2/tts HTTP/1.1`;
-  let authorization = "";
+/* 云端中文语音：Edge-TTS 经 Cloudflare Worker 中转（微软给 Edge 浏览器的免费通道，无需任何密钥）。
+   前端只把文字 POST 到自己的 Worker，Worker 去合成 mp3 返回；前端不暴露任何厂商密钥 */
+let _ttsAudio = null;
+async function speakWorker(text, rate = 0.9){
+  if (!state.ttsWorker) return;
   try{
-    if (crypto && crypto.subtle){
-      const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(apiSecret),
-        { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-      const sigBuf = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signatureOrigin));
-      const signature = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
-      authorization = btoa(`api_key="${apiKey}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`);
-    } else {
-      console.warn("讯飞TTS需要安全上下文(https)才能生成签名"); return;
-    }
-  }catch(e){ console.warn("讯飞签名失败", e); return; }
-  const url = `wss://${host}/v2/tts?authorization=${encodeURIComponent(authorization)}&date=${encodeURIComponent(date)}&host=${host}`;
-  try{
-    const ws = new WebSocket(url);
-    ws.binaryType = "arraybuffer";
-    let audioParts = [];
-    const speed = Math.max(0, Math.min(100, Math.round(rate * 55)));
-    ws.onopen = () => {
-      const params = {
-        common: { app_id: appId },
-        business: { aue: "lame", auf: "audio/L16;rate=16000", vcn: "xiaoyan", tte: "utf8", speed, volume: 50, pitch: 50 },
-        data: { status: 2, text: utf8ToBase64(text), aue: "lame" }
-      };
-      ws.send(JSON.stringify(params));
-    };
-    ws.onmessage = (ev) => {
-      let msg; try{ msg = JSON.parse(ev.data); }catch(e){ return; }
-      if (msg.code !== 0){ console.warn("讯飞TTS错误", msg.code, msg.message); ws.close(); return; }
-      if (msg.data && msg.data.audio) audioParts.push(atob(msg.data.audio));
-      if (msg.data && msg.data.status === 2){ ws.close(); playXfyAudio(audioParts.join("")); }
-    };
-    ws.onerror = () => { console.warn("讯飞TTS连接失败"); };
-  }catch(e){ console.warn("讯飞TTS异常", e); }
-}
-function playXfyAudio(binStr){
-  if (!binStr) return;
-  const bytes = new Uint8Array(binStr.length);
-  for (let i=0;i<binStr.length;i++) bytes[i] = binStr.charCodeAt(i);
-  const blob = new Blob([bytes], { type: "audio/mpeg" });
-  if (_xfyAudio){ try{ _xfyAudio.pause(); }catch(e){} }
-  _xfyAudio = new Audio(URL.createObjectURL(blob));
-  _xfyAudio.play().catch(e=>{});
-}
-function utf8ToBase64(str){
-  const bytes = new TextEncoder().encode(str);
-  let bin = "";
-  for (let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin);
+    const base = state.ttsWorker.replace(/\/+$/,"");
+    const resp = await fetch(base + "/v1/audio/speech", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input: text, voice: "zh-CN-XiaoxiaoNeural", speed: rate })
+    });
+    if (!resp.ok){ console.warn("TTS Worker 失败", resp.status); return; }
+    const blob = await resp.blob();
+    if (_ttsAudio){ try{ _ttsAudio.pause(); }catch(e){} }
+    _ttsAudio = new Audio(URL.createObjectURL(blob));
+    _ttsAudio.play().catch(e=>{});
+  }catch(e){ console.warn("TTS Worker 异常", e); }
 }
 if (window.speechSynthesis){
   speechSynthesis.onvoiceschanged = loadVoices;   // 安卓/Chrome 常异步加载嗓音，加载完再挑一次
@@ -1161,16 +1119,14 @@ function openSettings(){
     </div>
     <div style="margin-top:16px;font-size:22px;color:#9b8676">当前难度：<b id="setCur" style="color:#F58A1F">${names[cur]}</b></div>
     <div style="margin-top:22px;border-top:2px dashed #e6d7c3;padding-top:16px">
-      <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">平板无系统语音时启用（科大讯飞，免费、手机号注册即可）</span></div>
+      <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">平板无系统语音时启用（Edge-TTS 经 Cloudflare Worker 中转，免费、无需密钥）</span></div>
       <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
-        <input id="xfyAppId" placeholder="APPID" value="${state.xfyAppId||''}" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
-        <input id="xfyKey" placeholder="APIKey（讯飞控制台获取）" value="${state.xfyKey||''}" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
-        <input id="xfySecret" placeholder="APISecret（讯飞控制台获取）" value="${state.xfySecret||''}" type="password" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
+        <input id="ttsWorker" placeholder="Worker 地址，如 https://my-tts.workers.dev" value="${state.ttsWorker||''}" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
         <div style="display:flex;gap:12px;justify-content:center;margin-top:4px">
-          <button class="big-btn blue" id="xfySave" style="min-width:120px">保存</button>
-          <button class="big-btn yellow" id="xfyTest" style="min-width:120px">测试发音</button>
+          <button class="big-btn blue" id="ttsSave" style="min-width:120px">保存</button>
+          <button class="big-btn yellow" id="ttsTest" style="min-width:120px">测试发音</button>
         </div>
-        <div id="xfyStatus" style="font-size:16px;color:#3F9D3F;min-height:20px"></div>
+        <div id="ttsStatus" style="font-size:16px;color:#3F9D3F;min-height:20px"></div>
       </div>
     </div>
     <div style="margin-top:22px;border-top:2px dashed #e6d7c3;padding-top:16px">
@@ -1191,17 +1147,15 @@ function openSettings(){
       setTimeout(()=>{ closeDialog(); activeModule="math"; mathTask(); }, 700);
     }
   }));
-  // 云端中文语音（科大讯飞 TTS）配置
-  const xfyAppId = $("#xfyAppId"), xfyKey = $("#xfyKey"), xfySecret = $("#xfySecret"), xfyStatus = $("#xfyStatus");
+  // 云端中文语音（Edge-TTS 经 Worker 中转）配置
+  const ttsWorker = $("#ttsWorker"), ttsStatus = $("#ttsStatus");
   function saveCloud(){
-    state.xfyAppId = (xfyAppId.value||"").trim();
-    state.xfyKey = (xfyKey.value||"").trim();
-    state.xfySecret = (xfySecret.value||"").trim();
+    state.ttsWorker = (ttsWorker.value||"").trim().replace(/\/+$/,"");
     saveState();
     const tw = document.getElementById("ttsWarn"); if (tw) tw.style.display = "none"; // 配好云端后隐藏提示条
   }
-  $("#xfySave").addEventListener("click", ()=>{ sfx.click(); saveCloud(); xfyStatus.textContent = "✅ 已保存，朗读将使用云端语音"; });
-  $("#xfyTest").addEventListener("click", ()=>{ sfx.click(); saveCloud(); xfyStatus.textContent = "🔊 正在试听…"; speakXfy("你好，我是你的学习伙伴，我们一起加油！", 0.9); });
+  $("#ttsSave").addEventListener("click", ()=>{ sfx.click(); saveCloud(); ttsStatus.textContent = "✅ 已保存，朗读将使用云端语音"; });
+  $("#ttsTest").addEventListener("click", ()=>{ sfx.click(); saveCloud(); ttsStatus.textContent = "🔊 正在试听…"; speakWorker("你好，我是你的学习伙伴，我们一起加油！", 0.9); });
   $("#setClose").addEventListener("click", ()=>{ sfx.click(); closeDialog(); });
   // 测试模式开关：开启需输入密码 112233，关闭直接切换
   const testSwitch = $("#testSwitch");
