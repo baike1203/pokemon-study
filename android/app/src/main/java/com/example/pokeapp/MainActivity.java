@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.content.ContentUris;
 import android.database.Cursor;
 import android.provider.DocumentsContract;
