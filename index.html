@@ -315,6 +315,12 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 .ach-desc { font-size: 17px; color: #9b8676; }
 .ach-reward { font-size: 18px; color: #E0524C; font-weight: bold; margin-top: 6px; }
 .ach-reward.locked { color: #bbb; font-weight: normal; }
+/* 成就进度条 */
+.ach-prog-wrap { margin-top: 8px; }
+.ach-prog-bar { width: 100%; height: 12px; background: #EFE3D2; border-radius: 999px; overflow: hidden; }
+.ach-prog-fill { height: 100%; background: linear-gradient(90deg, #7CD38B, #4FB866); border-radius: 999px; transition: width .4s; }
+.ach-prog-text { font-size: 15px; color: #9b8676; margin-top: 3px; }
+.ach-prog-done { margin-top: 8px; font-size: 17px; font-weight: bold; color: #3F9D3F; }
 
 /* 伙伴挂件 */
 #partnerWidget { position: fixed; right: 14px; bottom: 230px; z-index: 60; width: 96px; height: 96px; cursor: grab; touch-action: none; display: none; }
@@ -451,7 +457,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 <div id="gearBtn" title="家长设置（调整数学难度）">⚙️</div>
 
 <header>
-  <div id="appTitle" title="点击修改名字"><span id="titleText">小宝的宝可梦冒险</span><span class="edit-hint">✏️</span></div>
+  <div id="appTitle" title="点击修改名字"><span id="titleText">苏打的宝可梦冒险</span><span class="edit-hint">✏️</span></div>
   <div class="hdr-right">
     <select id="voiceSel" title="选择朗读语音" aria-label="选择朗读语音" style="display:none"></select>
     <div id="ballCounter"><div class="pokeball"></div><span class="x">×</span><span class="num" id="ballNum">0</span></div>
@@ -470,6 +476,8 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
     <div class="test-bar" id="testBar" style="display:none">
       <span class="test-tag">🛠 测试</span>
       <button class="big-btn green" id="testAddBall">➕ 加 1 精灵球</button>
+      <button class="big-btn blue" id="testAddSuper">➕ 加 1 超级球</button>
+      <button class="big-btn" id="testAddMaster" style="background:linear-gradient(180deg,#C792FF,#9B5DE5);border-color:#7B3FC4;color:#fff">➕ 加 1 大师球</button>
       <button class="big-btn red" id="testReset">🗑 重置所有进度</button>
     </div>
     <!-- ======================================================= -->
@@ -727,13 +735,13 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.18";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.19";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
 function defaultState(){
   return {
-    name: "小宝",           // 孩子名字
+    name: "苏打",           // 孩子名字
     balls: 0,               // 当前精灵球（累积不清零）
     dex: [],                // 已收集宝可梦基础编号数组（1..151）
     daily: { date: todayStr(), done: { pinyin:false, math:false, english:false, hanzi:false, poem:false }, celebrated:false },
@@ -758,6 +766,7 @@ function defaultState(){
   };
 }
 let state = loadState();
+if (state.name === "小宝"){ state.name = "苏打"; saveState(); }   // 默认名字由「小宝」改为「苏打」（仅影响仍用旧默认名的存档）
 let quizToken = 0;          // 答题会话令牌：每开新一题/新一场自增，旧回调据此失效（防止切换时旧计时器串场）
 let activeModule = null;    // 当前打开的学习模块（家长设置齿轮借此判断是否要按新难度重开数学）
 function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); return s; } catch(e){ return defaultState(); } }
@@ -1056,6 +1065,7 @@ function onAllTasksDone(){
   state.lastAllCompleteDate = t; saveState();
   if (state.allCompleteStreak >= 7 && !state.congratulatedMaster){
     state.congratulatedMaster = true; state.masterBalls += 1;
+    renderBalls();   // 即时刷新顶部大师球数量，无需刷新整页
     toast("🟣 连续 7 天全勤！获得大师球！");
   }
   checkAchievements();
@@ -1359,10 +1369,7 @@ function tryEvolve(id){
 function renderDex(){
   $("#dexCount").textContent = `已收集 ${state.dex.length}/151`;
   $("#gachaLabel").textContent = state.balls>0 ? `开盲盒！（还有 ${state.balls} 个精灵球）` : "没有精灵球啦，先去做任务吧！";
-  $("#masterLabel").textContent = `大师球×${state.masterBalls}`;
-  $("#superLabel").textContent = `超级球×${state.superBalls}`;
-  $("#masterBtn").disabled = state.masterBalls<=0;
-  $("#superBtn").disabled = state.superBalls<=0;
+  renderBalls();
   renderPartner();
   const grid = $("#dexGrid"); grid.innerHTML = "";
   for (let id=1; id<=151; id++){
@@ -1387,6 +1394,34 @@ function renderDex(){
     }
     grid.appendChild(cell);
   }
+}
+/* 刷新顶部精灵球/超级球/大师球的数字与可用状态（多处变化后调用，避免需刷新整页） */
+function renderBalls(){
+  const m=$("#masterLabel"), s=$("#superLabel");
+  if(m) m.textContent = `大师球×${state.masterBalls}`;
+  if(s) s.textContent = `超级球×${state.superBalls}`;
+  const mb=$("#masterBtn"), sb=$("#superBtn");
+  if(mb) mb.disabled = state.masterBalls<=0;
+  if(sb) sb.disabled = state.superBalls<=0;
+}
+/* 在图鉴里点击大师球/超级球时，弹出获取方法说明（并可直接使用） */
+function showBallInfo(type){
+  const isMaster = type==="master";
+  const name = isMaster ? "大师球" : "超级球";
+  const have = isMaster ? state.masterBalls : state.superBalls;
+  const how = isMaster
+    ? "🔵 <b>如何获得大师球</b>：<br>· 连续 <b>7 天</b> 每天完成全部 5 个学习任务（连续打卡），即可获得 1 个大师球<br>· 大师球可<b>必定抽到一只从未收集过</b>的宝可梦"
+    : "🔵 <b>如何获得超级球</b>：<br>· 解锁<b>成就</b>时奖励（如：初次邂逅、集齐 50/100/151 只、各系大师等）<br>· 超级球可<b>必定抽到一只从未收集过</b>的宝可梦";
+  const useBtn = have>0
+    ? `<button class="big-btn yellow" id="ballUseBtn">🎁 用${name}开盲盒（剩 ${have}）</button>`
+    : `<button class="big-btn" disabled style="opacity:.5">没有${name}，先去完成任务 / 解锁成就吧</button>`;
+  openDialog(`<h2 style="color:${isMaster?'#9B5DE5':'#3A8DDE'}">${name} 💡</h2>
+    <div style="font-size:21px;line-height:1.7;text-align:left;margin:10px 0">${how}</div>
+    <div style="font-size:24px;margin:10px 0">当前拥有：<b>${name}×${have}</b></div>
+    <div style="display:flex;flex-direction:column;gap:10px">${useBtn}
+    <button class="big-btn" id="ballCloseBtn" style="margin-top:4px">关闭</button></div>`, {closable:false});
+  if (have>0) $("#ballUseBtn").onclick = ()=>{ sfx.click(); closeDialog(); openGacha(type); };
+  $("#ballCloseBtn").onclick = ()=>{ sfx.click(); closeDialog(); };
 }
 /* 属性中文 -> 主题色（用于图鉴信息卡里的属性小标签） */
 const TYPE_COLOR = {"一般":"#B7A98F","火":"#F08030","水":"#6890F0","草":"#78C850","电":"#F8B820",
@@ -1496,7 +1531,7 @@ function revealGacha(id, isNew, ballType){
       <button class="big-btn" id="gOk">收入图鉴 📕</button>
       ${state.balls>0?'<button class="big-btn yellow" id="gAgain">再开一个！（'+remText+'）</button>':''}</div>`, {closable:false});
     speak(`哇！收服了${POKEMON[displayId(id)-1]}！`);
-    $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); checkAll151(); checkAchievements(); };
+    $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); checkAll151(); checkAchievements(); renderDex(); };
     if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); openGacha("normal"); };
   } else if (evolved){
     confetti(120); sfx.fanfare();
@@ -1641,11 +1676,31 @@ function checkAchievements(){
     if (ok && !a[d.key]){ a[d.key]=true; state.superBalls += d.reward; newly.push(d); }
   });
   saveState();
+  renderBalls();   // 即时刷新顶部超级球数量，无需刷新整页
   if (newly.length){ newly.forEach((d,i)=> setTimeout(()=>toast(`🏆 解锁成就：${d.name}（超级球+${d.reward}）`), i*900)); }
+}
+/* 计算某成就当前进度：返回 {cur,need,label} */
+function achievementProgress(d){
+  const owned = state.dex.length;
+  if (d.key==="first"){ const c=Math.min(owned,1); return {cur:c,need:1,label:"已收集 "+c+"/1"}; }
+  if (d.key==="streak7"){ const c=Math.min(state.allCompleteStreak,7); return {cur:c,need:7,label:"连续全勤 "+c+"/7 天"}; }
+  if (d.key==="mid"){ const c=Math.min(owned,50); return {cur:c,need:50,label:"已收集 "+c+"/50"}; }
+  if (d.key==="high"){ const c=Math.min(owned,100); return {cur:c,need:100,label:"已收集 "+c+"/100"}; }
+  if (d.key==="master"){ const c=Math.min(owned,151); return {cur:c,need:151,label:"已收集 "+c+"/151"}; }
+  if (d.key.startsWith("type_")){ const tp=d.key.slice(5); const ids=TYPES[tp]; const th=Math.min(5,ids.length); const cnt=ids.filter(id=>state.dex.includes(id)).length; const c=Math.min(cnt,th); return {cur:c,need:th,label:"已收集 "+c+"/"+th}; }
+  return {cur:0,need:1,label:""};
 }
 function renderAchievements(){
   const defs = achievementDefs();
-  let html = defs.map(d=>{ const got = state.achievements[d.key]; return `<div class="ach-card ${got?'got':''}"><div class="ach-ico">${got?'🏆':d.icon}</div><div class="ach-name">${d.name}</div><div class="ach-desc">${d.desc}</div><div class="ach-reward ${got?'':'locked'}">${got?('+'+d.reward+' 超级球'):'未解锁'}</div></div>`; }).join("");
+  let html = defs.map(d=>{
+    const got = state.achievements[d.key];
+    const p = achievementProgress(d);
+    const pct = Math.max(4, Math.round(p.cur/p.need*100));
+    const progHTML = got
+      ? `<div class="ach-prog-done">✅ 已完成</div>`
+      : `<div class="ach-prog-wrap"><div class="ach-prog-bar"><div class="ach-prog-fill" style="width:${pct}%"></div></div><div class="ach-prog-text">${p.label}</div></div>`;
+    return `<div class="ach-card ${got?'got':''}"><div class="ach-ico">${got?'🏆':d.icon}</div><div class="ach-name">${d.name}</div><div class="ach-desc">${d.desc}</div>${progHTML}<div class="ach-reward ${got?'':'locked'}">${got?('+'+d.reward+' 超级球'):'未解锁'}</div></div>`;
+  }).join("");
   openDialog(`<h2 style="color:var(--poke-blue)">🏅 成就墙</h2><div class="ach-grid">${html}</div><button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">关闭</button>`);
 }
 /* 进度导出 / 导入 */
@@ -1673,8 +1728,8 @@ function doImport(txt){
 
 /* 绑定图鉴页按钮 */
 $("#gachaBtn").addEventListener("click", ()=>openGacha("normal"));
-$("#masterBtn").addEventListener("click", ()=>{ sfx.click(); openGacha("master"); });
-$("#superBtn").addEventListener("click", ()=>{ sfx.click(); openGacha("super"); });
+$("#masterBtn").addEventListener("click", ()=>{ sfx.click(); showBallInfo("master"); });
+$("#superBtn").addEventListener("click", ()=>{ sfx.click(); showBallInfo("super"); });
 $("#adventureBtn").addEventListener("click", ()=>{ sfx.click(); startAdventure(); });
 $("#achBtn").addEventListener("click", ()=>{ sfx.click(); renderAchievements(); });
 $("#backupBtn").addEventListener("click", ()=>{ sfx.click(); openBackup(); });
@@ -1703,6 +1758,8 @@ $("#testReset").addEventListener("click", ()=>{
   closeDialog();
   toast("已重置全部进度 🔄");
 });
+$("#testAddSuper").addEventListener("click", ()=>{ sfx.click(); state.superBalls++; saveState(); renderBalls(); toast("已 +1 超级球 🔵（共 "+state.superBalls+"）"); });
+$("#testAddMaster").addEventListener("click", ()=>{ sfx.click(); state.masterBalls++; saveState(); renderBalls(); toast("已 +1 大师球 🟣（共 "+state.masterBalls+"）"); });
 /* ======================================================= */
 
 /* ==================== 启动流程 ==================== */
