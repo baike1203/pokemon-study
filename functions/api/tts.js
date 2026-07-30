@@ -128,7 +128,26 @@ function cleanText(text) {
   return text.replace(/[ \t]+/g, " ").trim();
 }
 
-export async function onRequestPost({ request }) {
+export async function onRequest({ request }) {
+  // 处理跨域预检（其他域名调用时浏览器会先发 OPTIONS）
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }
+  // 只接受 POST；其余方法明确返回 405 + Allow 头，避免歧义
+  if (request.method !== "POST") {
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { "Allow": "POST, OPTIONS", "Access-Control-Allow-Origin": "*" },
+    });
+  }
   try {
     var body = await request.json();
     var input = body.input || "你好";
@@ -154,16 +173,4 @@ export async function onRequestPost({ request }) {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   }
-}
-
-export async function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET,HEAD,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-      "Access-Control-Max-Age": "86400",
-    },
-  });
 }

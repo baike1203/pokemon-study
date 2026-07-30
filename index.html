@@ -722,7 +722,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.15";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.16";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -860,43 +860,43 @@ function speak(text, rate = 0.9){
    前端只把文字 POST 到自己的 Worker，Worker 去合成 mp3 返回；前端不暴露任何厂商密钥 */
 let _ttsAudio = null;
 async function speakWorker(text, rate = 0.9, onErr, onInfo, onBlob){
-  // 候选地址：优先用户填的 Worker；兜底用本站同域名 /api/tts（免跨域，平板最稳）
-  const bases = [];
+  // 候选地址：优先用户填的 Worker（需带 /v1/audio/speech）；兜底用本站同域名 /api/tts（免跨域，平板最稳）
+  const candidates = [];
   if (state.ttsWorker){
     const b = state.ttsWorker.replace(/\/+$/,"");
-    if (/^https?:\/\//i.test(b)) bases.push(b);
+    if (/^https?:\/\//i.test(b)) candidates.push({ url: b + "/v1/audio/speech", label: "云端语音" });
   }
-  bases.push("/api/tts");
+  candidates.push({ url: "/api/tts", label: "本站语音" });
   let lastErr = null;
-  for (let i = 0; i < bases.length; i++){
-    const base = bases[i];
-    const isFallback = (i === bases.length - 1) && bases.length > 1;
+  for (let i = 0; i < candidates.length; i++){
+    const c = candidates[i];
+    const isFallback = (i === candidates.length - 1) && candidates.length > 1;
     try{
-      if (onInfo) onInfo(isFallback ? "🔄 改用本站内置语音…" : "🔄 正在请求云端语音…");
-      const resp = await fetch(base + "/v1/audio/speech", {
+      if (onInfo) onInfo((isFallback ? "🔄 改用" : "🔄 正在请求") + c.label + "…");
+      const resp = await fetch(c.url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input: text, voice: "zh-CN-XiaoxiaoNeural", speed: rate })
       });
       if (!resp.ok){
-        let msg = (isFallback ? "本站语音" : "云端语音") + "返回错误 " + resp.status;
+        let msg = c.label + "返回错误 " + resp.status;
         try { const j = await resp.json(); if (j && j.error && j.error.message) msg += "：" + j.error.message; } catch(e){}
         lastErr = msg;
-        if (i < bases.length - 1) continue;
+        if (i < candidates.length - 1) continue;
         if (onErr) onErr(msg);
         return;
       }
       const ct = resp.headers.get("content-type") || "(无)";
       const blob = await resp.blob();
-      if (onInfo) onInfo((isFallback ? "✅ 本站语音：" : "✅ 云端语音：") + "已收到音频 " + (blob.size/1024).toFixed(1) + " KB(" + ct + ")");
-      if (blob.size < 200){ lastErr = "返回的音频过小(" + blob.size + "字节)"; if (i < bases.length - 1) continue; if (onErr) onErr(lastErr); return; }
+      if (onInfo) onInfo("✅ " + c.label + "：已收到音频 " + (blob.size/1024).toFixed(1) + " KB(" + ct + ")");
+      if (blob.size < 200){ lastErr = "返回的音频过小(" + blob.size + "字节)"; if (i < candidates.length - 1) continue; if (onErr) onErr(lastErr); return; }
       if (onBlob) onBlob(blob);
       playAudioBlob(blob, onErr, onInfo);
       return;
     }catch(e){
       lastErr = "请求失败：" + (e && e.message ? e.message : e);
-      if (i < bases.length - 1) continue;
-      if (onErr) onErr(lastErr + (bases.length > 1 ? "（已尝试本站内置语音仍失败）" : ""));
+      if (i < candidates.length - 1) continue;
+      if (onErr) onErr(lastErr + (candidates.length > 1 ? "（已尝试本站内置语音仍失败）" : ""));
       return;
     }
   }
