@@ -984,7 +984,7 @@ function openDialog(html, { closable = true, onClose = null } = {}){
 function closeDialog(){
   overlay.classList.remove("show");
   activeModule = null;
-  speechSynthesis && speechSynthesis.cancel();
+  window.speechSynthesis && window.speechSynthesis.cancel();
   if (onDialogClose){ const f = onDialogClose; onDialogClose = null; f(); }
 }
 dialogClose.addEventListener("click", () => { sfx.click(); closeDialog(); });
