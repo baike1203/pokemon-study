@@ -1799,11 +1799,13 @@ function openBackup(){
     <div style="margin-top:10px"><button class="big-btn" id="impBtn">⬆️ 导入进度</button><input type="file" id="impFile" accept="application/json,.json" style="margin-top:10px;font-size:18px"></div>`);
   $("#expBtn").addEventListener("click", ()=>{
     const json = JSON.stringify(state,null,2);
+    const d = new Date();
+    const fn = `pokemon-save-${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}.json`;
     if (window.PokeBridge && window.PokeBridge.exportSave){      // APK(WebView) 走原生写入下载目录
-      window.PokeBridge.exportSave(json);
+      window.PokeBridge.exportSave(json, fn);
     } else {                                                      // 普通浏览器走 blob 下载
       const blob=new Blob([json],{type:"application/json"}); const a=document.createElement("a");
-      a.href=URL.createObjectURL(blob); a.download="pokemon-save.json"; a.click(); toast("已下载进度文件");
+      a.href=URL.createObjectURL(blob); a.download=fn; a.click(); toast("已下载进度文件");
     }
   });
   $("#copyBtn").addEventListener("click", ()=>{ if(navigator.clipboard) navigator.clipboard.writeText(data); toast("已复制到剪贴板"); });

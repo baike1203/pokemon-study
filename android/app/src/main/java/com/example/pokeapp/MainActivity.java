@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -99,7 +100,13 @@ public class MainActivity extends Activity {
                                              FileChooserParams params) {
                 mFilePathCallback = filePathCallback;
                 try {
-                    startActivityForResult(params.createIntent(), REQ_FILE);
+                    Intent pickIntent = params.createIntent();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        // 默认打开到"下载"目录，方便找到刚导出的进度文件
+                        pickIntent.putExtra(DocumentsContract.EXTRA_INITIAL_URI,
+                                MediaStore.Downloads.EXTERNAL_CONTENT_URI);
+                    }
+                    startActivityForResult(pickIntent, REQ_FILE);
                 } catch (ActivityNotFoundException e) {
                     mFilePathCallback = null;
                     Toast.makeText(MainActivity.this, "未找到文件选择器", Toast.LENGTH_SHORT).show();
@@ -149,11 +156,11 @@ public class MainActivity extends Activity {
 
     /** JS 桥：把进度 JSON 写入平板"下载"目录 */
     private class PokeJSBridge {
-        @JavascriptInterface
-        public void exportSave(String json) {
-            try {
-                String filename = "pokemon-save.json";
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            @JavascriptInterface
+            public void exportSave(String json, String filename) {
+                try {
+                    if (filename == null || filename.isEmpty()) filename = "pokemon-save.json";
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     ContentValues cv = new ContentValues();
                     cv.put(MediaStore.Downloads.DISPLAY_NAME, filename);
                     cv.put(MediaStore.Downloads.MIME_TYPE, "application/json");
