@@ -333,6 +333,18 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 .toast { position: fixed; left: 50%; bottom: 130px; transform: translateX(-50%) translateY(20px); background: rgba(60,40,30,.92); color: #fff; padding: 12px 22px; border-radius: 999px; font-size: 22px; z-index: 500; opacity: 0; transition: .35s; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.3); white-space: nowrap; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* 球获取方法提示（自动消失，仅在没有球时点击触发） */
+.ball-toast { position: fixed; left: 50%; top: 38%; transform: translate(-50%,-50%) scale(.92); background: rgba(46,30,22,.96); color: #fff; padding: 18px 26px; border-radius: 18px; font-size: 21px; line-height: 1.75; max-width: 540px; text-align: left; z-index: 600; opacity: 0; transition: .3s; pointer-events: none; box-shadow: 0 10px 34px rgba(0,0,0,.45); }
+.ball-toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+/* 大师球选取模式 */
+.dex-grid.master-pick .dex-cell.owned { opacity: .4; pointer-events: none; filter: grayscale(.4); }
+.dex-grid.master-pick .dex-cell.locked { cursor: pointer; outline: 3px solid #C792FF; outline-offset: -3px; animation: pickPulse 1.1s ease-in-out infinite; }
+.dex-grid.master-pick .dex-cell.locked:hover { background: #efe6ff; transform: translateY(-2px); }
+@keyframes pickPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(199,146,255,.55); } 50% { box-shadow: 0 0 0 10px rgba(199,146,255,0); } }
+.master-pick-bar { display: flex; align-items: center; justify-content: space-between; gap: 14px; background: linear-gradient(180deg,#efe6ff,#e3d4ff); color: #5b2a9e; border: 2px solid #C792FF; border-radius: 14px; padding: 10px 16px; margin: 8px 0; font-size: 19px; box-shadow: 0 4px 12px rgba(155,93,229,.25); }
+.master-pick-bar b { color: #7B3FC4; }
+.master-pick-bar .big-btn { font-size: 17px; padding: 6px 16px; }
+
 /* 备份文本框 */
 #ioText { width: 100%; height: 140px; font-size: 16px; border-radius: 12px; border: 2px solid #e3d8c2; padding: 8px; font-family: monospace; }
 
@@ -735,7 +747,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.19";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.20";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1391,6 +1403,10 @@ function renderDex(){
       cell.addEventListener("click", ()=>openPokeDetail(id));
     } else {
       cell.innerHTML = `<img src="${spriteUrl(id)}" loading="lazy"><span class="dex-name">???</span><span class="dex-no">No.${String(id).padStart(3,"0")}</span>`;
+      if (masterPick){
+        cell.classList.add("pickable");
+        cell.addEventListener("click", ()=>{ sfx.click(); captureWithMaster(id); });
+      }
     }
     grid.appendChild(cell);
   }
@@ -1404,24 +1420,67 @@ function renderBalls(){
   if(mb) mb.disabled = state.masterBalls<=0;
   if(sb) sb.disabled = state.superBalls<=0;
 }
-/* 在图鉴里点击大师球/超级球时，弹出获取方法说明（并可直接使用） */
-function showBallInfo(type){
+/* 球获取方法提示（自动消失，仅在没有球、点击灰色球时触发） */
+function ballInfoToast(type){
   const isMaster = type==="master";
-  const name = isMaster ? "大师球" : "超级球";
-  const have = isMaster ? state.masterBalls : state.superBalls;
-  const how = isMaster
-    ? "🔵 <b>如何获得大师球</b>：<br>· 连续 <b>7 天</b> 每天完成全部 5 个学习任务（连续打卡），即可获得 1 个大师球<br>· 大师球可<b>必定抽到一只从未收集过</b>的宝可梦"
-    : "🔵 <b>如何获得超级球</b>：<br>· 解锁<b>成就</b>时奖励（如：初次邂逅、集齐 50/100/151 只、各系大师等）<br>· 超级球可<b>必定抽到一只从未收集过</b>的宝可梦";
-  const useBtn = have>0
-    ? `<button class="big-btn yellow" id="ballUseBtn">🎁 用${name}开盲盒（剩 ${have}）</button>`
-    : `<button class="big-btn" disabled style="opacity:.5">没有${name}，先去完成任务 / 解锁成就吧</button>`;
-  openDialog(`<h2 style="color:${isMaster?'#9B5DE5':'#3A8DDE'}">${name} 💡</h2>
-    <div style="font-size:21px;line-height:1.7;text-align:left;margin:10px 0">${how}</div>
-    <div style="font-size:24px;margin:10px 0">当前拥有：<b>${name}×${have}</b></div>
-    <div style="display:flex;flex-direction:column;gap:10px">${useBtn}
-    <button class="big-btn" id="ballCloseBtn" style="margin-top:4px">关闭</button></div>`, {closable:false});
-  if (have>0) $("#ballUseBtn").onclick = ()=>{ sfx.click(); closeDialog(); openGacha(type); };
-  $("#ballCloseBtn").onclick = ()=>{ sfx.click(); closeDialog(); };
+  const msg = isMaster
+    ? "🟣 <b>大师球获取方法</b>：连续 7 天每天完成全部 5 个学习任务（连续打卡）即可获得。<br>大师球可点击图鉴中任意 <b>未点亮</b> 的宝可梦并直接收服它！"
+    : "🔵 <b>超级球获取方法</b>：解锁成就时奖励（如初次邂逅、集齐 50/100/151 只、各系大师等）。<br>超级球可<b>必定抽到一只从未收集过</b>的宝可梦！";
+  let t = document.getElementById("ballToast");
+  if (!t){ t = document.createElement("div"); t.id = "ballToast"; t.className = "ball-toast"; document.body.appendChild(t); }
+  t.innerHTML = msg;
+  void t.offsetWidth; // 强制重排，确保动画生效
+  t.classList.add("show");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove("show"), 5200);
+}
+/* ---------- 大师球：点选图鉴中任意未点亮宝可梦直接收服 ---------- */
+let masterPick = false;
+function ballPickBanner(show){
+  let b = document.getElementById("masterPickBar");
+  if (show){
+    if (!b){
+      b = document.createElement("div");
+      b.id = "masterPickBar";
+      b.className = "master-pick-bar";
+      b.innerHTML = `<span>🟣 大师球模式：点击任意 <b>未点亮</b> 的宝可梦直接收服（剩 <b id="mpCount">${state.masterBalls}</b> 个）</span><button class="big-btn" id="mpCancel">取消</button>`;
+      const grid = document.getElementById("dexGrid");
+      grid.parentNode.insertBefore(b, grid);
+      $("#mpCancel").onclick = (e)=>{ e.stopPropagation(); sfx.click(); exitMasterPick(); };
+    }
+  } else if (b) b.remove();
+}
+function enterMasterPick(){
+  masterPick = true;
+  const g = $("#dexGrid"); if (g) g.classList.add("master-pick");
+  ballPickBanner(true);
+  renderDex();
+  toast("🟣 大师球模式：点击任意未点亮的宝可梦，直接收服它！（再点大师球取消）");
+}
+function exitMasterPick(){
+  masterPick = false;
+  const g = $("#dexGrid"); if (g) g.classList.remove("master-pick");
+  ballPickBanner(false);
+  renderDex();
+}
+function captureWithMaster(id){
+  if (!masterPick || state.dex.includes(id)) return;
+  state.dex.push(id);
+  state.copyCount[id] = 1;
+  state.evoStage[id] = 0;
+  state.masterBalls--;
+  saveState();
+  const name = POKEMON[id-1];
+  sfx.fanfare(); confetti(60); starBurst(window.innerWidth/2, window.innerHeight/2, 18);
+  exitMasterPick();
+  renderHeader(); renderBalls();
+  checkAll151(); checkAchievements();
+  openDialog(`<div id="gachaResult"><div class="new-tag">✨ 大师球收服！✨</div>
+    <div class="poke-detail"><div class="pd-left"><img src="${spriteUrl(id)}" style="width:220px;height:220px;image-rendering:pixelated"><div class="poke-name">${name}</div></div>
+    <div class="pd-right">${pokeInfoHTML(id)}</div></div>
+    <button class="big-btn" id="gmOk">收入图鉴 📕</button></div>`, {closable:false});
+  speak(`哇！用大师球收服了${name}！`);
+  $("#gmOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); };
 }
 /* 属性中文 -> 主题色（用于图鉴信息卡里的属性小标签） */
 const TYPE_COLOR = {"一般":"#B7A98F","火":"#F08030","水":"#6890F0","草":"#78C850","电":"#F8B820",
@@ -1728,8 +1787,17 @@ function doImport(txt){
 
 /* 绑定图鉴页按钮 */
 $("#gachaBtn").addEventListener("click", ()=>openGacha("normal"));
-$("#masterBtn").addEventListener("click", ()=>{ sfx.click(); showBallInfo("master"); });
-$("#superBtn").addEventListener("click", ()=>{ sfx.click(); showBallInfo("super"); });
+$("#masterBtn").addEventListener("click", ()=>{
+  sfx.click();
+  if (state.masterBalls<=0){ ballInfoToast("master"); return; }   // 灰色：自动消失提示获取方法
+  if (masterPick){ exitMasterPick(); return; }                     // 再次点击 = 取消选取
+  enterMasterPick();                                               // 有球：进入点选收服模式
+});
+$("#superBtn").addEventListener("click", ()=>{
+  sfx.click();
+  if (state.superBalls<=0){ ballInfoToast("super"); return; }      // 灰色：自动消失提示获取方法
+  openGacha("super");                                              // 有球：直接开盲盒（必定抽到未收集）
+});
 $("#adventureBtn").addEventListener("click", ()=>{ sfx.click(); startAdventure(); });
 $("#achBtn").addEventListener("click", ()=>{ sfx.click(); renderAchievements(); });
 $("#backupBtn").addEventListener("click", ()=>{ sfx.click(); openBackup(); });
