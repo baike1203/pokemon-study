@@ -858,21 +858,28 @@ function speak(text, rate = 0.9){
 /* 云端中文语音：Edge-TTS 经 Cloudflare Worker 中转（微软给 Edge 浏览器的免费通道，无需任何密钥）。
    前端只把文字 POST 到自己的 Worker，Worker 去合成 mp3 返回；前端不暴露任何厂商密钥 */
 let _ttsAudio = null;
-async function speakWorker(text, rate = 0.9){
-  if (!state.ttsWorker) return;
+async function speakWorker(text, rate = 0.9, onErr){
+  if (!state.ttsWorker){ if (onErr) onErr("未填写云端语音 Worker 地址"); return; }
   try{
     const base = state.ttsWorker.replace(/\/+$/,"");
+    if (!/^https?:\/\//i.test(base)){ if (onErr) onErr("Worker 地址需以 http(s):// 开头"); return; }
     const resp = await fetch(base + "/v1/audio/speech", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ input: text, voice: "zh-CN-XiaoxiaoNeural", speed: rate })
     });
-    if (!resp.ok){ console.warn("TTS Worker 失败", resp.status); return; }
+    if (!resp.ok){
+      let msg = "Worker 返回错误 " + resp.status;
+      try { const j = await resp.json(); if (j && j.error && j.error.message) msg += "：" + j.error.message; } catch(e){}
+      if (onErr) onErr(msg);
+      console.warn("TTS Worker 失败", resp.status, msg);
+      return;
+    }
     const blob = await resp.blob();
     if (_ttsAudio){ try{ _ttsAudio.pause(); }catch(e){} }
     _ttsAudio = new Audio(URL.createObjectURL(blob));
-    _ttsAudio.play().catch(e=>{});
-  }catch(e){ console.warn("TTS Worker 异常", e); }
+    _ttsAudio.play().catch(e=>{ if (onErr) onErr("音频播放失败：" + (e && e.message ? e.message : e)); });
+  }catch(e){ if (onErr) onErr("请求失败：" + (e && e.message ? e.message : e)); console.warn("TTS Worker 异常", e); }
 }
 if (window.speechSynthesis){
   speechSynthesis.onvoiceschanged = loadVoices;   // 安卓/Chrome 常异步加载嗓音，加载完再挑一次
@@ -1155,7 +1162,7 @@ function openSettings(){
     const tw = document.getElementById("ttsWarn"); if (tw) tw.style.display = "none"; // 配好云端后隐藏提示条
   }
   $("#ttsSave").addEventListener("click", ()=>{ sfx.click(); saveCloud(); ttsStatus.textContent = "✅ 已保存，朗读将使用云端语音"; });
-  $("#ttsTest").addEventListener("click", ()=>{ sfx.click(); saveCloud(); ttsStatus.textContent = "🔊 正在试听…"; speakWorker("你好，我是你的学习伙伴，我们一起加油！", 0.9); });
+  $("#ttsTest").addEventListener("click", ()=>{ sfx.click(); saveCloud(); ttsStatus.textContent = "🔊 正在试听…"; speakWorker("你好，我是你的学习伙伴，我们一起加油！", 0.9, (err)=>{ ttsStatus.textContent = "❌ " + err; }); });
   $("#setClose").addEventListener("click", ()=>{ sfx.click(); closeDialog(); });
   // 测试模式开关：开启需输入密码 112233，关闭直接切换
   const testSwitch = $("#testSwitch");
