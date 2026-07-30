@@ -30,14 +30,11 @@ jobs:
           mkdir -p android/app/src/main/assets
           cp index.html android/app/src/main/assets/index.html
 
-      - name: Set up Gradle
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: "8.2"
-
-      - name: Build debug APK
+      - name: Make gradlew executable & build debug APK
         working-directory: android
-        run: gradle assembleDebug --no-daemon
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
