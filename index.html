@@ -354,8 +354,13 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 #partnerWidget { position: fixed; right: 14px; bottom: 230px; z-index: 60; width: 96px; height: 96px; cursor: grab; touch-action: none; display: none; }
 #partnerWidget img { width: 100%; height: 100%; image-rendering: pixelated; filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
 #partnerWidget .handle { position: absolute; top: -6px; left: -6px; background: #fff; border: 2px solid var(--poke-yellow); border-radius: 50%; width: 28px; height: 28px; font-size: 16px; display: flex; align-items: center; justify-content: center; color: var(--poke-red); }
-.partner-bubble { position: absolute; right: 100%; bottom: 10px; width: 190px; background: #fff; border: 3px solid var(--poke-yellow); border-radius: 18px; padding: 10px 12px; font-size: 18px; color: var(--text-dark); box-shadow: 0 4px 12px rgba(0,0,0,.2); opacity: 0; transform: translateY(8px); transition: .3s; pointer-events: none; }
-.partner-bubble.show { opacity: 1; transform: none; }
+.partner-bubble { position: fixed; z-index: 70; max-width: 240px; min-width: 120px; background: linear-gradient(180deg,#FFFDF5,#FFF3D6); border: 3px solid #FFD66B; border-radius: 20px; padding: 12px 14px; font-size: 20px; line-height: 1.45; color: #5b4636; box-shadow: 0 8px 22px rgba(0,0,0,.22); opacity: 0; transform: scale(.6); transform-origin: center; pointer-events: none; transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1); }
+.partner-bubble.show { opacity: 1; transform: scale(1); }
+.partner-bubble::after { content:""; position:absolute; width:0; height:0; }
+.partner-bubble.ptr-left::after  { right:-14px; top:50%; transform:translateY(-50%); border:9px solid transparent; border-left-color:#FFD66B; }
+.partner-bubble.ptr-right::after { left:-14px;  top:50%; transform:translateY(-50%); border:9px solid transparent; border-right-color:#FFD66B; }
+.partner-bubble.ptr-up::after    { bottom:-14px; left:50%; transform:translateX(-50%); border:9px solid transparent; border-top-color:#FFD66B; }
+.partner-bubble.ptr-down::after  { top:-14px;   left:50%; transform:translateX(-50%); border:9px solid transparent; border-bottom-color:#FFD66B; }
 
 /* 轻提示 toast */
 .toast { position: fixed; left: 50%; bottom: 130px; transform: translateX(-50%) translateY(20px); background: rgba(60,40,30,.92); color: #fff; padding: 12px 22px; border-radius: 999px; font-size: 22px; z-index: 500; opacity: 0; transition: .35s; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.3); white-space: nowrap; }
@@ -790,7 +795,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.26";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.27";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1012,7 +1017,7 @@ function openDialog(html, { closable = true, onClose = null } = {}){
   dialogClose.style.display = closable ? "" : "none";
   onDialogClose = onClose; overlay.classList.add("show");
 }
-function closeDialog(){
+function closeDialog(){ busyStudying = false;
   overlay.classList.remove("show");
   activeModule = null;
   window.speechSynthesis && window.speechSynthesis.cancel();
@@ -1025,7 +1030,9 @@ function showPage(which){
   $("#pageDex").classList.toggle("active", which === "dex");
   $("#navTasks").classList.toggle("active", which === "tasks");
   $("#navDex").classList.toggle("active", which === "dex");
-  if (which === "dex") renderDex();
+  currentPage = which;
+  if (which === "dex"){ renderDex(); if (!dexHintShown && state.partnerId){ dexHintShown = true; setTimeout(()=>partnerSay("看看我们的伙伴们，总有一天会集齐的！"), 450); } }
+  else { dexHintShown = false; }
 }
 $("#navTasks").addEventListener("click", () => { sfx.click(); showPage("tasks"); });
 $("#navDex").addEventListener("click", () => { sfx.click(); showPage("dex"); });
@@ -1113,6 +1120,7 @@ function completeTask(key){
   // 先同步刷新所有相关界面（无论下方动画/语音是否异常，计数、任务卡、收服标签都立即可见）
   try { renderTasks(); renderHeader(); renderDex(); renderBalls(); } catch(e){}
   try { gainBall(1); } catch(e){ showBugBanner("gainBall: " + (e && (e.stack||e.message) || e)); }
+  try { if (state.partnerId) partnerSay(pick(["太棒了！又靠近新伙伴一步！","又收集到一只，伙伴越来越多啦！⭐","你做到啦，我好开心！","继续加油，图鉴就靠你啦！"],1)[0]); } catch(e){}
   try { checkAchievements(); } catch(e){}
   const allDone = TASKS.every(t => state.daily.done[t.key]);
   if (allDone && !state.daily.celebrated){
@@ -1150,6 +1158,7 @@ function openModule(key){
 /* 通用答题引擎：答错题重排队尾直到答对（儿童友好） */
 function runQuiz({ title, color, questions, onFinish, speakOnShow = false }){
   const myToken = ++quizToken;   // 本场作答令牌；重开/切换时令牌变更，旧计时器回调据此失效
+  busyStudying = true;   // 进入答题：抑制空闲气泡
   let queue = [...questions], total = questions.length, firstTryRight = 0, answeredSet = new Set(), attemptedFirst = new Set();
   function show(){
     if (myToken !== quizToken) return;
@@ -1374,6 +1383,7 @@ function showPoem(idx){
   $("#poemBack").addEventListener("click", ()=>{ sfx.click(); poemHome(); });
 }
 function poemQuiz(){
+  busyStudying = true;
   const p = POEMS[rnd(0,POEMS.length-1)];
   const isHan = ch => /[一-龥]/.test(ch);   // 只把真正的汉字当作可填空字，避免逗号/句号/顿号等标点混入
   const spots=[]; p.lines.forEach((line,li)=>[...line].forEach((ch,ci)=>{ if(isHan(ch)) spots.push({li,ci,ch}); }));
@@ -1744,7 +1754,7 @@ function beginBattle(myId){
       <div id="battleArea"><button class="big-btn" id="atkBtn">⚔️ 攻击！</button></div>`, {closable:false});
     $("#atkBtn").addEventListener("click", ()=>{ sfx.click(); askQ(); });
   }
-  function askQ(){
+  function askQ(){ busyStudying = true;
     const q = randomQuestion();
     openDialog(`<h2 style="color:var(--poke-red)">⚔️ 答对才能攻击！</h2>
       <div class="quiz-question ${q.promptClass||''}">${q.prompt}</div>
@@ -1769,6 +1779,215 @@ function beginBattle(myId){
   render();
 }
 
+/* ==================== 伙伴气泡数据（v3.27） ==================== */
+let busyStudying = false;     // true = 正在答题/古诗填空/对战答题，抑制空闲气泡
+let currentPage = "tasks";    // tasks | dex
+let dexHintShown = false;     // 本次打开图鉴仅首次提示
+
+const STUDY_LINES = [
+  "训练家，今天的拼音精灵在等着我们呢！⚡",
+  "数学题就像对战，答对就能命中目标哦～",
+  "你念诗的声音，连绿毛虫都停下来听呢🎵",
+  "完成所有任务，我们一起去冒险吧！",
+  "休息一下也没关系，我就在这里等你呀☁️"
+];
+const IDLE_LINES = [
+  "你知道吗？我昨晚梦见你变成了宝可梦大师✨",
+  "我们比赛谁先眨眼睛？你输了！我刚刚眨了👀",
+  "最喜欢和你一起坐着，就算什么也不做。",
+  "给你看个宝贝——（转一圈）我的尾巴/翅膀/叶子！",
+  "外面的天气真好，我们完成学习就去'野外'探险吧🌳"
+];
+const INTERACT_LINES = [
+  "嗷呜～你戳到我痒痒肉啦！",
+  "有什么需要我帮忙的吗，训练家？",
+  "是不是想看我转圈圈？咕噜咕噜～",
+  "再点一下，我就进化给你看——开玩笑的啦😜",
+  "嘿！我是你的今日伙伴，__NAME__！请多指教！"
+];
+function timeGreetingLine(){
+  const h = new Date().getHours();
+  if (h>=5 && h<11) return "早上好！今天也要元气满满哦～";
+  if (h>=11 && h<18) return "下午好呀，我们一起加油！";
+  return "今天辛苦啦，月亮都出来了🌙";
+}
+function partnerName(){ return state.partnerId ? POKEMON[state.partnerId-1] : "伙伴"; }
+function allTasksDone(){ return TASKS.every(t => state.daily.done[t.key]); }
+function positionBubble(b, w){
+  const r = w.getBoundingClientRect();
+  const bw = b.offsetWidth || 220, bh = b.offsetHeight || 80, gap = 14;
+  const spaceLeft = r.left, spaceRight = window.innerWidth - r.right;
+  const spaceUp = r.top, spaceDown = window.innerHeight - r.bottom;
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  let left, top, place;
+  if (spaceLeft >= Math.max(bw+gap, spaceRight)) { left = r.left - bw - gap; top = cy - bh/2; place="left"; }
+  else if (spaceRight >= bw+gap) { left = r.right + gap; top = cy - bh/2; place="right"; }
+  else if (spaceUp >= bh+gap) { left = cx - bw/2; top = r.top - bh - gap; place="up"; }
+  else { left = cx - bw/2; top = r.bottom + gap; place="down"; }
+  left = Math.max(8, Math.min(left, window.innerWidth - bw - 8));
+  top = Math.max(8, Math.min(top, window.innerHeight - bh - 8));
+  b.style.left = left+"px"; b.style.top = top+"px";
+  b.classList.remove("ptr-left","ptr-right","ptr-up","ptr-down");
+  b.classList.add("ptr-"+place);
+}
+function partnerInteract(){
+  if (!state.partnerId) return;
+  if (Math.random() < 0.55){ partnerSay(pick(INTERACT_LINES,1)[0].replace("__NAME__", partnerName())); }
+  else { const arr = POKE_LINES[state.partnerId] || ["我是你的好伙伴，随时陪着你！"]; partnerSay(pick(arr,1)[0]); }
+}
+const POKE_LINES = {
+  1:["种子种子～背上的种子在为你加油发芽🌱","古诗里的花草，我都认得哦。"],
+  2:["我的花苞快开啦，和你一起长大真开心🌿"],
+  3:["盛开的花香能让人安心，交给我守护你吧🌺"],
+  4:["尾巴的火焰因为期待和你学习变得旺旺的🔥","答对了！这热度好像我在用喷射火焰！"],
+  5:["我的尾巴火更猛了，别小看我哦🔥"],
+  6:["展翅飞上高空，我看见你努力的样子啦🐉"],
+  7:["杰尼杰尼～我用水枪给你的铅笔加个护盾！","慢慢来，我会用龟壳保护你🐢"],
+  8:["我的尾巴毛蓬蓬的，摸起来很软哦🐢"],
+  9:["背上的水炮，随时帮你冲走难题💧"],
+  10:["我啃叶子的声音，是不是很可爱？🐛"],
+  11:["我在壳里悄悄变强，你也要加油哦🛡️"],
+  12:["翅膀上的粉末，能带来好运给你🦋"],
+  13:["我的毒针只是吓唬人啦，其实我很温柔🐛"],
+  14:["安安静静等待蜕变，像你专注做题一样🛡️"],
+  15:["别惹我生气，不过对你我只会嗡嗡撒娇🐝"],
+  16:["扑棱扑棱～想飞多高就飞多高！🕊️"],
+  17:["我在高空看见你进步啦，真棒！🌤️"],
+  18:["展开翅膀带你去看更远的世界吧🕊️"],
+  19:["我门牙厉害，咬碎难题没问题🦫"],
+  20:["别看我凶，我最爱陪你一起努力🐀"],
+  21:["叽叽！我飞得快，追得上你的思路⚡"],
+  22:["长长的嘴，专挑错题啄出来给你看🦅"],
+  23:["嘶嘶～我盘成圈给你当小凳子🐍"],
+  24:["身体能伸长两倍，缠住困难不让它跑掉🐍"],
+  25:["皮卡皮卡！今天也要电力十足！","看到你努力，我的脸颊都冒火花啦⚡"],
+  26:["电得更猛了，和你一起超有干劲⚡"],
+  27:["我卷成球也能滚去学习，超省事🌀"],
+  28:["锋利的爪子，帮你划开难题✂️"],
+  29:["我的毒刺只用来保护你哦💜"],
+  30:["和你在一起，连刺都变温柔了🌸"],
+  31:["妈妈般的怀抱，安心交给我🛡️"],
+  32:["我有点害羞，但愿意为你勇敢💪"],
+  33:["角上的光，是写给你的加油信号🦄"],
+  34:["王者气场，陪你征服每一关👑"],
+  35:["星星魔法，为你点亮今天的好心情✨"],
+  36:["月亮的祝福，今晚也陪着你🌙"],
+  37:["六条尾巴像火焰，暖暖的🔥"],
+  38:["九尾摇曳，传说会帮你实现愿望🌟"],
+  39:["啵啰啵啰～要是你困了，我就唱首歌，不过只唱一句哦🎶"],
+  40:["气球一样的身体，抱起来超舒服🎈"],
+  41:["看不见也没关系，我用心听你说话🦇"],
+  42:["我的耳朵超灵敏，夸我的话都收到啦👂"],
+  43:["我会在夜里散步，顺便替你记单词🌿"],
+  44:["香味怪怪的，但我是真心为你加油🌼"],
+  45:["花瓣一开，烦恼都飞走啦🌺"],
+  46:["背上的蘑菇，藏着小小的智慧🍄"],
+  47:["孢子一撒，困意全消，专心学习！🍄"],
+  48:["我的丝线能织出好梦给你🕸️"],
+  49:["翅膀上的眼睛，会盯着你别走神哦👀"],
+  50:["我在地底挖洞，也能帮你挖出答案🕳️"],
+  51:["三个头一起想，难题也不怕🕳️"],
+  52:["喵～金币没有，但满满的陪伴给你💰"],
+  53:["喵呜！我可是很会计划的，跟着我准没错🐱"],
+  54:["我虽然常发呆，但关键时刻超可靠🦆"],
+  55:["头疼时会冒出好点子，就像你灵光一闪💡"],
+  56:["嘻嘻，我好动，但学习时我会坐好🐵"],
+  57:["尾巴一甩，把错题全甩走💥"],
+  58:["汪！我鼻子灵，错字逃不掉🐶"],
+  59:["嗖——我跑得快，陪你冲向第一名🐕"],
+  60:["咕噜咕噜，我尾巴转圈给你打气💦"],
+  61:["肚子上的圈圈，像不像专心的小漩涡🌀"],
+  62:["练武的我，最懂坚持两个字🥋"],
+  63:["我超爱睡觉，但梦里也在背诗😴"],
+  64:["用超能力把难题都浮起来慢慢看🔮"],
+  65:["两只手一起算，数学题秒解🧠"],
+  66:["嘿咻！举重练出的力气也用来翻书💪"],
+  67:["我力大无穷，搬走你的烦恼🦾"],
+  68:["四条手臂，同时做四件事也不慌🦾"],
+  69:["呜啪！我用藤蔓给你加油吹号角🌿"],
+  70:["叶子一合一张，像在为你鼓掌🍃"],
+  71:["我吃掉难题，你只管开心学🌺"],
+  72:["漂在水里，陪你慢慢想答案🌊"],
+  73:["触手轻轻一指，正确答案就出现✨"],
+  74:["我的拳头硬，专砸不会的题🪨"],
+  75:["滚来滚去，把知识滚进脑子里🪨"],
+  76:["轰隆！大山一样的靠山就是你🏔️"],
+  77:["哒哒哒，马蹄声是给你的节拍🔥"],
+  78:["鬃毛燃烧，奔跑时像一团火🌟"],
+  79:["我常发呆，但发呆也能想到好办法🦦"],
+  80:["尾巴钓竿一甩，钓起一个正确答案🎣"],
+  81:["嗡嗡转，我来帮你吸走粗心⚡"],
+  82:["三个脑袋一起想，思路更清晰🔧"],
+  83:["唰唰！我的大葱剑帮你切开会做的题🗡️"],
+  84:["嘟嘟！两只头吵架，但都听你的🐦"],
+  85:["三只头一起喊：你可以的！🐦"],
+  86:["顶球给你看，学习也可以很好玩🦭"],
+  87:["冰上芭蕾，优雅地陪你学习⛸️"],
+  88:["我黏糊糊，但黏住知识不松手🟤"],
+  89:["再臭也要守护你的进步💚"],
+  90:["我的舌头能舔出写错的字👅"],
+  91:["贝壳一关，专心不被打扰🐚"],
+  92:["呼～我悄悄飘来给你惊喜👻"],
+  93:["两个身体，一个陪你学一个逗你笑😈"],
+  94:["嘿嘿，我和你一起恶作剧打败难题👾"],
+  95:["我身体长长的，能绕成你的小书桌🪨"],
+  96:["呼噜噜，我帮你把瞌睡虫赶走😴"],
+  97:["今晚的梦里，我们一起背古诗🌙"],
+  98:["钳子一夹，把错题夹出来✂️"],
+  99:["大钳一挥，难题分成小块慢慢做🦀"],
+  100:["噼啪！我放电给你提神⚡"],
+  101:["蹦蹦跳，电得粗心鬼哇哇叫⚡"],
+  102:["我们好多颗，一起为你加油🌟"],
+  103:["头顶的椰子，是给你的小奖励🥥"],
+  104:["我戴着骨头面具，但其实很温柔🦴"],
+  105:["骨棒一挥，把困难敲碎💀"],
+  106:["踢腿如风，把难题踢飞🥋"],
+  107:["出拳超快，错题一拳解决👊"],
+  108:["让我舔舔，把知识舔进脑子里👅"],
+  109:["噗——我喷出勇气给你💨"],
+  110:["两个头一起说：你最棒！💨"],
+  111:["冲呀！我用角顶开知识的大门🦏"],
+  112:["轰隆隆，我是你的开路先锋🦏"],
+  113:["我把好运气都分给你一点🥚"],
+  114:["藤蔓轻轻缠住你，给你一个拥抱🌿"],
+  115:["育儿袋里装着给你的小糖果🦘"],
+  116:["摇摇摆摆，把字写得更稳🐴"],
+  117:["身上的刺，是守护你的小矛🗡️"],
+  118:["鳞片闪闪，像你答对时的眼睛✨"],
+  119:["王冠一戴，今天你是学习之王👑"],
+  120:["五角星光的中心，就是你🌟"],
+  121:["核心宝石亮起，为你加油💎"],
+  122:["我变出镜子，照出更棒的你自己🪞"],
+  123:["镰刀一挥，把难题咔嚓切开🪳"],
+  124:["啾咪～我给你一个飞吻当奖励💋"],
+  125:["握手放电，给你的小手充充电⚡"],
+  126:["喷个火苗，把瞌睡烧光🔥"],
+  127:["大力钳一夹，困难夹成两半🪲"],
+  128:["冲锋！三头牛都为你呐喊🐂"],
+  129:["我跳不高，但相信你比我会跳🐟"],
+  130:["曾经弱弱的我，也能变成大英雄🌊"],
+  131:["背你渡过作业的海洋，稳稳的🐢"],
+  132:["变！你想让我当什么伙伴都行🟣"],
+  133:["我还没决定进化，但今天先陪你🐾"],
+  134:["凉凉的，夏天陪你最舒服💧"],
+  135:["电光闪闪，灵感的火花来啦⚡"],
+  136:["暖暖的，冬天也不怕冷🔥"],
+  137:["我是程序做的，最懂一步一步来💠"],
+  138:["我是远古的宝可梦，故事讲给你听🐚"],
+  139:["刺刺的壳，挡住你的小粗心🛡️"],
+  140:["从远古游来，陪你探索新知识🦐"],
+  141:["镰刀游速快，带你冲过难题🌊"],
+  142:["啾！远古的翅膀也能带你飞🦅"],
+  143:["呼噜…啊！我没睡着，我只是在想数学题💤"],
+  144:["凉风一吹，让你头脑清醒❄️"],
+  145:["一道闪电，灵光乍现⚡"],
+  146:["浴火一般的斗志，给你🔥"],
+  147:["我会长大成龙，你也会越来越厉害🐉"],
+  148:["身上的珠子，串起你每天的小进步🐉"],
+  149:["虽然有点慢吞吞，但一定会飞到你身边🐲"],
+  150:["我和你一样特别，相信自己💜"],
+  151:["我藏在每一段快乐的时光里✨"]
+};
 /* ==================== 9. 伙伴互动 ==================== */
 function renderPartner(){
   const w = $("#partnerWidget"), img = $("#partnerImg");
@@ -1777,20 +1996,40 @@ function renderPartner(){
   } else { w.style.display = "none"; }
 }
 /* 设置今日伙伴 */
-function setPartner(id){ state.partnerId = id; saveState(); renderPartner(); toast("已设为今日伙伴 ⭐"); }
+function setPartner(id){
+  state.partnerId = id; saveState(); renderPartner(); toast("已设为今日伙伴 ⭐");
+  const arr = POKE_LINES[id] || ["我是你的新伙伴，请多指教！"];
+  partnerSay(pick(arr,1)[0]);
+}
 /* 取消今日伙伴 */
 function unsetPartner(){ state.partnerId = null; saveState(); renderPartner(); toast("已换伙伴，去图鉴选一只新的吧 🤝"); }
 /* 伙伴气泡 */
-function partnerSay(text){ const b=$("#partnerBubble"); b.textContent=text; b.classList.add("show"); setTimeout(()=>b.classList.remove("show"), 3200); }
+function partnerSay(text){
+  const w = $("#partnerWidget"), b = $("#partnerBubble");
+  if (!state.partnerId) return;
+  b.textContent = text;
+  b.classList.add("show");
+  positionBubble(b, w);
+  clearTimeout(b._t);
+  b._t = setTimeout(()=>{ b.classList.remove("show"); }, 3500);
+}
 /* 拖动伙伴挂件 */
 (function initPartnerDrag(){
-  const w = $("#partnerWidget"); let dragging=false, sx=0, sy=0, ox=0, oy=0;
-  w.addEventListener("pointerdown", e=>{ dragging=true; w.style.cursor="grabbing"; sx=e.clientX; sy=e.clientY; const r=w.getBoundingClientRect(); ox=r.left; oy=r.top; w.setPointerCapture(e.pointerId); });
-  w.addEventListener("pointermove", e=>{ if(!dragging) return; let nx=ox+(e.clientX-sx), ny=oy+(e.clientY-sy); nx=Math.max(0,Math.min(window.innerWidth-96,nx)); ny=Math.max(0,Math.min(window.innerHeight-96,ny)); w.style.left=nx+"px"; w.style.top=ny+"px"; w.style.right="auto"; w.style.bottom="auto"; });
-  w.addEventListener("pointerup", ()=>{ dragging=false; w.style.cursor="grab"; });
+  const w = $("#partnerWidget"); let dragging=false, moved=false, sx=0, sy=0, ox=0, oy=0;
+  w.addEventListener("pointerdown", e=>{ dragging=true; moved=false; w.style.cursor="grabbing"; sx=e.clientX; sy=e.clientY; const r=w.getBoundingClientRect(); ox=r.left; oy=r.top; w.setPointerCapture(e.pointerId); });
+  w.addEventListener("pointermove", e=>{ if(!dragging) return; if(Math.abs(e.clientX-sx)>6||Math.abs(e.clientY-sy)>6) moved=true; let nx=ox+(e.clientX-sx), ny=oy+(e.clientY-sy); nx=Math.max(0,Math.min(window.innerWidth-96,nx)); ny=Math.max(0,Math.min(window.innerHeight-96,ny)); w.style.left=nx+"px"; w.style.top=ny+"px"; w.style.right="auto"; w.style.bottom="auto"; });
+  w.addEventListener("pointerup", ()=>{ if(!moved && state.partnerId) partnerInteract(); dragging=false; w.style.cursor="grab"; });
 })();
 /* 学习时随机鼓励气泡 */
-setInterval(()=>{ if (overlay.classList.contains("show") && state.partnerId && Math.random()<0.5){ partnerSay(pick(["加油哦！","你可以的！","再试一次！","你真棒！","答对啦！","专心点～"],1)[0]); } }, 9000);
+setInterval(()=>{
+  if (!state.partnerId || busyStudying) return;
+  if (currentPage === "tasks" && !allTasksDone()){
+    partnerSay(pick(STUDY_LINES,1)[0]);
+  } else {
+    if (Math.random() < 0.18) partnerSay(timeGreetingLine());
+    else partnerSay(pick(IDLE_LINES,1)[0]);
+  }
+}, 15000);
 
 /* ==================== 10. 成就墙 + 导出导入 ==================== */
 function achievementDefs(){
@@ -1995,7 +2234,7 @@ function welcomeIfNeeded(){
       <div style="font-size:70px;margin:6px 0">⚡🐭⚡</div>
       <div style="font-size:28px;line-height:1.6">新的一天开始啦！<br>今天有 <b style="color:var(--poke-red)">${5-doneCount} 个</b>学习任务等着你，<br>完成任务就能得到精灵球，<br>去收服新的宝可梦吧！</div>
       <button class="big-btn" id="welcomeGo">出发！🚀</button>`, {closable:false});
-    $("#welcomeGo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); speak(`${state.name}，早上好！新的宝可梦冒险开始啦！`); if (state.partnerId) setTimeout(()=>partnerSay("早安小训练家！今天也要加油完成学习哦！"), 600); });
+    $("#welcomeGo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); speak(`${state.name}，早上好！新的宝可梦冒险开始啦！`); if (state.partnerId) setTimeout(()=>partnerSay(timeGreetingLine()), 600); });
   }
 }
 setInterval(()=>{ const before=state.daily.date; checkDailyReset(); if(state.daily.date!==before){ renderTasks(); renderHeader(); } }, 60000);
