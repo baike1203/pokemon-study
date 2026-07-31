@@ -1690,7 +1690,7 @@ function hanziTask(){
 function poemHome(){
   const done = state.daily.done.poem;
   const maxSem = +state.poemDiff||0;
-  let listHtml = POEMS.map((p,i)=> (p.sem<=maxSem ? `<button class="py-tab" style="border-color:#B197FC;color:#7048C6" data-poem="${i}">${p.title}</button>` : "")).join("");
+  let listHtml = POEMS.map((p,i)=> (p.sem===maxSem && p.req ? `<button class="py-tab" style="border-color:#B197FC;color:#7048C6" data-poem="${i}">${p.title}</button>` : "")).join("");
   openDialog(`<h2 style="color:#8E6CF0">📜 古诗小舟</h2><div style="font-size:20px;color:#9b8676;margin-bottom:8px">👆 点诗名读一读（听一听）</div><div class="py-tabs" style="max-height:220px;overflow-y:auto">${listHtml||'<div style=\"font-size:18px;color:#bbb;padding:10px\">暂无诗，去设置里调高难度吧</div>'}</div>
     <div style="margin-top:14px"><button class="big-btn ${done?'gray':''}" id="poemStart" ${done?'disabled':''} style="background:${done?'':'linear-gradient(180deg,#C3AEFF,#8E6CF0)'};box-shadow:0 5px 0 ${done?'#7d7d7d':'#5d3fb0'}">${done?"✔ 今日任务已完成":"🎯 今日挑战：填诗句"}</button></div>`);
   document.querySelectorAll("[data-poem]").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); showPoem(+b.dataset.poem); }));
@@ -1706,7 +1706,7 @@ function showPoem(idx){
 function poemQuiz(){
   busyStudying = true;
   const maxSem = +state.poemDiff||0;
-  const pool = POEMS.filter(p=>p.sem<=maxSem);
+  const pool = POEMS.filter(p=>p.sem===maxSem && p.req);
   const p = pool[rnd(0,pool.length-1)];
   const isHan = ch => /[一-龥]/.test(ch);   // 只把真正的汉字当作可填空字，避免逗号/句号/顿号等标点混入
   const spots=[]; p.lines.forEach((line,li)=>[...line].forEach((ch,ci)=>{ if(isHan(ch)) spots.push({li,ci,ch}); }));
