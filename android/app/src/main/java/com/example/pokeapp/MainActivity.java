@@ -206,12 +206,14 @@ public class MainActivity extends Activity {
                 try {
                     if (filename == null || filename.isEmpty()) filename = "pokemon-save.json";
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        // 先删除已有的同名文件，避免 MediaStore 自动加 (1)(2) 序号导致堆积
+                        // 删除所有同名文件（含 MediaStore 自动加 (1)(2) 后缀的孤儿），否则插入时仍会被再加后缀、越堆越多
+                        int dot = filename.lastIndexOf('.');
+                        String base = dot > 0 ? filename.substring(0, dot) : filename;
                         try (Cursor c = getContentResolver().query(
                                 MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                                 new String[]{MediaStore.Downloads._ID},
-                                MediaStore.Downloads.DISPLAY_NAME + "=?",
-                                new String[]{filename}, null)) {
+                                MediaStore.Downloads.DISPLAY_NAME + " LIKE ?",
+                                new String[]{ base + "%" }, null)) {
                             if (c != null) { while (c.moveToNext()) { long id = c.getLong(c.getColumnIndexOrThrow(MediaStore.Downloads._ID)); getContentResolver().delete(ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id), null, null); } }
                         }
                         ContentValues cv = new ContentValues();
