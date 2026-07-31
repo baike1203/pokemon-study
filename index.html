@@ -303,7 +303,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 #razBigBtn:active { transform: translateY(6px); box-shadow: inset 0 6px 12px rgba(255,255,255,.35), 0 4px 0 #2f6cb0; }
 #razBigBtn.done-btn { background: radial-gradient(circle at 35% 30%, #dcdcdc, #a6a6a6); box-shadow: inset 0 6px 12px rgba(255,255,255,.3), 0 10px 0 #8a8a8a; cursor: default; }
 
-/* 开盲盒动画 */
+/* 收服宝可梦动画 */
 #gachaStage { min-height: 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
 .gacha-ball { width: 170px; height: 170px; border-radius: 50%; position: relative; background: linear-gradient(180deg, #F25C5C 0 46%, #2b2b2b 46% 54%, #fff 54% 100%); border: 7px solid #2b2b2b; box-shadow: inset 0 6px 10px rgba(255,255,255,.3); }
 .gacha-ball::after { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%,-50%); background: #fff; border: 7px solid #2b2b2b; border-radius: 50%; }
@@ -441,7 +441,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
   .pi-row { font-size: 17px; gap: 8px; margin: 5px 0; }
   .pi-desc { font-size: 16px; line-height: 1.5; margin-top: 6px; }
   .type-chip { font-size: 16px; padding: 2px 10px; margin: 1px 5px 1px 0; border-width: 1.5px; }
-  /* 抽卡弹窗 */
+  /* 收服宝可梦弹窗 */
   #gachaResult .poke-name { font-size: 28px; }
   #gachaResult .pd-left img { width: 150px; height: 150px; }
   /* 图鉴网格 */
@@ -533,7 +533,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
     <div id="dexHeader">
       <div id="dexCount">已收集 0/151</div>
       <div class="ball-row">
-        <button id="gachaBtn"><div class="big-ball"></div><span class="label" id="gachaLabel">开盲盒！</span></button>
+        <button id="gachaBtn"><div class="big-ball"></div><span class="label" id="gachaLabel">收服宝可梦！</span></button>
         <button id="masterBtn" class="mini-ball master"><div class="b2"></div><span class="label" id="masterLabel">大师球×0</span></button>
         <button id="superBtn" class="mini-ball super"><div class="b2"></div><span class="label" id="superLabel">超级球×0</span></button>
       </div>
@@ -579,7 +579,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
    4. 通用 UI（弹窗/动画/星光粒子）
    5. 每日任务区（5模块 + 答题引擎，逻辑保持原样）
    6. 进化系统
-   7. 盲盒与图鉴（含大师球/超级球/进化进度）
+   7. 收服宝可梦与图鉴（含大师球/超级球/进化进度）
    8. 学习对战模式
    9. 伙伴互动
    10. 成就墙 + 导出导入
@@ -741,7 +741,7 @@ function chainOfId(id){ for (const c of EVO_CHAINS){ if (c.flat().includes(id)) 
 function chainPos(id){ const c=chainOfId(id); if(!c) return -1; for(let i=0;i<c.length;i++){ if(c[i]===id) return i; if(Array.isArray(c[i])&&c[i].includes(id)) return i; } return -1; }
 function nextForms(id){ const c=chainOfId(id); const p=chainPos(id); if(!c||p<0||p>=c.length-1) return null; const nx=c[p+1]; return Array.isArray(nx)?nx.slice():[nx]; }
 
-/* ---------- 基础形态判断：用于盲盒抽取时优先给出未进化的宝可梦 ----------
+/* ---------- 基础形态判断：用于收服宝可梦抽取时优先给出未进化的宝可梦 ----------
    基础形态 = 每条进化链的第一个编号 + 不在任何进化链里的独立宝可梦。
    例如：蛋蛋(#102)是基础形态，椰蛋树(#103)不是。 */
 const BASE_FORMS = (function(){
@@ -790,7 +790,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.25";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.26";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1054,7 +1054,7 @@ function starBurst(cx, cy, n = 18){
 /* 获得精灵球：先同步更新计数与界面（防弹），动画包 try/catch 不影响逻辑 */
 function gainBall(count = 1){
   try { state.balls += count; saveState(); } catch(e){}
-  try { renderHeader(); renderDex(); } catch(e){}   // 立即刷新右上角球数 + 抽卡按钮标签
+  try { renderHeader(); renderDex(); } catch(e){}   // 立即刷新右上角球数 + 收服按钮标签
   try { sfx.reward(); } catch(e){}
   try { starBurst(window.innerWidth/2, window.innerHeight/2, 22); } catch(e){}
   try {
@@ -1110,7 +1110,7 @@ function completeTask(key){
   try { saveState(); } catch(e){}
   // 记录当天打卡情况：当天已完成任务数（用于日历展示）
   try { const t = todayStr(); const c = TASKS.filter(x => state.daily.done[x.key]).length; state.checkinLog[t] = c; saveState(); } catch(e){}
-  // 先同步刷新所有相关界面（无论下方动画/语音是否异常，计数、任务卡、抽卡标签都立即可见）
+  // 先同步刷新所有相关界面（无论下方动画/语音是否异常，计数、任务卡、收服标签都立即可见）
   try { renderTasks(); renderHeader(); renderDex(); renderBalls(); } catch(e){}
   try { gainBall(1); } catch(e){ showBugBanner("gainBall: " + (e && (e.stack||e.message) || e)); }
   try { checkAchievements(); } catch(e){}
@@ -1437,10 +1437,10 @@ function tryEvolve(id){
   return null;
 }
 
-/* ==================== 7. 盲盒与图鉴 ==================== */
+/* ==================== 7. 收服宝可梦与图鉴 ==================== */
 function renderDex(){
   $("#dexCount").textContent = `已收集 ${state.dex.length}/151`;
-  $("#gachaLabel").textContent = state.balls>0 ? `开盲盒！（还有 ${state.balls} 个精灵球）` : "没有精灵球啦，先去做任务吧！";
+  $("#gachaLabel").textContent = state.balls>0 ? `收服宝可梦！（还有 ${state.balls} 个精灵球）` : "没有精灵球啦，先去做任务吧！";
   renderBalls();
   renderPartner();
   const grid = $("#dexGrid"); grid.innerHTML = "";
@@ -1485,7 +1485,7 @@ function ballInfoToast(type){
   const isMaster = type==="master";
   const msg = isMaster
     ? "🟣 <b>大师球获取方法</b>：连续 7 天每天完成全部 5 个学习任务（连续打卡）即可获得。<br>大师球可点击图鉴中任意 <b>未点亮</b> 的宝可梦并直接收服它！"
-    : "🔵 <b>超级球获取方法</b>：解锁成就时奖励（如初次邂逅、集齐 50/100/151 只、各系大师等）。<br>超级球可<b>必定抽到一只从未收集过</b>的宝可梦！";
+    : "🔵 <b>超级球获取方法</b>：解锁成就时奖励（如初次邂逅、集齐 50/100/151 只、各系大师等）。<br>超级球可<b>必定收服到一只从未收集过</b>的宝可梦！";
   let t = document.getElementById("ballToast");
   if (!t){ t = document.createElement("div"); t.id = "ballToast"; t.className = "ball-toast"; document.body.appendChild(t); }
   t.innerHTML = msg;
@@ -1600,12 +1600,12 @@ function openPokeDetail(id){
 }
 
 /* 抽取逻辑：优先未收集（未进化过的）宝可梦；保底模式 guaranteedUncollected 强制未收集 */
-/* ---------- 盲盒抽取：优先基础形态（未进化），再从未收集里抽，最后兜底 ----------
+/* ---------- 收服宝可梦抽取：优先基础形态（未进化），再从未收集里抽，最后兜底 ----------
    抽取策略（普通球）：
    ① 65% 概率从"未收集"池中抽 → 其中 85% 优先基础形态
    ② 剩余 35% 从全部 151 只里抽 → 其中 80% 优先基础形态
    效果：早期几乎只出基础形态，进化形态只在收集后期或运气差时才出现 */
-/* 可抽卡池：①基础形态（含无进化链的独立宝可梦）；②已通过进化获得过的形态。
+/* 可收服池：①基础形态（含无进化链的独立宝可梦）；②已通过进化获得过的形态。
    进化前的形态不会被直接抽到，必须先抽到基础形态并进化解锁。 */
 function drawableIds(){
   const res = [];
@@ -1626,13 +1626,13 @@ function drawPokemon({ guaranteedUncollected = false } = {}){
   }
   return pool[rnd(0, pool.length-1)];
 }
-/* 打开盲盒：ballType = normal|master|super */
+/* 收服宝可梦：ballType = normal|master|super */
 function openGacha(ballType){
   sfx.click();
   if (ballType==="normal" && state.balls<=0) return noBallDialog("精灵球");
   if (ballType==="master" && state.masterBalls<=0) return noBallDialog("大师球");
   if (ballType==="super" && state.superBalls<=0) return noBallDialog("超级球");
-  openDialog(`<h2 style="color:var(--poke-red)">开盲盒！</h2><div id="gachaStage"><div class="gacha-ball shaking" id="gBall"></div>
+  openDialog(`<h2 style="color:var(--poke-red)">收服宝可梦！</h2><div id="gachaStage"><div class="gacha-ball shaking" id="gBall"></div>
     <div style="font-size:26px;color:#8a6d5c">${ballType==="master"?"🟣 紫色大师球光芒闪烁……":"精灵球在摇晃……里面是谁呢？"}</div></div>`, {closable:false});
   sfx.open();
   setTimeout(()=>{
@@ -1648,7 +1648,7 @@ function revealGacha(id, isNew, ballType){
   if (ballType==="normal"){ if (isNew) state.balls--; else state.balls++; /* 重复退款 */ }
   else if (ballType==="master") state.masterBalls--;
   else if (ballType==="super") state.superBalls--;
-  // 剩余球数文案 + 是否还能“再开一个”：按“本次使用的球类型”判断，而非普通精灵球
+  // 剩余球数文案 + 是否还能“再收服一只”：按“本次使用的球类型”判断，而非普通精灵球
   const remText = ballType==="master" ? `剩 ${state.masterBalls} 个大师球`
                : ballType==="super"  ? `剩 ${state.superBalls} 个超级球`
                : `剩 ${state.balls} 个精灵球`;
@@ -1670,7 +1670,7 @@ function revealGacha(id, isNew, ballType){
         <div class="pd-right">${pokeInfoHTML(displayId(id))}</div>
       </div>
       <button class="big-btn" id="gOk">收入图鉴 📕</button>
-      ${canAgain?'<button class="big-btn yellow" id="gAgain">再开一个！（'+remText+'）</button>':''}</div>`, {closable:false});
+      ${canAgain?'<button class="big-btn yellow" id="gAgain">再收服一只！（'+remText+'）</button>':''}</div>`, {closable:false});
     speak(`哇！收服了${POKEMON[displayId(id)-1]}！`);
     $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); checkAll151(); checkAchievements(); renderDex(); };
     if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); openGacha(ballType); };
@@ -1691,7 +1691,7 @@ function revealGacha(id, isNew, ballType){
     openDialog(`<div id="gachaResult"><div><img src="${spriteUrl(displayId(id))}" style="filter:saturate(.7)"></div>
       <div class="poke-name">${POKEMON[displayId(id)-1]}</div>
       <div style="font-size:26px;margin:8px 0">${dupMsg}</div>
-      ${canAgain?'<button class="big-btn yellow" id="gOk">好耶，再开一次！（'+remText+'）</button>':''}</div>`, {closable:false});
+      ${canAgain?'<button class="big-btn yellow" id="gOk">好耶，再收服一次！（'+remText+'）</button>':''}</div>`, {closable:false});
     speak(ballType==="normal" ? "这只宝可梦你已经有了，再送你一个精灵球！" : "这只宝可梦你已经有了，再试一次吧！");
     if ($("#gOk")) $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); openGacha(ballType); };
   }
@@ -1722,7 +1722,7 @@ function randomQuestion(){ return pick([makePinyinQ,makeMathQ,makeHanziQ],1)[0](
 function startAdventure(){
   if (state.adventureDate !== todayStr()){ state.adventureDate = todayStr(); state.adventureCount = 0; saveState(); }
   if (state.adventureCount >= 3){ openDialog(`<h2>今天冒险次数用完啦</h2><div style="font-size:60px">😴</div><div style="font-size:26px">每天最多冒险 3 次，<br>明天 0 点再来解锁！</div><button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">知道啦</button>`); return; }
-  if (state.dex.length === 0){ openDialog(`<h2>还没有宝可梦哦</h2><div style="font-size:60px">🥚</div><div style="font-size:26px">先去开盲盒收集一只吧！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">去开盲盒</button>`); return; }
+  if (state.dex.length === 0){ openDialog(`<h2>还没有宝可梦哦</h2><div style="font-size:60px">🥚</div><div style="font-size:26px">先去收服一只宝可梦吧！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">去收服宝可梦</button>`); return; }
   // 选择界面
   let html = `<h2 style="color:var(--poke-red)">⚔️ 选择你的宝可梦</h2><div style="font-size:22px;color:#9b8676;margin-bottom:10px">今天还能冒险 ${3-state.adventureCount} 次</div><div class="py-grid" id="advPick" style="max-height:360px;overflow-y:auto">`;
   state.dex.forEach(id=>{ const did=displayId(id); html += `<button class="py-cell" data-id="${id}" style="font-size:20px"><img src="${spriteUrl(did)}" style="width:54px;height:54px;image-rendering:pixelated"><small>${POKEMON[did-1]}</small></button>`; });
@@ -1883,7 +1883,7 @@ $("#masterBtn").addEventListener("click", ()=>{
 $("#superBtn").addEventListener("click", ()=>{
   sfx.click();
   if (state.superBalls<=0){ ballInfoToast("super"); return; }      // 灰色：自动消失提示获取方法
-  openGacha("super");                                              // 有球：直接开盲盒（必定抽到未收集）
+  openGacha("super");                                              // 有球：直接收服宝可梦（必定抽到未收集）
 });
 $("#adventureBtn").addEventListener("click", ()=>{ sfx.click(); startAdventure(); });
 $("#achBtn").addEventListener("click", ()=>{ sfx.click(); renderAchievements(); });
