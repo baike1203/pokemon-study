@@ -1821,7 +1821,7 @@ function openPokeDetail(id){
     <div style="margin:10px 0">
       <button class="big-btn blue" id="pokeSpeak">🔊 听一听</button>
       <button class="big-btn ${isPartner?'yellow':'blue'}" id="pokePartner">${isPartner?'🔄 换一个伙伴':'🤝 设为今日伙伴'}</button>
-      <button class="big-btn gray" id="pokeClose" style="cursor:pointer">✖️ 关闭</button>
+      <button class="big-btn yellow" id="pokeClose">✖️ 关闭</button>
     </div>`);
   $("#pokeSpeak").addEventListener("click", ()=>{ sfx.click(); speak(`${POKEMON[did-1]}。${typeTxt}属性宝可梦。${pd.d||''}`); });
   $("#pokePartner").addEventListener("click", ()=>{
