@@ -394,13 +394,13 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 #partnerWidget { position: fixed; right: 14px; bottom: 124px; z-index: 60; width: 96px; height: 96px; cursor: grab; touch-action: none; display: none; }
 #partnerWidget img { width: 100%; height: 100%; image-rendering: pixelated; filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
 #partnerWidget .handle { position: absolute; top: -6px; left: -6px; background: #fff; border: 2px solid var(--poke-yellow); border-radius: 50%; width: 28px; height: 28px; font-size: 16px; display: flex; align-items: center; justify-content: center; color: var(--poke-red); }
-.partner-bubble { position: fixed; z-index: 70; max-width: 240px; min-width: 120px; background: linear-gradient(180deg,#FFFDF5,#FFF3D6); border: 3px solid #FFD66B; border-radius: 20px; padding: 12px 14px; font-size: 20px; line-height: 1.45; color: #5b4636; box-shadow: 0 8px 22px rgba(0,0,0,.22); opacity: 0; transform: scale(.6); transform-origin: center; pointer-events: none; transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1); }
+.partner-bubble { position: fixed; z-index: 70; max-width: 240px; min-width: 120px; background: linear-gradient(180deg,rgba(255,253,245,.82),rgba(255,243,214,.82)); border: 3px solid rgba(255,214,107,.75); border-radius: 20px; padding: 12px 14px; font-size: 20px; line-height: 1.45; color: #5b4636; box-shadow: 0 8px 22px rgba(0,0,0,.22); opacity: 0; transform: scale(.6); transform-origin: center; pointer-events: none; transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1); }
 .partner-bubble.show { opacity: 1; transform: scale(1); }
 .partner-bubble::after { content:""; position:absolute; width:0; height:0; }
-.partner-bubble.ptr-left::after  { right:-14px; top:50%; transform:translateY(-50%); border:9px solid transparent; border-left-color:#FFD66B; }
-.partner-bubble.ptr-right::after { left:-14px;  top:50%; transform:translateY(-50%); border:9px solid transparent; border-right-color:#FFD66B; }
-.partner-bubble.ptr-up::after    { bottom:-14px; left:50%; transform:translateX(-50%); border:9px solid transparent; border-top-color:#FFD66B; }
-.partner-bubble.ptr-down::after  { top:-14px;   left:50%; transform:translateX(-50%); border:9px solid transparent; border-bottom-color:#FFD66B; }
+.partner-bubble.ptr-left::after  { right:-14px; top:50%; transform:translateY(-50%); border:9px solid transparent; border-left-color:rgba(255,214,107,.75); }
+.partner-bubble.ptr-right::after { left:-14px;  top:50%; transform:translateY(-50%); border:9px solid transparent; border-right-color:rgba(255,214,107,.75); }
+.partner-bubble.ptr-up::after    { bottom:-14px; left:50%; transform:translateX(-50%); border:9px solid transparent; border-top-color:rgba(255,214,107,.75); }
+.partner-bubble.ptr-down::after  { top:-14px;   left:50%; transform:translateX(-50%); border:9px solid transparent; border-bottom-color:rgba(255,214,107,.75); }
 
 /* 轻提示 toast */
 .toast { position: fixed; left: 50%; bottom: 130px; transform: translateX(-50%) translateY(20px); background: rgba(60,40,30,.92); color: #fff; padding: 12px 22px; border-radius: 999px; font-size: 22px; z-index: 500; opacity: 0; transition: .35s; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.3); white-space: nowrap; }
@@ -1992,7 +1992,7 @@ function openGacha(ballType){
     setTimeout(()=>revealGacha(id, isNew, ballType), 620);
   }, 1500);
 }
-function noBallDialog(name){ openDialog(`<h2 style="color:var(--poke-red)">${name}不够啦！</h2><div style="font-size:64px;margin:10px 0">🥺</div><div style="font-size:28px">${name==="精灵球"?"完成今日学习任务就能获得精灵球哦！":"去连续完成学习或完成成就来获取吧！"}</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`); }
+function noBallDialog(name){ openDialog(`<h2 style="color:var(--poke-red)">${name}不够啦！</h2><div style="font-size:64px;margin:10px 0">💪</div><div style="font-size:28px">${name==="精灵球"?"完成今日学习任务就能获得精灵球哦！":"去连续完成学习或完成成就来获取吧！"}</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`); }
 function revealGacha(id, isNew, ballType){
   if (ballType==="normal"){ if (isNew) state.balls--; else state.balls++; /* 重复退款 */ }
   else if (ballType==="master") state.masterBalls--;
