@@ -23,6 +23,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONObject;
@@ -57,13 +58,26 @@ public class MainActivity extends Activity {
         hideSystemUI();
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
+        int bg = Color.parseColor("#FFF6E9");   // 柔糖果色底，避免冷启动黑屏
+        root.setBackgroundColor(bg);
 
         webView = new WebView(this);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT);
         root.addView(webView, lp);
+
+        // 原生加载遮罩：冷启动/断网回退前显示，页面就绪后隐藏，避免一片黑
+        final TextView splash = new TextView(this);
+        splash.setText("⚡ 宝可梦学习工作台\n\n加载中…");
+        splash.setGravity(android.view.Gravity.CENTER);
+        splash.setTextColor(Color.parseColor("#8A6D3B"));
+        splash.setTextSize(24);
+        splash.setBackgroundColor(bg);
+        FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
+        root.addView(splash, slp);
         setContentView(root);
 
         WebSettings ws = webView.getSettings();
@@ -73,8 +87,9 @@ public class MainActivity extends Activity {
         ws.setAllowFileAccess(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
         ws.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        // 关键：APK 直接读线上最新页面，禁用缓存避免平板一直用旧版（旧版可能有球数 Bug）
-        ws.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        // 启用 HTTP 缓存：冷启动直接从磁盘缓存读 index.html（含 1.3MB 内联精灵图），秒开。
+        // GitHub Pages 带 ETag/Last-Modified，推新版本内容变化时服务器返回新文件，更新照样生效。
+        ws.setCacheMode(WebSettings.LOAD_DEFAULT);
 
         // 暴露给网页的 JS 桥：PokeBridge.exportSave(json)
         webView.addJavascriptInterface(new PokeJSBridge(), "PokeBridge");
@@ -83,6 +98,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 mainLoaded = true;
+                splash.setVisibility(View.GONE);
             }
 
             @Override
@@ -121,7 +137,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        webView.clearCache(true);
         webView.loadUrl(LIVE_URL);
     }
 
