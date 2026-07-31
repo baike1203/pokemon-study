@@ -796,7 +796,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.27.2";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.27.3";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1640,16 +1640,16 @@ function drawPokemon({ guaranteedUncollected = false } = {}){
 /* 收服宝可梦：ballType = normal|master|super */
 function openGacha(ballType){
   sfx.click();
-  if (ballType==="normal" && state.balls<=0) return noBallDialog("精灵球");
-  if (ballType==="master" && state.masterBalls<=0) return noBallDialog("大师球");
-  if (ballType==="super" && state.superBalls<=0) return noBallDialog("超级球");
-  if (ballType==="normal" && state.dex.length >= 151){   // 已集齐全部 151 只：普通球不再抽出重复，给出引导提示
+  if (state.dex.length >= 151){   // 已集齐全部 151 只：三种球统一给出引导提示，不再抽出重复
     openDialog(`<h2 style="color:var(--poke-blue)">🎉 已经集齐全部 151 只宝可梦啦！</h2>
       <div style="font-size:64px;margin:10px 0">👑</div>
       <div style="font-size:26px;color:#8a6d5c;line-height:1.7">${state.name} 已经是真正的<b>图鉴大师</b>啦！<br>精灵球先留着，<br>等去<b>新的地区</b>冒险吧～🌏</div>
       <button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`, {closable:false});
     return;
   }
+  if (ballType==="normal" && state.balls<=0) return noBallDialog("精灵球");
+  if (ballType==="master" && state.masterBalls<=0) return noBallDialog("大师球");
+  if (ballType==="super" && state.superBalls<=0) return noBallDialog("超级球");
   openDialog(`<h2 style="color:var(--poke-red)">收服宝可梦！</h2><div id="gachaStage"><div class="gacha-ball shaking" id="gBall"></div>
     <div style="font-size:26px;color:#8a6d5c">${ballType==="master"?"🟣 紫色大师球光芒闪烁……":"精灵球在摇晃……里面是谁呢？"}</div></div>`, {closable:false});
   sfx.open();
