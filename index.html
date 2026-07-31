@@ -935,7 +935,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.32.1";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.32.2";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1777,7 +1777,8 @@ function poemQuiz(){
   const p = pool[rnd(0,pool.length-1)];
   const isHan = ch => /[一-龥]/.test(ch);   // 只把真正的汉字当作可填空字，避免逗号/句号/顿号等标点混入
   const spots=[]; p.lines.forEach((line,li)=>[...line].forEach((ch,ci)=>{ if(isHan(ch)) spots.push({li,ci,ch}); }));
-  const blanks = pick(spots,3).sort((a,b)=>a.li-b.li||a.ci-b.ci); let cur=0; const filled=new Array(blanks.length).fill(null);
+  const blanks = pick(spots,3).sort((a,b)=>a.li-b.li||a.ci-b.ci); blanks.forEach(b=>b.missed=false); let cur=0; const filled=new Array(blanks.length).fill(null);
+  let firstTry = 0; const poemTotal = blanks.length;   // 正确率统计：首填即对/总空数
   const charPool=[...new Set(pool.flatMap(x=>x.lines.join("").split("")).filter(isHan))];
   function renderPoemBody(){ return p.lines.map((line,li)=>{ let html=""; [...line].forEach((ch,ci)=>{ const bi=blanks.findIndex(b=>b.li===li&&b.ci===ci); if(bi>=0){ if(filled[bi]) html+=`<span class="poem-blank filled">${filled[bi]}</span>`; else html+=`<span class="poem-blank">${bi===cur?"❓":"＿"}</span>`; } else html+=ch; }); return `<div class="poem-line">${html}</div>`; }).join(""); }
   function show(){
@@ -1794,11 +1795,14 @@ function poemQuiz(){
     const fb=$("#fbLine");
     if (opt===b.ch){
       sfx.correct(); btn.classList.add("right"); filled[cur]=opt; fb.textContent="填对啦！✨"; fb.className="feedback-line good";
+      if (!b.missed) firstTry++;   // 仅当本空从未填错时才计入「一次答对」
       document.querySelectorAll(".opt-btn").forEach(x=>x.disabled=true); cur++;
       setTimeout(()=>{ if(cur<blanks.length) show(); else { speak(p.lines.join(""),0.8);
-        openDialog(`<h2 style="color:#8E6CF0">🎉 古诗填空完成！</h2><div style="margin:10px 0">${renderPoemBody()}</div><div style="font-size:26px;margin:10px 0">《${p.title}》背得真好，奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('poem')">收下精灵球 ⚡</button>`, {closable:false}); } }, 900);
+        const poemAcc = Math.round(firstTry/poemTotal*100); recordAccuracy("poem", firstTry, poemTotal);
+        openDialog(`<h2 style="color:#8E6CF0">🎉 古诗填空完成！</h2><div style="font-size:30px;margin:10px 0">一次答对率：<b style="color:#3F9D3F">${poemAcc}%</b></div><div style="margin:10px 0">${renderPoemBody()}</div><div style="font-size:26px;margin:10px 0">《${p.title}》背得真好，奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('poem')">收下精灵球 ⚡</button>`, {closable:false}); } }, 900);
     } else {
       sfx.wrong(); btn.classList.add("wrong"); setTimeout(()=>btn.classList.remove("wrong"),500);
+      b.missed = true;   // 本空填错过，不再计入「一次答对」
       fb.textContent="再想一想～提示：读一读整句诗"; fb.className="feedback-line bad";
     }
   }
