@@ -160,8 +160,13 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
   background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.3); transition: left .2s; }
 .switch.on { background: #4FB866; }
 .switch.on .knob { left: 42px; }
-/* 家长设置里当前难度的高亮 */
-.set-diff.active { outline: 4px solid #fff; box-shadow: 0 0 0 4px rgba(245,138,31,.55), 0 8px 18px rgba(120,90,70,.25); }
+/* 家长设置里当前难度的高亮：明显绿色填充 + 橙环，与其他红色选项一眼区分 */
+.set-diff.active {
+  background: linear-gradient(180deg, #7CD38B, #4FB866) !important;
+  border-color: #3E9C52 !important;
+  color: #fff !important;
+  box-shadow: 0 5px 0 #3E9C52, 0 0 0 4px rgba(245,138,31,.45), 0 8px 18px rgba(120,90,70,.25) !important;
+}
 /* 家长设置：模块菜单 + 难度按钮内小字说明 */
 .set-modules { display:flex; flex-direction:column; gap:14px; margin:6px 0 4px; }
 .set-mod, .set-diff { text-align:center; }
