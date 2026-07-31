@@ -828,7 +828,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.31.6";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.31.7";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -859,13 +859,13 @@ function defaultState(){
     checkinLog: {}          // 打卡记录：{ "YYYY-MM-DD": 当天完成任务数 }，用于日历展示打卡情况
   };
 }
+/* 自动备份（单文件滚动）：平板 APK 端把存档写入下载目录的固定文件名，同名覆盖 → 永远只有 1 个文件，不累积杂乱 */
+let loadedEmpty = false;
+let _autoBkTimer = null;
 let state = loadState();
 if (state.name === "小宝"){ state.name = "苏打"; saveState(); }   // 默认名字由「小宝」改为「苏打」（仅影响仍用旧默认名的存档）
 let quizToken = 0;          // 答题会话令牌：每开新一题/新一场自增，旧回调据此失效（防止切换时旧计时器串场）
 let activeModule = null;    // 当前打开的学习模块（家长设置齿轮借此判断是否要按新难度重开数学）
-/* 自动备份（单文件滚动）：平板 APK 端把存档写入下载目录的固定文件名，同名覆盖 → 永远只有 1 个文件，不累积杂乱 */
-let loadedEmpty = false;
-let _autoBkTimer = null;
 function hasMeaningfulProgress(){
   return (state.dex && state.dex.length>0) ||
          (state.checkinLog && Object.keys(state.checkinLog).length>0) ||
