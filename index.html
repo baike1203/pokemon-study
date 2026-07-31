@@ -1506,8 +1506,8 @@ function renderMathSettings(){
       <button class="big-btn set-diff ${cur==="20"?"active":""}" data-d="20">➕➖ 20 以内加减法</button>
       <button class="big-btn set-diff ${cur==="50"?"active":""}" data-d="50">➕➖ 50 以内加减法</button>
       <button class="big-btn set-diff ${cur==="100"?"active":""}" data-d="100">➕➖ 100 以内加减法</button>
-      <button class="big-btn set-diff ${cur==="mul"?"active":""}" data-d="mul" style="background:linear-gradient(180deg,#7CD38B,#4FB866);border-color:#3E9C52;color:#fff">✖️ 99 乘法口诀</button>
-      <button class="big-btn set-diff ${cur==="div"?"active":""}" data-d="div" style="background:linear-gradient(180deg,#7CD38B,#4FB866);border-color:#3E9C52;color:#fff">➗ 表内除法</button>
+      <button class="big-btn set-diff ${cur==="mul"?"active":""}" data-d="mul">✖️ 99 乘法口诀</button>
+      <button class="big-btn set-diff ${cur==="div"?"active":""}" data-d="div">➗ 表内除法</button>
     </div>
     <div style="margin-top:16px;font-size:22px;color:#9b8676">当前难度：<b id="setCur" style="color:#F58A1F">${names[cur]}</b></div>
     <div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`, { dialogClass: "set-dialog" });
