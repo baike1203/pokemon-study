@@ -43,8 +43,8 @@ import java.nio.charset.StandardCharsets;
  */
 public class MainActivity extends Activity {
 
-    // 线上地址：内容更新走网页，APK 无需重编
-    private static final String LIVE_URL = "https://pokemon-study.pages.dev/";
+    // 线上地址：内容更新走网页，APK 无需重编（使用 GitHub Pages 稳定地址，永不换址）
+    private static final String LIVE_URL = "https://baike1203.github.io/pokemon-study/";
     private static final int REQ_FILE = 1001;
 
     private WebView webView;
