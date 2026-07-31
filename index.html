@@ -367,6 +367,25 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 /* 庆祝大字 */
 #celebrateText { position: fixed; inset: 0; z-index: 401; display: none; align-items: center; justify-content: center; pointer-events: none; }
 #celebrateText span { font-size: 90px; font-weight: bold; color: var(--poke-yellow); text-shadow: 4px 4px 0 var(--poke-red), 8px 8px 20px rgba(0,0,0,.4); animation: popIn .6s cubic-bezier(.2,1.6,.4,1); }
+/* 成就解锁全屏庆祝 */
+#achCelebrate { position: fixed; inset: 0; z-index: 402; display: none; align-items: center; justify-content: center; pointer-events: none; background: rgba(40,30,20,.35); }
+#achCelebrate.show { display: flex; animation: fadeIn .25s ease; }
+.ach-cele-card { background: linear-gradient(180deg,#FFFDF7,#FFF1D6); border: 5px solid #FFD66B; border-radius: 28px; padding: 24px 40px; text-align: center; box-shadow: 0 16px 40px rgba(0,0,0,.3); animation: popIn .6s cubic-bezier(.2,1.6,.4,1); }
+.ach-cele-icon { font-size: 96px; line-height: 1; margin-bottom: 4px; }
+.ach-cele-title { font-size: 30px; color: var(--poke-blue); font-weight: bold; }
+.ach-cele-name { font-size: 40px; color: var(--poke-red); font-weight: bold; margin: 4px 0; text-shadow: 2px 2px 0 #FFE08A; }
+.ach-cele-reward { font-size: 30px; color: #4FA3E0; font-weight: bold; margin-top: 6px; }
+/* 护眼休息提醒 */
+.eye-rest { position: fixed; inset: 0; z-index: 403; display: none; align-items: center; justify-content: center; background: rgba(40,30,20,.4); }
+.eye-rest.show { display: flex; animation: fadeIn .25s ease; }
+.eye-rest-card { background: #FFFDF7; border: 5px solid #8FC9A4; border-radius: 28px; padding: 30px 36px; text-align: center; box-shadow: 0 16px 40px rgba(0,0,0,.3); max-width: 420px; }
+/* 学习报告 */
+.report-sec { text-align: left; margin: 14px 0; }
+.report-sec h3 { color: var(--poke-blue); font-size: 24px; margin: 6px 0; }
+.report-row { display: flex; justify-content: space-between; font-size: 22px; padding: 8px 4px; border-bottom: 1px dashed #ecdfc8; }
+.report-row b { color: var(--poke-red); }
+.report-weak { background: #FFF6E6; border: 2px solid #FFD66B; border-radius: 14px; padding: 10px 14px; font-size: 22px; margin-top: 8px; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* 对战血量 */
 .hearts { font-size: 26px; letter-spacing: 2px; }
@@ -916,7 +935,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.31.9";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.32.0";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -945,7 +964,13 @@ function defaultState(){
     poemDiff: "0",          // 古诗小舟难度（家长设置分级）：0~11 对应 一年级上~六年级下 共 12 学期
     testMode: false,        // 测试模式（家长设置内输入密码 112233 开启，开启后首页显示测试按钮条）
     ttsWorker: "",           // 云端中文语音 Worker 地址（Edge-TTS 中转，留空=不启用；填 https://xxx.workers.dev）
-    checkinLog: {}          // 打卡记录：{ "YYYY-MM-DD": 当天完成任务数 }，用于日历展示打卡情况
+    checkinLog: {},         // 打卡记录：{ "YYYY-MM-DD": 当天完成任务数 }，用于日历展示打卡情况
+    /* 学习报告统计：各模块完成次数 + 答题正确率累计（用于「设置→学习报告」） */
+    stat: {
+      modDone:  { pinyin:0, math:0, english:0, hanzi:0, poem:0 },  // 各模块累计完成（打卡）次数
+      modRight: { pinyin:0, math:0, english:0, hanzi:0, poem:0 },  // 累计一次答对题数（runQuiz 记录）
+      modTotal: { pinyin:0, math:0, english:0, hanzi:0, poem:0 }   // 累计总题数
+    }
   };
 }
 /* 自动备份（单文件滚动）：平板 APK 端把存档写入下载目录的固定文件名，同名覆盖 → 永远只有 1 个文件，不累积杂乱 */
@@ -1276,6 +1301,36 @@ function gainBall(count = 1){
 function confetti(n = 80){ const colors = ["#F25C5C","#FFCB05","#5B7CC9","#A4DBA4","#FFB3C6","#C0A8EE","#FFC486"];
   for (let i=0;i<n;i++){ const p=document.createElement("div"); p.className="confetti-piece"; p.style.left=Math.random()*100+"vw"; p.style.background=colors[rnd(0,colors.length-1)]; p.style.animationDuration=(2+Math.random()*2.5)+"s"; p.style.animationDelay=Math.random()*0.8+"s"; document.body.appendChild(p); setTimeout(()=>p.remove(),6000); } }
 function bigCelebrate(text = "你真棒！🎉"){ const el=$("#celebrateText"); el.querySelector("span").textContent=text; el.style.display="flex"; confetti(120); sfx.fanfare(); speak("哇！"+text.replace(/[🎉！]/g,"，")+"！"); setTimeout(()=>el.style.display="none",3200); }
+/* 学习报告：累计某模块答题正确率（firstTryRight/total） */
+function recordAccuracy(mod, right, total){
+  if (!mod || !total) return;
+  try {
+    if (!state.stat.modRight[mod])  state.stat.modRight[mod]  = 0;
+    if (!state.stat.modTotal[mod])  state.stat.modTotal[mod]  = 0;
+    state.stat.modRight[mod] += right; state.stat.modTotal[mod] += total;
+    saveState();
+  } catch(e){}
+}
+/* 成就解锁全屏庆祝（精灵球炸开 + 彩带 + 报出成就名） */
+function celebrateAchievement(d){
+  let el = document.getElementById("achCelebrate");
+  if (!el){
+    el = document.createElement("div"); el.id = "achCelebrate";
+    el.innerHTML = `<div class="ach-cele-card"><div class="ach-cele-icon" id="achCeleIcon"></div><div class="ach-cele-title">🏆 解锁新成就！</div><div class="ach-cele-name" id="achCeleName"></div><div class="ach-cele-reward" id="achCeleReward"></div></div>`;
+    document.body.appendChild(el);
+  }
+  const ico = d.icon.startsWith('data:image') ? `<img src="${d.icon}" style="width:96px;height:96px;image-rendering:pixelated">` : d.icon;
+  el.querySelector("#achCeleIcon").innerHTML = ico;
+  el.querySelector("#achCeleName").textContent = d.name;
+  el.querySelector("#achCeleReward").textContent = "超级球 +" + d.reward + " 🔵";
+  el.classList.add("show");
+  confetti(140);
+  try { sfx.fanfare(); } catch(e){}
+  try { speak("哇！解锁成就：" + d.name + "！超级球加" + d.reward + "！"); } catch(e){}
+  starBurst(window.innerWidth/2, window.innerHeight*0.42, 26);
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.remove("show"), 3500);
+}
 
 /* 轻提示 toast */
 function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.classList.add("show"),10); setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.remove(),400); }, 2600); }
@@ -1306,6 +1361,7 @@ function renderTasks(){
 function completeTask(key){
   if (state.daily.done[key]) return;
   state.daily.done[key] = true;
+  try { state.stat.modDone[key] = (state.stat.modDone[key]||0) + 1; } catch(e){}   // 学习报告：模块累计完成次数 +1
   if (!state.checkinLog || typeof state.checkinLog !== "object") state.checkinLog = {};   // 兜底：确保打卡记录对象存在
   // 记录当天打卡情况：当天已完成任务数（用于日历展示）
   try { const t = todayStr(); const c = TASKS.filter(x => state.daily.done[x.key]).length; state.checkinLog[t] = c; } catch(e){}
@@ -1349,7 +1405,7 @@ function openModule(key){
 }
 
 /* 通用答题引擎：答错题重排队尾直到答对（儿童友好） */
-function runQuiz({ title, color, questions, onFinish, speakOnShow = false }){
+function runQuiz({ title, color, questions, onFinish, speakOnShow = false, moduleKey = null }){
   const myToken = ++quizToken;   // 本场作答令牌；重开/切换时令牌变更，旧计时器回调据此失效
   busyStudying = true;   // 进入答题：抑制空闲气泡
   let queue = [...questions], total = questions.length, firstTryRight = 0, answeredSet = new Set(), attemptedFirst = new Set();
@@ -1382,7 +1438,7 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false }){
       attemptedFirst.add(q.id); queue.push(queue.shift()); setTimeout(()=>{ if(myToken===quizToken) show(); }, 1600);
     }
   }
-  function finish(){ if (myToken !== quizToken) return; onFinish(Math.round(firstTryRight/total*100)); }
+  function finish(){ if (myToken !== quizToken) return; const acc=Math.round(firstTryRight/total*100); if (moduleKey) recordAccuracy(moduleKey, firstTryRight, total); onFinish(acc); }
   show();
 }
 
@@ -1418,7 +1474,7 @@ function pinyinStart(){
       return { id:"ph"+i, prompt:h[0], sub:`（${h[2]}）这个字的拼音是？`, speakText:`${h[0]}，${h[2]}的${h[0]}`, speakOnShow:false, options:shuffle([h[1],...wrongs]), answer:h[1] };
     }
   });
-  runQuiz({ title:"🔤 拼音乐园", color:"#F45E85", questions,
+  runQuiz({ title:"🔤 拼音乐园", color:"#F45E85", questions, moduleKey:"pinyin",
     onFinish(acc){ openDialog(`<h2 style="color:#F45E85">🎉 拼音乐园完成！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">🏆</div><div style="font-size:26px;margin:10px 0">奖励你 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('pinyin')">收下精灵球 ⚡</button>`, {closable:false}); }
   });
 }
@@ -1442,6 +1498,10 @@ function openSettings(sub){
       <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
         <div style="font-size:22px;color:#9b8676;margin-bottom:10px">💾 进度备份 / 导入</div>
         <button class="big-btn" id="backupBtn2" style="width:100%;min-width:0">💾 备份 / 导入进度</button>
+      </div>
+      <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
+        <div style="font-size:22px;color:#9b8676;margin-bottom:10px">📊 学习数据</div>
+        <button class="big-btn" id="reportBtn2" style="width:100%;min-width:0">📊 查看学习报告</button>
       </div>
       <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
         <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">Edge-TTS 语音（免密钥）。留空则用本站内置语音（最稳，推荐）；也可填自己的 Worker 地址</span></div>
@@ -1472,6 +1532,8 @@ function openSettings(sub){
     bindSettingsTTS(); bindSettingsTest();
     const bb = document.getElementById("backupBtn2");
     if (bb) bb.addEventListener("click", ()=>{ sfx.click(); openBackup(); });
+    const rb = document.getElementById("reportBtn2");
+    if (rb) rb.addEventListener("click", ()=>{ sfx.click(); openReport(); });
     $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
     return;
   }
@@ -1565,7 +1627,7 @@ function mathQuiz(diff){
     while(wrongSet.size<3){ let w=ans+rnd(-5,5); if(w!==ans && w>=lo && w<=hi) wrongSet.add(w); }
     questions.push({ id:"m"+questions.length, prompt:p, options:shuffle([ans,...wrongSet]), answer:ans });
   }
-  runQuiz({ title:`🔢 数学 · ${names[diff]}`, color:"#F58A1F", questions,
+  runQuiz({ title:`🔢 数学 · ${names[diff]}`, color:"#F58A1F", questions, moduleKey:"math",
     onFinish(acc){ openDialog(`<h2 style="color:#F58A1F">🎉 数学闯关成功！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">${acc>=80?"🏆":"💪"}</div><div style="font-size:26px;margin:10px 0">${acc>=80?"简直是数学小天才！":"继续加油，明天会更棒！"}奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('math')">收下精灵球 ⚡</button>`, {closable:false}); }
   });
 }
@@ -1688,7 +1750,7 @@ function hanziTask(){
   const questions = [];
   for (let i=0;i<10;i++){ questions.push(buildHanziQ(typePlan[i % typePlan.length], bank, lvNum, i)); }
   shuffle(questions);
-  runQuiz({ title:`✍️ 识字 · ${hanziDiffName(lv)}`, color:"#45B045", questions,
+  runQuiz({ title:`✍️ 识字 · ${hanziDiffName(lv)}`, color:"#45B045", questions, moduleKey:"hanzi",
     onFinish(acc){ openDialog(`<h2 style="color:#45B045">🎉 识字任务完成！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">📝</div><div style="font-size:26px;margin:10px 0">又认识了好多字，奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('hanzi')">收下精灵球 ⚡</button>`, {closable:false}); }
   });
 }
@@ -1979,6 +2041,20 @@ function openGacha(ballType){
   if (ballType==="normal" && state.balls<=0) return noBallDialog("精灵球");
   if (ballType==="master" && state.masterBalls<=0) return noBallDialog("大师球");
   if (ballType==="super" && state.superBalls<=0) return noBallDialog("超级球");
+  if (ballType==="normal"){
+    const X = TASKS.filter(t=>state.daily.done[t.key]).length;   // 今天已完成任务数
+    const Y = X;                                                 // 每个任务奖励 1 个精灵球
+    openDialog(`<h2 style="color:var(--poke-red)">🎁 收服时间到！</h2>
+      <div style="font-size:27px;line-height:1.7;margin:14px 0">你今天完成了 <b style="color:var(--poke-red);font-size:38px">${X}</b> 个学习任务，<br>得到奖励 <b style="color:var(--poke-blue);font-size:38px">${Y}</b> 个精灵球！</div>
+      <div style="font-size:23px;color:#8a6d5c;margin:10px 0">点下面的球，把<b>努力</b>变成新伙伴吧！⚡</div>
+      <button class="big-btn" id="toGacha">🎯 开始抽卡（剩 ${state.balls} 个精灵球）</button>`, {closable:false});
+    $("#toGacha").addEventListener("click", ()=>{ sfx.click(); closeDialog(); beginDraw("normal"); });
+    return;
+  }
+  beginDraw(ballType);
+}
+/* 真正开始抽卡动画（普通/大师/超级球共用） */
+function beginDraw(ballType){
   openDialog(`<h2 style="color:var(--poke-red)">收服宝可梦！</h2><div id="gachaStage"><div class="gacha-ball shaking" id="gBall"><span class="gb-top"></span><span class="gb-bot"></span><span class="gb-core"></span></div>
     <div style="font-size:26px;color:#8a6d5c">${ballType==="master"?"🟣 紫色大师球光芒闪烁……":"精灵球在摇晃……里面是谁呢？"}</div></div>`, {closable:false});
   sfx.open();
@@ -2442,7 +2518,7 @@ function checkAchievements(){
   });
   saveState();
   renderBalls();   // 即时刷新顶部超级球数量，无需刷新整页
-  if (newly.length){ newly.forEach((d,i)=> setTimeout(()=>toast(`🏆 解锁成就：${d.name}（超级球+${d.reward}）`), i*900)); }
+  if (newly.length){ newly.forEach((d,i)=> setTimeout(()=>celebrateAchievement(d), i*450)); }
 }
 /* 计算某成就当前进度：返回 {cur,need,label} */
 function achievementProgress(d){
@@ -2497,6 +2573,53 @@ function openBackup(){
   $("#copyBtn").addEventListener("click", ()=>{ if(navigator.clipboard) navigator.clipboard.writeText(data); toast("已复制到剪贴板"); });
   $("#impBtn").addEventListener("click", ()=>{ doImport($("#ioText").value.trim()); });
   $("#impFile").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>doImport(r.result); r.readAsText(f); });
+}
+/* 学习报告：家长查看打卡天数、各模块完成次数、答题正确率与薄弱点、收集进度 */
+function openReport(){
+  const keys = Object.keys(state.checkinLog||{}).filter(k=> (state.checkinLog[k]||0) > 0);
+  const since = d => { const c = new Date(); c.setDate(c.getDate()-d); return keys.filter(k => new Date(k+"T00:00:00") >= c).length; };
+  const totalDays = keys.length, weekDays = since(7), monthDays = since(30);
+  const MODS = [["pinyin","🔤 拼音乐园"],["math","🔢 数学闯关"],["english","📖 英语 RAZ"],["hanzi","✍️ 识字达人"],["poem","📜 古诗小舟"]];
+  const NM = { pinyin:"拼音乐园", math:"数学闯关", english:"英语 RAZ", hanzi:"识字达人", poem:"古诗小舟" };
+  const doneRows = MODS.map(([k,nm])=>`<div class="report-row"><span>${nm}</span><b>${state.stat.modDone[k]||0} 次</b></div>`).join("");
+  const accRows = MODS.map(([k,nm])=>{
+    const t = state.stat.modTotal[k]||0, r = state.stat.modRight[k]||0;
+    const pct = t ? Math.round(r/t*100) : null;
+    return `<div class="report-row"><span>${nm}</span><b>${pct===null ? "—" : pct+"%"}</b></div>`;
+  }).join("");
+  let weak = null;
+  MODS.forEach(([k])=>{ const t = state.stat.modTotal[k]||0, r = state.stat.modRight[k]||0; if (!t) return; const pct = r/t; if (!weak || pct < weak.pct) weak = { k, pct: Math.round(pct*100) }; });
+  const weakHTML = weak
+    ? `<div class="report-weak">💡 薄弱点建议：多练习 <b>${NM[weak.k]}</b>（正确率 ${weak.pct}%）</div>`
+    : `<div class="report-weak">💡 先做几道题，我就能告诉你薄弱点啦～</div>`;
+  openDialog(`<h2 style="color:var(--poke-blue)">📊 学习报告</h2>
+    <div class="report-sec"><h3>📅 打卡天数</h3>
+      <div class="report-row"><span>累计打卡</span><b>${totalDays} 天</b></div>
+      <div class="report-row"><span>最近 7 天</span><b>${weekDays} 天</b></div>
+      <div class="report-row"><span>最近 30 天</span><b>${monthDays} 天</b></div>
+    </div>
+    <div class="report-sec"><h3>✅ 各模块完成次数</h3>${doneRows}</div>
+    <div class="report-sec"><h3>🎯 答题正确率</h3>${accRows}${weakHTML}</div>
+    <div class="report-sec"><h3>⭐ 收集进度</h3><div class="report-row"><span>宝可梦图鉴</span><b>${state.dex.length} / 151</b></div></div>
+    <button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">关闭</button>`, { dialogClass:"" });
+}
+/* 护眼休息提醒：连续使用 20 分钟后弹出（点「休息一下」后重新计时） */
+let eyeRestTimer = null;
+function startEyeRestTimer(){
+  if (eyeRestTimer) clearTimeout(eyeRestTimer);
+  eyeRestTimer = setTimeout(showEyeRest, 20*60*1000);
+}
+function showEyeRest(){
+  if (document.getElementById("eyeRest")) return;
+  const el = document.createElement("div");
+  el.id = "eyeRest"; el.className = "eye-rest";
+  el.innerHTML = `<div class="eye-rest-card"><div style="font-size:64px">👀💡</div>
+    <h2 style="color:var(--poke-blue)">眼睛休息一下吧～</h2>
+    <div style="font-size:24px;color:#8a6d5c;line-height:1.7;margin:8px 0">已经学习了 20 分钟，<br>看看远处、眨眨眼睛，<br>保护好小眼睛哦！</div>
+    <button class="big-btn" id="eyeClose">好的，休息一下</button></div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add("show"));
+  document.getElementById("eyeClose").addEventListener("click", ()=>{ sfx.click(); el.remove(); startEyeRestTimer(); });
 }
 function doImport(txt){
   try{
@@ -2680,6 +2803,7 @@ if (loadedEmpty){
 }
 tickClock();              // 顶部时钟立即显示一次
 setInterval(tickClock, 1000);
+startEyeRestTimer();      // 连续使用 20 分钟弹出护眼休息提醒
 $("#dateLine").addEventListener("click", openCalendar);   // 点击日期 → 打卡日历
 
 /* 若当前环境无法写入本地存储，提示家长改用 http 方式打开 */
