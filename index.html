@@ -786,7 +786,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.28";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.28.1";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1994,9 +1994,9 @@ function partnerSay(text){
 }
 /* 拖动伙伴挂件 */
 (function initPartnerDrag(){
-  const w = $("#partnerWidget"); let dragging=false, moved=false, sx=0, sy=0, ox=0, oy=0;
+  const w = $("#partnerWidget"), b = $("#partnerBubble"); let dragging=false, moved=false, sx=0, sy=0, ox=0, oy=0;
   w.addEventListener("pointerdown", e=>{ dragging=true; moved=false; w.style.cursor="grabbing"; sx=e.clientX; sy=e.clientY; const r=w.getBoundingClientRect(); ox=r.left; oy=r.top; w.setPointerCapture(e.pointerId); });
-  w.addEventListener("pointermove", e=>{ if(!dragging) return; if(Math.abs(e.clientX-sx)>6||Math.abs(e.clientY-sy)>6) moved=true; let nx=ox+(e.clientX-sx), ny=oy+(e.clientY-sy); nx=Math.max(0,Math.min(window.innerWidth-96,nx)); ny=Math.max(0,Math.min(window.innerHeight-96,ny)); w.style.left=nx+"px"; w.style.top=ny+"px"; w.style.right="auto"; w.style.bottom="auto"; });
+  w.addEventListener("pointermove", e=>{ if(!dragging) return; if(Math.abs(e.clientX-sx)>6||Math.abs(e.clientY-sy)>6) moved=true; let nx=ox+(e.clientX-sx), ny=oy+(e.clientY-sy); nx=Math.max(0,Math.min(window.innerWidth-96,nx)); ny=Math.max(0,Math.min(window.innerHeight-96,ny)); w.style.left=nx+"px"; w.style.top=ny+"px"; w.style.right="auto"; w.style.bottom="auto"; if (b.classList.contains("show")) positionBubble(b, w); });
   w.addEventListener("pointerup", ()=>{ if(!moved && state.partnerId) partnerInteract(); dragging=false; w.style.cursor="grab"; });
 })();
 /* 学习时随机鼓励气泡 */
