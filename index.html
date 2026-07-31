@@ -828,7 +828,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.31.4";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.31.5";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -863,8 +863,32 @@ let state = loadState();
 if (state.name === "小宝"){ state.name = "苏打"; saveState(); }   // 默认名字由「小宝」改为「苏打」（仅影响仍用旧默认名的存档）
 let quizToken = 0;          // 答题会话令牌：每开新一题/新一场自增，旧回调据此失效（防止切换时旧计时器串场）
 let activeModule = null;    // 当前打开的学习模块（家长设置齿轮借此判断是否要按新难度重开数学）
-function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s); return s; } catch(e){ return defaultState(); } }
-function saveState(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){ /* 某些浏览器/方式下 localStorage 不可用，忽略写入错误，保证不中断交互 */ } }
+/* 自动备份（单文件滚动）：平板 APK 端把存档写入下载目录的固定文件名，同名覆盖 → 永远只有 1 个文件，不累积杂乱 */
+let loadedEmpty = false;
+let _autoBkTimer = null;
+function hasMeaningfulProgress(){
+  return (state.dex && state.dex.length>0) ||
+         (state.checkinLog && Object.keys(state.checkinLog).length>0) ||
+         (state.superBalls>0) || (state.masterBalls>0) ||
+         (state.achievements && state.achievements.length>0);
+}
+function scheduleAutoBackup(){
+  if (_autoBkTimer) clearTimeout(_autoBkTimer);
+  _autoBkTimer = setTimeout(()=>{ _autoBkTimer = null; doAutoBackup(); }, 5000); // 防抖：连续多次保存只落盘一次
+}
+function doAutoBackup(){
+  try {
+    if (!hasMeaningfulProgress()) return;            // 进度为空（如刚被清空）时不覆盖，避免冲掉已有的好备份
+    const json = JSON.stringify(state, null, 2);
+    const fn = "pokemon-study-auto-backup.json";     // 固定文件名，每次覆盖，下载目录里始终只有这一个
+    if (window.PokeBridge && window.PokeBridge.exportSave){
+      window.PokeBridge.exportSave(json, fn);        // 平板 APK：原生写入「下载/Download」目录，同名覆盖
+    }
+    // 电脑浏览器端不自动落文件：localStorage 已自动保存；且 blob 同名下载会被加 (1) 累积，反而更乱
+  } catch(e){}
+}
+function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); loadedEmpty = !raw; if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s); return s; } catch(e){ loadedEmpty = true; return defaultState(); } }
+function saveState(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){ /* 某些浏览器/方式下 localStorage 不可用，忽略写入错误，保证不中断交互 */ } scheduleAutoBackup(); }
 /* 兜底重建：若某天的打卡日历 checkinLog 缺失（旧备份 / 早期写入异常导致 state.checkinLog 为 undefined），
    用当日 daily.done 反推补全（完成几个任务就记几个），避免日历空白。
    仅在对应日期没有数值记录时才补充，绝不覆盖已有正确记录。 */
@@ -2345,6 +2369,7 @@ function openBackup(){
   const data = JSON.stringify(state);
   openDialog(`<h2 style="color:var(--poke-blue)">💾 进度备份</h2>
     <div style="font-size:20px;color:#9b8676;margin-bottom:8px">导出：平板 APK 会保存到「下载 / Download」文件夹；电脑浏览器保存到默认下载目录。导入：选择文件或粘贴内容后点导入。</div>
+    <div style="font-size:15px;color:#3F9D3F;background:#F2FAF2;border-radius:10px;padding:8px 10px;margin-bottom:8px">✅ 已开启自动备份：每次进度变化会自动更新下载目录里的 <b>pokemon-study-auto-backup.json</b>（始终 1 个文件，重装/清数据后可随时导入恢复）。</div>
     <button class="big-btn blue" id="expBtn">⬇️ 下载进度文件</button>
     <button class="big-btn yellow" id="copyBtn">📋 复制进度</button>
     <hr style="margin:14px 0;border:none;border-top:2px dashed #e3d8c2">
@@ -2534,6 +2559,8 @@ renderTasks();
 renderDex();
 applyTestMode();          // 依据存储的测试模式开关，决定是否显示首页测试按钮条
 welcomeIfNeeded();
+// 空存档温和提示：换设备/重装导致本地进度丢失时，引导导入备份（避免静默开新档让人误以为"被清空"）
+if (loadedEmpty && !overlay.classList.contains("show")){ setTimeout(()=>toast("没有找到本地进度～若是换设备/重装后，可在设置里「💾 进度备份」导入之前的备份恢复原进度。"), 1600); }
 tickClock();              // 顶部时钟立即显示一次
 setInterval(tickClock, 1000);
 $("#dateLine").addEventListener("click", openCalendar);   // 点击日期 → 打卡日历
