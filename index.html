@@ -273,6 +273,7 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .dialog { background: #FFFDF8; border-radius: 36px; width: 100%; max-width: 900px; max-height: calc(100vh - 60px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 28px 26px 30px; position: relative; border: 6px solid var(--poke-yellow); box-shadow: 0 20px 50px rgba(0,0,0,.3); animation: popIn .25s cubic-bezier(.2, 1.4, .5, 1); text-align: center; }
 @keyframes popIn { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .dialog h2 { font-size: 38px; margin-bottom: 14px; }
+.dialog.set-dialog { max-width: 460px; }
 .dialog .close-x { position: absolute; top: 14px; right: 14px; width: 60px; height: 60px; border-radius: 50%; border: none; background: #FFE3E3; color: var(--poke-red); font-size: 30px; font-weight: bold; cursor: pointer; font-family: inherit; }
 
 /* 大按钮 */
@@ -576,7 +577,6 @@ nav button.active .ic-fill { fill: #FFC9C2; }
       <div class="dex-actions">
         <button class="big-btn blue" id="adventureBtn">⚔️ 去冒险</button>
         <button class="big-btn yellow" id="achBtn">🏅 成就墙</button>
-        <button class="big-btn" id="backupBtn">💾 备份</button>
       </div>
     </div>
     <div class="dex-grid" id="dexGrid"></div>
@@ -828,7 +828,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.31.1";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.31.3";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -863,8 +863,20 @@ let state = loadState();
 if (state.name === "小宝"){ state.name = "苏打"; saveState(); }   // 默认名字由「小宝」改为「苏打」（仅影响仍用旧默认名的存档）
 let quizToken = 0;          // 答题会话令牌：每开新一题/新一场自增，旧回调据此失效（防止切换时旧计时器串场）
 let activeModule = null;    // 当前打开的学习模块（家长设置齿轮借此判断是否要按新难度重开数学）
-function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); return s; } catch(e){ return defaultState(); } }
+function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s); return s; } catch(e){ return defaultState(); } }
 function saveState(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){ /* 某些浏览器/方式下 localStorage 不可用，忽略写入错误，保证不中断交互 */ } }
+/* 兜底重建：若某天的打卡日历 checkinLog 缺失（旧备份 / 早期写入异常导致 state.checkinLog 为 undefined），
+   用当日 daily.done 反推补全（完成几个任务就记几个），避免日历空白。
+   仅在对应日期没有数值记录时才补充，绝不覆盖已有正确记录。 */
+function rebuildCheckinLog(s){
+  if (!s || !s.daily || !s.daily.done) return;
+  if (!s.checkinLog || typeof s.checkinLog !== "object") s.checkinLog = {};
+  const d = s.daily.date;
+  if (d && typeof s.checkinLog[d] !== "number"){
+    const cnt = TASKS.filter(t => s.daily.done[t.key]).length;
+    if (cnt > 0) s.checkinLog[d] = cnt;
+  }
+}
 /* 检测当前环境是否允许本地存储（file:// 被部分浏览器禁用时会失败） */
 function storageWorks(){
   try { const k = "pokeStudyTest"; localStorage.setItem(k, "1"); localStorage.removeItem(k); return true; }
@@ -1078,9 +1090,10 @@ if (window.speechSynthesis){
 const $ = sel => document.querySelector(sel);
 const overlay = $("#overlay"), dialogContent = $("#dialogContent"), dialogClose = $("#dialogClose");
 let onDialogClose = null;
-function openDialog(html, { closable = true, onClose = null } = {}){
+function openDialog(html, { closable = true, onClose = null, dialogClass = "" } = {}){
   dialogContent.innerHTML = html;
   dialogClose.style.display = closable ? "" : "none";
+  dialogBox.className = "dialog" + (dialogClass ? " " + dialogClass : "");
   onDialogClose = onClose; overlay.classList.add("show");
 }
 function closeDialog(){ busyStudying = false;
@@ -1180,9 +1193,10 @@ function renderTasks(){
 function completeTask(key){
   if (state.daily.done[key]) return;
   state.daily.done[key] = true;
-  try { saveState(); } catch(e){}
+  if (!state.checkinLog || typeof state.checkinLog !== "object") state.checkinLog = {};   // 兜底：确保打卡记录对象存在
   // 记录当天打卡情况：当天已完成任务数（用于日历展示）
-  try { const t = todayStr(); const c = TASKS.filter(x => state.daily.done[x.key]).length; state.checkinLog[t] = c; saveState(); } catch(e){}
+  try { const t = todayStr(); const c = TASKS.filter(x => state.daily.done[x.key]).length; state.checkinLog[t] = c; } catch(e){}
+  try { saveState(); } catch(e){}
   // 先同步刷新所有相关界面（无论下方动画/语音是否异常，计数、任务卡、收服标签都立即可见）
   try { renderTasks(); renderHeader(); renderDex(); renderBalls(); } catch(e){}
   try { gainBall(1); } catch(e){ showBugBanner("gainBall: " + (e && (e.stack||e.message) || e)); }
@@ -1312,6 +1326,10 @@ function openSettings(sub){
         <button class="big-btn set-mod" data-m="hanzi">✍️ 识字达人<small>6 级字库分级</small></button>
       </div>
       <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
+        <div style="font-size:22px;color:#9b8676;margin-bottom:10px">💾 进度备份 / 导入</div>
+        <button class="big-btn" id="backupBtn2" style="width:100%;min-width:0">💾 备份 / 导入进度</button>
+      </div>
+      <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
         <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">Edge-TTS 语音（免密钥）。留空则用本站内置语音（最稳，推荐）；也可填自己的 Worker 地址</span></div>
         <div style="font-size:16px;margin:-4px 0 10px;padding:8px 12px;border-radius:12px;background:#F7F3EA;color:#7a6a58;line-height:1.6">
           当前朗读通道：<b style="color:${cloudTTSAvailable()?'#3F9D3F':'#C97A22'}">${cloudTTSAvailable() ? "☁️ 云端小晓（全平台统一）" : (CURRENT_VOICE ? "💻 系统嗓音｜" + (CURRENT_VOICE.name||"") : "⚠️ 无可用语音")}</b>
@@ -1335,9 +1353,11 @@ function openSettings(sub){
         </div>
       </div>
       <div style="margin-top:14px;text-align:center;font-size:15px;color:#bbab98">当前版本：${APP_VERSION}</div>
-      <div style="margin-top:14px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`);
+      <div style="margin-top:14px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`, { dialogClass: "set-dialog" });
     document.querySelectorAll(".set-mod").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); openSettings(b.dataset.m); }));
     bindSettingsTTS(); bindSettingsTest();
+    const bb = document.getElementById("backupBtn2");
+    if (bb) bb.addEventListener("click", ()=>{ sfx.click(); openBackup(); });
     $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
     return;
   }
@@ -1375,7 +1395,7 @@ function renderMathSettings(){
       <button class="big-btn set-diff ${cur==="div"?"active":""}" data-d="div" style="background:linear-gradient(180deg,#7CD38B,#4FB866);border-color:#3E9C52;color:#fff">➗ 表内除法</button>
     </div>
     <div style="margin-top:16px;font-size:22px;color:#9b8676">当前难度：<b id="setCur" style="color:#F58A1F">${names[cur]}</b></div>
-    <div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`);
+    <div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`, { dialogClass: "set-dialog" });
   $("#setBack").addEventListener("click",()=>{ sfx.click(); openSettings(); });
   document.querySelectorAll(".set-diff").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); state.mathDiff=b.dataset.d; saveState(); document.querySelectorAll(".set-diff").forEach(x=>x.classList.remove("active")); b.classList.add("active"); $("#setCur").textContent=names[b.dataset.d]; toast("难度已设为："+names[b.dataset.d]); if(activeModule==="math"){ setTimeout(()=>{ closeDialog(); activeModule="math"; mathTask(); },700); } }));
   $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
@@ -1387,7 +1407,7 @@ function renderHanziSettings(){
     <button class="big-btn yellow" id="setBack" style="min-width:120px;margin-bottom:8px">← 返回</button>
     <div class="py-tabs" style="flex-direction:column;align-items:stretch;gap:12px">${items}</div>
     <div style="margin-top:16px;font-size:22px;color:#9b8676">当前难度：<b id="setCur" style="color:#45B045">难度${cur}・${hanziDiffName(cur)}</b></div>
-    <div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`);
+    <div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`, { dialogClass: "set-dialog" });
   $("#setBack").addEventListener("click",()=>{ sfx.click(); openSettings(); });
   document.querySelectorAll(".set-diff").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); state.hanziDiff=b.dataset.d; saveState(); document.querySelectorAll(".set-diff").forEach(x=>x.classList.remove("active")); b.classList.add("active"); $("#setCur").textContent="难度"+b.dataset.d+"・"+hanziDiffName(b.dataset.d); toast("识字难度已设为：难度"+b.dataset.d); if(activeModule==="hanzi"){ setTimeout(()=>{ closeDialog(); activeModule="hanzi"; hanziTask(); },700); } }));
   $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
@@ -2005,6 +2025,13 @@ function timeGreetingLine(){
   if (h>=11 && h<18) return "下午好呀，我们一起加油！";
   return "今天辛苦啦，月亮都出来了🌙";
 }
+function timeHello(){
+  const h = new Date().getHours();
+  if (h>=5 && h<11) return "早上好";
+  if (h>=11 && h<13) return "中午好";
+  if (h>=13 && h<18) return "下午好";
+  return "晚上好";
+}
 function partnerName(){ return state.partnerId ? POKEMON[state.partnerId-1] : "伙伴"; }
 function allTasksDone(){ return TASKS.every(t => state.daily.done[t.key]); }
 function positionBubble(b, w){
@@ -2354,6 +2381,7 @@ function doImport(txt){
       });
       merged.checkinLog = log;
     }
+    rebuildCheckinLog(merged);   // 兜底：从 daily.done 反推补全缺失的打卡记录（如旧备份无 checkinLog）
     state = merged; saveState();
     renderHeader(); renderTasks(); renderDex(); closeDialog(); toast("进度导入成功！（打卡日历已合并，历史记录不会丢失）");
   }catch(err){ toast("导入失败：内容无效"); }
@@ -2374,7 +2402,7 @@ $("#superBtn").addEventListener("click", ()=>{
 });
 $("#adventureBtn").addEventListener("click", ()=>{ sfx.click(); startAdventure(); });
 $("#achBtn").addEventListener("click", ()=>{ sfx.click(); renderAchievements(); });
-$("#backupBtn").addEventListener("click", ()=>{ sfx.click(); openBackup(); });
+/* 备份按钮已移入设置面板（备份 / 导入进度），图鉴页不再保留 */
 
 /* 家长设置齿轮（右下角悬浮） */
 $("#gearBtn").addEventListener("click", ()=>{
@@ -2491,10 +2519,10 @@ function welcomeIfNeeded(){
     state.lastVisit = t; saveState();
     const doneCount = TASKS.filter(x => state.daily.done[x.key]).length;
     openDialog(`<h2 style="color:var(--poke-red)">你好呀，${state.name}！👋</h2>
-      <div style="font-size:70px;margin:6px 0">⚡🐭⚡</div>
+      <div style="font-size:64px;margin:6px 0">⚡<img src="${spriteUrl(25)}" alt="皮卡丘" style="width:92px;height:92px;image-rendering:pixelated;vertical-align:middle">⚡</div>
       <div style="font-size:28px;line-height:1.6">新的一天开始啦！<br>今天有 <b style="color:var(--poke-red)">${5-doneCount} 个</b>学习任务等着你，<br>完成任务就能得到精灵球，<br>去收服新的宝可梦吧！</div>
       <button class="big-btn" id="welcomeGo">出发！🚀</button>`, {closable:false});
-    $("#welcomeGo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); speak(`${state.name}，早上好！新的宝可梦冒险开始啦！`); if (state.partnerId) setTimeout(()=>partnerSay(timeGreetingLine()), 600); });
+    $("#welcomeGo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); speak(`${state.name}，${timeHello()}！新的宝可梦冒险开始啦！`); if (state.partnerId) setTimeout(()=>partnerSay(timeGreetingLine()), 600); });
   }
 }
 setInterval(()=>{ const before=state.daily.date; checkDailyReset(); if(state.daily.date!==before){ renderTasks(); renderHeader(); } }, 60000);
