@@ -664,23 +664,106 @@ const HANZI = [
   ["来","lái","回来"],["去","qù","去年"],["走","zǒu","走路"],["坐","zuò","坐下"]
 ];
 
-/* 古诗 15 首（lines 与 pinyin 一一对应） */
+/* 古诗：按 12 学期组织（部编统编教材必背+拓展）；sem=0..11 对应 一年级上~六年级下；req=true 为必背(✅)、false 为拓展(📌)。诗句按课本补全，先不放拼音，听一听用 TTS 朗读。 */
+const POEM_SEM_NAMES = ["一年级上册","一年级下册","二年级上册","二年级下册","三年级上册","三年级下册","四年级上册","四年级下册","五年级上册","五年级下册","六年级上册","六年级下册"];
 const POEMS = [
-  { title:"咏鹅", author:"骆宾王", lines:["鹅，鹅，鹅，","曲项向天歌。","白毛浮绿水，","红掌拨清波。"], pinyin:["é é é","qū xiàng xiàng tiān gē","bái máo fú lǜ shuǐ","hóng zhǎng bō qīng bō"] },
-  { title:"江南", author:"汉乐府", lines:["江南可采莲，","莲叶何田田。","鱼戏莲叶间。","鱼戏莲叶东，","鱼戏莲叶西，","鱼戏莲叶南，","鱼戏莲叶北。"], pinyin:["jiāng nán kě cǎi lián","lián yè hé tián tián","yú xì lián yè jiān","yú xì lián yè dōng","yú xì lián yè xī","yú xì lián yè nán","yú xì lián yè běi"] },
-  { title:"画", author:"王维", lines:["远看山有色，","近听水无声。","春去花还在，","人来鸟不惊。"], pinyin:["yuǎn kàn shān yǒu sè","jìn tīng shuǐ wú shēng","chūn qù huā hái zài","rén lái niǎo bù jīng"] },
-  { title:"悯农（其二）", author:"李绅", lines:["锄禾日当午，","汗滴禾下土。","谁知盘中餐，","粒粒皆辛苦。"], pinyin:["chú hé rì dāng wǔ","hàn dī hé xià tǔ","shuí zhī pán zhōng cān","lì lì jiē xīn kǔ"] },
-  { title:"古朗月行（节选）", author:"李白", lines:["小时不识月，","呼作白玉盘。","又疑瑶台镜，","飞在青云端。"], pinyin:["xiǎo shí bù shí yuè","hū zuò bái yù pán","yòu yí yáo tái jìng","fēi zài qīng yún duān"] },
-  { title:"风", author:"李峤", lines:["解落三秋叶，","能开二月花。","过江千尺浪，","入竹万竿斜。"], pinyin:["jiě luò sān qiū yè","néng kāi èr yuè huā","guò jiāng qiān chǐ làng","rù zhú wàn gān xié"] },
-  { title:"静夜思", author:"李白", lines:["床前明月光，","疑是地上霜。","举头望明月，","低头思故乡。"], pinyin:["chuáng qián míng yuè guāng","yí shì dì shàng shuāng","jǔ tóu wàng míng yuè","dī tóu sī gù xiāng"] },
-  { title:"春晓", author:"孟浩然", lines:["春眠不觉晓，","处处闻啼鸟。","夜来风雨声，","花落知多少。"], pinyin:["chūn mián bù jué xiǎo","chù chù wén tí niǎo","yè lái fēng yǔ shēng","huā luò zhī duō shǎo"] },
-  { title:"赠汪伦", author:"李白", lines:["李白乘舟将欲行，","忽闻岸上踏歌声。","桃花潭水深千尺，","不及汪伦送我情。"], pinyin:["lǐ bái chéng zhōu jiāng yù xíng","hū wén àn shàng tà gē shēng","táo huā tán shuǐ shēn qiān chǐ","bù jí wāng lún sòng wǒ qíng"] },
-  { title:"寻隐者不遇", author:"贾岛", lines:["松下问童子，","言师采药去。","只在此山中，","云深不知处。"], pinyin:["sōng xià wèn tóng zǐ","yán shī cǎi yào qù","zhǐ zài cǐ shān zhōng","yún shēn bù zhī chù"] },
-  { title:"池上", author:"白居易", lines:["小娃撑小艇，","偷采白莲回。","不解藏踪迹，","浮萍一道开。"], pinyin:["xiǎo wá chēng xiǎo tǐng","tōu cǎi bái lián huí","bù jiě cáng zōng jì","fú píng yí dào kāi"] },
-  { title:"小池", author:"杨万里", lines:["泉眼无声惜细流，","树阴照水爱晴柔。","小荷才露尖尖角，","早有蜻蜓立上头。"], pinyin:["quán yǎn wú shēng xī xì liú","shù yīn zhào shuǐ ài qíng róu","xiǎo hé cái lù jiān jiān jiǎo","zǎo yǒu qīng tíng lì shàng tóu"] },
-  { title:"画鸡", author:"唐寅", lines:["头上红冠不用裁，","满身雪白走将来。","平生不敢轻言语，","一叫千门万户开。"], pinyin:["tóu shàng hóng guān bú yòng cái","mǎn shēn xuě bái zǒu jiāng lái","píng shēng bù gǎn qīng yán yǔ","yí jiào qiān mén wàn hù kāi"] },
-  { title:"登鹳雀楼", author:"王之涣", lines:["白日依山尽，","黄河入海流。","欲穷千里目，","更上一层楼。"], pinyin:["bái rì yī shān jìn","huáng hé rù hǎi liú","yù qióng qiān lǐ mù","gèng shàng yì céng lóu"] },
-  { title:"悯农（其一）", author:"李绅", lines:["春种一粒粟，","秋收万颗子。","四海无闲田，","农夫犹饿死。"], pinyin:["chūn zhòng yí lì sù","qiū shōu wàn kē zǐ","sì hǎi wú xián tián","nóng fū yóu è sǐ"] }
+  // —— 一年级上册（sem 0）——
+  { title:"咏鹅", author:"骆宾王", sem:0, req:true, lines:["鹅，鹅，鹅，","曲项向天歌。","白毛浮绿水，","红掌拨清波。"] },
+  { title:"江南", author:"汉乐府", sem:0, req:true, lines:["江南可采莲，","莲叶何田田。","鱼戏莲叶间。","鱼戏莲叶东，","鱼戏莲叶西，","鱼戏莲叶南，","鱼戏莲叶北。"] },
+  { title:"画", author:"王维", sem:0, req:true, lines:["远看山有色，","近听水无声。","春去花还在，","人来鸟不惊。"] },
+  { title:"悯农（其二）", author:"李绅", sem:0, req:true, lines:["锄禾日当午，","汗滴禾下土。","谁知盘中餐，","粒粒皆辛苦。"] },
+  { title:"古朗月行（节选）", author:"李白", sem:0, req:false, lines:["小时不识月，","呼作白玉盘。","又疑瑶台镜，","飞在青云端。"] },
+  { title:"风", author:"李峤", sem:0, req:false, lines:["解落三秋叶，","能开二月花。","过江千尺浪，","入竹万竿斜。"] },
+  // —— 一年级下册（sem 1）——
+  { title:"春晓", author:"孟浩然", sem:1, req:true, lines:["春眠不觉晓，","处处闻啼鸟。","夜来风雨声，","花落知多少。"] },
+  { title:"赠汪伦", author:"李白", sem:1, req:true, lines:["李白乘舟将欲行，","忽闻岸上踏歌声。","桃花潭水深千尺，","不及汪伦送我情。"] },
+  { title:"静夜思", author:"李白", sem:1, req:true, lines:["床前明月光，","疑是地上霜。","举头望明月，","低头思故乡。"] },
+  { title:"寻隐者不遇", author:"贾岛", sem:1, req:true, lines:["松下问童子，","言师采药去。","只在此山中，","云深不知处。"] },
+  { title:"池上", author:"白居易", sem:1, req:true, lines:["小娃撑小艇，","偷采白莲回。","不解藏踪迹，","浮萍一道开。"] },
+  { title:"小池", author:"杨万里", sem:1, req:true, lines:["泉眼无声惜细流，","树阴照水爱晴柔。","小荷才露尖尖角，","早有蜻蜓立上头。"] },
+  { title:"画鸡", author:"唐寅", sem:1, req:false, lines:["头上红冠不用裁，","满身雪白走将来。","平生不敢轻言语，","一叫千门万户开。"] },
+  // —— 二年级上册（sem 2）——
+  { title:"梅花", author:"王安石", sem:2, req:true, lines:["墙角数枝梅，","凌寒独自开。","遥知不是雪，","为有暗香来。"] },
+  { title:"小儿垂钓", author:"胡令能", sem:2, req:true, lines:["蓬头稚子学垂纶，","侧坐莓苔草映身。","路人借问遥招手，","怕得鱼惊不应人。"] },
+  { title:"登鹳雀楼", author:"王之涣", sem:2, req:true, lines:["白日依山尽，","黄河入海流。","欲穷千里目，","更上一层楼。"] },
+  { title:"望庐山瀑布", author:"李白", sem:2, req:true, lines:["日照香炉生紫烟，","遥看瀑布挂前川。","飞流直下三千尺，","疑是银河落九天。"] },
+  { title:"江雪", author:"柳宗元", sem:2, req:false, lines:["千山鸟飞绝，","万径人踪灭。","孤舟蓑笠翁，","独钓寒江雪。"] },
+  { title:"夜宿山寺", author:"李白", sem:2, req:false, lines:["危楼高百尺，","手可摘星辰。","不敢高声语，","恐惊天上人。"] },
+  { title:"敕勒歌", author:"北朝民歌", sem:2, req:false, lines:["敕勒川，阴山下。","天似穹庐，笼盖四野。","天苍苍，野茫茫，","风吹草低见牛羊。"] },
+  // —— 二年级下册（sem 3）——
+  { title:"村居", author:"高鼎", sem:3, req:true, lines:["草长莺飞二月天，","拂堤杨柳醉春烟。","儿童散学归来早，","忙趁东风放纸鸢。"] },
+  { title:"咏柳", author:"贺知章", sem:3, req:true, lines:["碧玉妆成一树高，","万条垂下绿丝绦。","不知细叶谁裁出，","二月春风似剪刀。"] },
+  { title:"赋得古原草送别（节选）", author:"白居易", sem:3, req:true, lines:["离离原上草，","一岁一枯荣。","野火烧不尽，","春风吹又生。"] },
+  { title:"晓出净慈寺送林子方", author:"杨万里", sem:3, req:true, lines:["毕竟西湖六月中，","风光不与四时同。","接天莲叶无穷碧，","映日荷花别样红。"] },
+  { title:"绝句", author:"杜甫", sem:3, req:true, lines:["两个黄鹂鸣翠柳，","一行白鹭上青天。","窗含西岭千秋雪，","门泊东吴万里船。"] },
+  { title:"悯农（其一）", author:"李绅", sem:3, req:false, lines:["春种一粒粟，","秋收万颗子。","四海无闲田，","农夫犹饿死。"] },
+  { title:"舟夜书所见", author:"查慎行", sem:3, req:false, lines:["月黑见渔灯，","孤光一点萤。","微微风簇浪，","散作满河星。"] },
+  // —— 三年级上册（sem 4）——
+  { title:"所见", author:"袁枚", sem:4, req:true, lines:["牧童骑黄牛，","歌声振林樾。","意欲捕鸣蝉，","忽然闭口立。"] },
+  { title:"山行", author:"杜牧", sem:4, req:true, lines:["远上寒山石径斜，","白云生处有人家。","停车坐爱枫林晚，","霜叶红于二月花。"] },
+  { title:"赠刘景文", author:"苏轼", sem:4, req:true, lines:["荷尽已无擎雨盖，","菊残犹有傲霜枝。","一年好景君须记，","最是橙黄橘绿时。"] },
+  { title:"夜书所见", author:"叶绍翁", sem:4, req:true, lines:["萧萧梧叶送寒声，","江上秋风动客情。","知有儿童挑促织，","夜深篱落一灯明。"] },
+  { title:"望天门山", author:"李白", sem:4, req:true, lines:["天门中断楚江开，","碧水东流至此回。","两岸青山相对出，","孤帆一片日边来。"] },
+  { title:"饮湖上初晴后雨", author:"苏轼", sem:4, req:true, lines:["水光潋滟晴方好，","山色空蒙雨亦奇。","欲把西湖比西子，","淡妆浓抹总相宜。"] },
+  { title:"望洞庭", author:"刘禹锡", sem:4, req:true, lines:["湖光秋月两相和，","潭面无风镜未磨。","遥望洞庭山水翠，","白银盘里一青螺。"] },
+  { title:"早发白帝城", author:"李白", sem:4, req:false, lines:["朝辞白帝彩云间，","千里江陵一日还。","两岸猿声啼不住，","轻舟已过万重山。"] },
+  { title:"采莲曲", author:"王昌龄", sem:4, req:false, lines:["荷叶罗裙一色裁，","芙蓉向脸两边开。","乱入池中看不见，","闻歌始觉有人来。"] },
+  // —— 三年级下册（sem 5）——
+  { title:"绝句", author:"杜甫", sem:5, req:true, lines:["迟日江山丽，","春风花草香。","泥融飞燕子，","沙暖睡鸳鸯。"] },
+  { title:"惠崇春江晚景", author:"苏轼", sem:5, req:true, lines:["竹外桃花三两枝，","春江水暖鸭先知。","蒌蒿满地芦芽短，","正是河豚欲上时。"] },
+  { title:"三衢道中", author:"曾几", sem:5, req:true, lines:["梅子黄时日日晴，","小溪泛尽却山行。","绿阴不减来时路，","添得黄鹂四五声。"] },
+  { title:"忆江南", author:"白居易", sem:5, req:true, lines:["江南好，风景旧曾谙。","日出江花红胜火，","春来江水绿如蓝。","能不忆江南？"] },
+  { title:"守株待兔", author:"《韩非子》", sem:5, req:true, lines:["宋人有耕者。","田中有株。","兔走触株，折颈而死。","因释其耒而守株，冀复得兔。","兔不可复得，而身为宋国笑。"] },
+  { title:"滁州西涧", author:"韦应物", sem:5, req:true, lines:["独怜幽草涧边生，","上有黄鹂深树鸣。","春潮带雨晚来急，","野渡无人舟自横。"] },
+  { title:"大林寺桃花", author:"白居易", sem:5, req:false, lines:["人间四月芳菲尽，","山寺桃花始盛开。","长恨春归无觅处，","不知转入此中来。"] },
+  // —— 四年级上册（sem 6）——
+  { title:"暮江吟", author:"白居易", sem:6, req:true, lines:["一道残阳铺水中，","半江瑟瑟半江红。","可怜九月初三夜，","露似真珠月似弓。"] },
+  { title:"题西林壁", author:"苏轼", sem:6, req:true, lines:["横看成岭侧成峰，","远近高低各不同。","不识庐山真面目，","只缘身在此山中。"] },
+  { title:"雪梅", author:"卢钺", sem:6, req:true, lines:["梅雪争春未肯降，","骚人阁笔费评章。","梅须逊雪三分白，","雪却输梅一段香。"] },
+  { title:"嫦娥", author:"李商隐", sem:6, req:true, lines:["云母屏风烛影深，","长河渐落晓星沉。","嫦娥应悔偷灵药，","碧海青天夜夜心。"] },
+  { title:"出塞", author:"王昌龄", sem:6, req:true, lines:["秦时明月汉时关，","万里长征人未还。","但使龙城飞将在，","不教胡马度阴山。"] },
+  { title:"凉州词", author:"王翰", sem:6, req:true, lines:["葡萄美酒夜光杯，","欲饮琵琶马上催。","醉卧沙场君莫笑，","古来征战几人回？"] },
+  { title:"夏日绝句", author:"李清照", sem:6, req:true, lines:["生当作人杰，","死亦为鬼雄。","至今思项羽，","不肯过江东。"] },
+  // —— 四年级下册（sem 7）——
+  { title:"宿新市徐公店", author:"杨万里", sem:7, req:true, lines:["篱落疏疏一径深，","树头新绿未成阴。","儿童急走追黄蝶，","飞入菜花无处寻。"] },
+  { title:"四时田园杂兴・其二十五", author:"范成大", sem:7, req:true, lines:["梅子金黄杏子肥，","麦花雪白菜花稀。","日长篱落无人过，","惟有蜻蜓蛱蝶飞。"] },
+  { title:"清平乐・村居", author:"辛弃疾", sem:7, req:true, lines:["茅檐低小，溪上青青草。","醉里吴音相媚好，白发谁家翁媪？","大儿锄豆溪东，中儿正织鸡笼。","最喜小儿亡赖，溪头卧剥莲蓬。"] },
+  { title:"蜂", author:"罗隐", sem:7, req:true, lines:["不论平地与山尖，","无限风光尽被占。","采得百花成蜜后，","为谁辛苦为谁甜？"] },
+  { title:"芙蓉楼送辛渐", author:"王昌龄", sem:7, req:true, lines:["寒雨连江夜入吴，","平明送客楚山孤。","洛阳亲友如相问，","一片冰心在玉壶。"] },
+  { title:"塞下曲", author:"卢纶", sem:7, req:true, lines:["月黑雁飞高，","单于夜遁逃。","欲将轻骑逐，","大雪满弓刀。"] },
+  { title:"墨梅", author:"王冕", sem:7, req:true, lines:["我家洗砚池头树，","朵朵花开淡墨痕。","不要人夸好颜色，","只留清气满乾坤。"] },
+  // —— 五年级上册（sem 8）——
+  { title:"山居秋暝", author:"王维", sem:8, req:true, lines:["空山新雨后，天气晚来秋。","明月松间照，清泉石上流。","竹喧归浣女，莲动下渔舟。","随意春芳歇，王孙自可留。"] },
+  { title:"枫桥夜泊", author:"张继", sem:8, req:true, lines:["月落乌啼霜满天，","江枫渔火对愁眠。","姑苏城外寒山寺，","夜半钟声到客船。"] },
+  { title:"长相思", author:"纳兰性德", sem:8, req:true, lines:["山一程，水一程，","身向榆关那畔行，夜深千帐灯。","风一更，雪一更，","聒碎乡心梦不成，故园无此声。"] },
+  { title:"乞巧", author:"林杰", sem:8, req:true, lines:["七夕今宵看碧霄，","牵牛织女渡河桥。","家家乞巧望秋月，","穿尽红丝几万条。"] },
+  { title:"示儿", author:"陆游", sem:8, req:true, lines:["死去元知万事空，","但悲不见九州同。","王师北定中原日，","家祭无忘告乃翁。"] },
+  { title:"题临安邸", author:"林升", sem:8, req:true, lines:["山外青山楼外楼，","西湖歌舞几时休？","暖风熏得游人醉，","直把杭州作汴州。"] },
+  { title:"己亥杂诗", author:"龚自珍", sem:8, req:true, lines:["九州生气恃风雷，","万马齐喑究可哀。","我劝天公重抖擞，","不拘一格降人材。"] },
+  // —— 五年级下册（sem 9）——
+  { title:"四时田园杂兴・其三十一", author:"范成大", sem:9, req:true, lines:["昼出耘田夜绩麻，","村庄儿女各当家。","童孙未解供耕织，","也傍桑阴学种瓜。"] },
+  { title:"稚子弄冰", author:"杨万里", sem:9, req:true, lines:["稚子金盆脱晓冰，","彩丝穿取当银钲。","敲成玉磬穿林响，","忽作玻璃碎地声。"] },
+  { title:"村晚", author:"雷震", sem:9, req:true, lines:["草满池塘水满陂，","山衔落日浸寒漪。","牧童归去横牛背，","短笛无腔信口吹。"] },
+  { title:"游子吟", author:"孟郊", sem:9, req:true, lines:["慈母手中线，游子身上衣。","临行密密缝，意恐迟迟归。","谁言寸草心，报得三春晖。"] },
+  { title:"鸟鸣涧", author:"王维", sem:9, req:true, lines:["人闲桂花落，","夜静春山空。","月出惊山鸟，","时鸣春涧中。"] },
+  { title:"从军行", author:"王昌龄", sem:9, req:true, lines:["青海长云暗雪山，","孤城遥望玉门关。","黄沙百战穿金甲，","不破楼兰终不还。"] },
+  { title:"闻官军收河南河北", author:"杜甫", sem:9, req:true, lines:["剑外忽传收蓟北，","初闻涕泪满衣裳。","却看妻子愁何在，漫卷诗书喜欲狂。","白日放歌须纵酒，青春作伴好还乡。","即从巴峡穿巫峡，便下襄阳向洛阳。"] },
+  // —— 六年级上册（sem 10）——
+  { title:"宿建德江", author:"孟浩然", sem:10, req:true, lines:["移舟泊烟渚，","日暮客愁新。","野旷天低树，","江清月近人。"] },
+  { title:"六月二十七日望湖楼醉书", author:"苏轼", sem:10, req:true, lines:["黑云翻墨未遮山，","白雨跳珠乱入船。","卷地风来忽吹散，","望湖楼下水如天。"] },
+  { title:"西江月・夜行黄沙道中", author:"辛弃疾", sem:10, req:true, lines:["明月别枝惊鹊，清风半夜鸣蝉。","稻花香里说丰年，听取蛙声一片。","七八个星天外，两三点雨山前。","旧时茅店社林边，路转溪桥忽见。"] },
+  { title:"过故人庄", author:"孟浩然", sem:10, req:true, lines:["故人具鸡黍，邀我至田家。","绿树村边合，青山郭外斜。","开轩面场圃，把酒话桑麻。","待到重阳日，还来就菊花。"] },
+  { title:"春日", author:"朱熹", sem:10, req:true, lines:["胜日寻芳泗水滨，","无边光景一时新。","等闲识得东风面，","万紫千红总是春。"] },
+  { title:"回乡偶书", author:"贺知章", sem:10, req:true, lines:["少小离家老大回，","乡音无改鬓毛衰。","儿童相见不相识，","笑问客从何处来。"] },
+  { title:"浪淘沙", author:"刘禹锡", sem:10, req:true, lines:["九曲黄河万里沙，","浪淘风簸自天涯。","如今直上银河去，","同到牵牛织女家。"] },
+  // —— 六年级下册（sem 11）——
+  { title:"采薇（节选）", author:"《诗经》", sem:11, req:true, lines:["昔我往矣，杨柳依依。","今我来思，雨雪霏霏。","行道迟迟，载渴载饥。","我心伤悲，莫知我哀！"] },
+  { title:"春夜喜雨", author:"杜甫", sem:11, req:true, lines:["好雨知时节，当春乃发生。","随风潜入夜，润物细无声。","野径云俱黑，江船火独明。","晓看红湿处，花重锦官城。"] },
+  { title:"江畔独步寻花", author:"杜甫", sem:11, req:true, lines:["黄四娘家花满蹊，","千朵万朵压枝低。","留连戏蝶时时舞，","自在娇莺恰恰啼。"] },
+  { title:"游园不值", author:"叶绍翁", sem:11, req:true, lines:["应怜屐齿印苍苔，","小扣柴扉久不开。","春色满园关不住，","一枝红杏出墙来。"] },
+  { title:"卜算子・送鲍浩然之浙东", author:"王观", sem:11, req:true, lines:["水是眼波横，山是眉峰聚。","欲问行人去那边？眉眼盈盈处。","才始送春归，又送君归去。","若到江南赶上春，千万和春住。"] },
+  { title:"浣溪沙", author:"苏轼", sem:11, req:true, lines:["游蕲水清泉寺，寺临兰溪，溪水西流。","山下兰芽短浸溪，松间沙路净无泥，萧萧暮雨子规啼。","谁道人生无再少？门前流水尚能西！","休将白发唱黄鸡。"] },
+  { title:"清平乐", author:"黄庭坚", sem:11, req:true, lines:["春归何处？寂寞无行路。","若有人知春去处，唤取归来同住。","春无踪迹谁知？除非问取黄鹂。","百啭无人能解，因风飞过蔷薇。"] }
 ];
 
 /* 第一世代 151 只宝可梦中文官方译名（下标 0 = 编号 1） */
@@ -828,7 +911,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.31.8";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.31.9";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -854,6 +937,7 @@ function defaultState(){
     partnerId: null,        // 今日伙伴基础编号
     mathDiff: "10",         // 数学闯关难度（家长设置齿轮调整）：10/20/50/100/mul/div
     hanziDiff: "0",         // 识字达人难度（家长设置分级）：0~5 对应 预备班/一上/一下/二上/二下/三及以上
+    poemDiff: "0",          // 古诗小舟难度（家长设置分级）：0~11 对应 一年级上~六年级下 共 12 学期
     testMode: false,        // 测试模式（家长设置内输入密码 112233 开启，开启后首页显示测试按钮条）
     ttsWorker: "",           // 云端中文语音 Worker 地址（Edge-TTS 中转，留空=不启用；填 https://xxx.workers.dev）
     checkinLog: {}          // 打卡记录：{ "YYYY-MM-DD": 当天完成任务数 }，用于日历展示打卡情况
@@ -1348,6 +1432,7 @@ function openSettings(sub){
       <div class="set-modules">
         <button class="big-btn set-mod" data-m="math">🔢 数学闯关<small>加减乘除 · 6 档难度</small></button>
         <button class="big-btn set-mod" data-m="hanzi">✍️ 识字达人<small>6 级字库分级</small></button>
+        <button class="big-btn set-mod" data-m="poem">📜 古诗小舟<small>12 学期分级</small></button>
       </div>
       <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
         <div style="font-size:22px;color:#9b8676;margin-bottom:10px">💾 进度备份 / 导入</div>
@@ -1387,6 +1472,7 @@ function openSettings(sub){
   }
   if (sub==="math"){ renderMathSettings(); return; }
   if (sub==="hanzi"){ renderHanziSettings(); return; }
+  if (sub==="poem"){ renderPoemSettings(); return; }
 }
 function bindSettingsTTS(){
   const ttsWorker = $("#ttsWorker"), ttsStatus = $("#ttsStatus");
@@ -1434,6 +1520,18 @@ function renderHanziSettings(){
     <div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`, { dialogClass: "set-dialog" });
   $("#setBack").addEventListener("click",()=>{ sfx.click(); openSettings(); });
   document.querySelectorAll(".set-diff").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); state.hanziDiff=b.dataset.d; saveState(); document.querySelectorAll(".set-diff").forEach(x=>x.classList.remove("active")); b.classList.add("active"); $("#setCur").textContent="难度"+b.dataset.d+"・"+hanziDiffName(b.dataset.d); toast("识字难度已设为：难度"+b.dataset.d); if(activeModule==="hanzi"){ setTimeout(()=>{ closeDialog(); activeModule="hanzi"; hanziTask(); },700); } }));
+  $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
+}
+function renderPoemSettings(){
+  const cur = String(state.poemDiff||"0");
+  const items = POEM_SEM_NAMES.map((nm,i)=>`<button class="big-btn set-diff ${cur===String(i)?"active":""}" data-d="${i}">${nm}<small>${i===0?"入门 · 必背古诗起步":(i===POEM_SEM_NAMES.length-1?"全学段 · 最难":"累计到本学年段")}</small></button>`).join("");
+  openDialog(`<h2 style="color:#8E6CF0">📜 古诗小舟 · 难度</h2>
+    <button class="big-btn yellow" id="setBack" style="min-width:120px;margin-bottom:8px">← 返回</button>
+    <div class="py-tabs" style="flex-direction:column;align-items:stretch;gap:10px">${items}</div>
+    <div style="margin-top:16px;font-size:22px;color:#9b8676">当前难度：<b id="setCur" style="color:#8E6CF0">${POEM_SEM_NAMES[+cur]}</b></div>
+    <div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`, { dialogClass:"set-dialog" });
+  $("#setBack").addEventListener("click",()=>{ sfx.click(); openSettings(); });
+  document.querySelectorAll(".set-diff").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); state.poemDiff=b.dataset.d; saveState(); document.querySelectorAll(".set-diff").forEach(x=>x.classList.remove("active")); b.classList.add("active"); $("#setCur").textContent=POEM_SEM_NAMES[+b.dataset.d]; toast("古诗难度已设为："+POEM_SEM_NAMES[+b.dataset.d]); if(activeModule==="poem"){ setTimeout(()=>{ closeDialog(); activeModule="poem"; poemHome(); },700); } }));
   $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
 }
 /* 根据 state.testMode 显示/隐藏首页测试按钮条 */
@@ -1591,26 +1689,29 @@ function hanziTask(){
 }
 function poemHome(){
   const done = state.daily.done.poem;
-  let listHtml = POEMS.map((p,i)=>`<button class="py-tab" style="border-color:#B197FC;color:#7048C6" data-poem="${i}">${p.title}</button>`).join("");
-  openDialog(`<h2 style="color:#8E6CF0">📜 古诗小舟</h2><div style="font-size:20px;color:#9b8676;margin-bottom:8px">👆 点诗名读一读（带拼音）</div><div class="py-tabs" style="max-height:220px;overflow-y:auto">${listHtml}</div>
+  const maxSem = +state.poemDiff||0;
+  let listHtml = POEMS.map((p,i)=> (p.sem<=maxSem ? `<button class="py-tab" style="border-color:#B197FC;color:#7048C6" data-poem="${i}">${p.title}</button>` : "")).join("");
+  openDialog(`<h2 style="color:#8E6CF0">📜 古诗小舟</h2><div style="font-size:20px;color:#9b8676;margin-bottom:8px">👆 点诗名读一读（听一听）</div><div class="py-tabs" style="max-height:220px;overflow-y:auto">${listHtml||'<div style=\"font-size:18px;color:#bbb;padding:10px\">暂无诗，去设置里调高难度吧</div>'}</div>
     <div style="margin-top:14px"><button class="big-btn ${done?'gray':''}" id="poemStart" ${done?'disabled':''} style="background:${done?'':'linear-gradient(180deg,#C3AEFF,#8E6CF0)'};box-shadow:0 5px 0 ${done?'#7d7d7d':'#5d3fb0'}">${done?"✔ 今日任务已完成":"🎯 今日挑战：填诗句"}</button></div>`);
   document.querySelectorAll("[data-poem]").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); showPoem(+b.dataset.poem); }));
   if (!done) $("#poemStart").addEventListener("click", ()=>{ sfx.click(); poemQuiz(); });
 }
 function showPoem(idx){
   const p = POEMS[idx];
-  const body = p.lines.map((line,i)=>`<div class="poem-pinyin">${p.pinyin[i]}</div><div class="poem-line">${line}</div>`).join("");
+  const body = p.lines.map(line=>`<div class="poem-line">${line}</div>`).join("");
   openDialog(`<h2 style="color:#8E6CF0">《${p.title}》</h2><div style="font-size:22px;color:#9b8676;margin-bottom:10px">${p.author}</div>${body}<div style="margin-top:16px"><button class="big-btn blue" id="poemRead">🔊 听一听</button><button class="big-btn yellow" id="poemBack">返回诗单</button></div>`);
   $("#poemRead").addEventListener("click", ()=>{ sfx.click(); speak(`${p.title}，${p.author}。`+p.lines.join(""),0.8); });
   $("#poemBack").addEventListener("click", ()=>{ sfx.click(); poemHome(); });
 }
 function poemQuiz(){
   busyStudying = true;
-  const p = POEMS[rnd(0,POEMS.length-1)];
+  const maxSem = +state.poemDiff||0;
+  const pool = POEMS.filter(p=>p.sem<=maxSem);
+  const p = pool[rnd(0,pool.length-1)];
   const isHan = ch => /[一-龥]/.test(ch);   // 只把真正的汉字当作可填空字，避免逗号/句号/顿号等标点混入
   const spots=[]; p.lines.forEach((line,li)=>[...line].forEach((ch,ci)=>{ if(isHan(ch)) spots.push({li,ci,ch}); }));
   const blanks = pick(spots,3).sort((a,b)=>a.li-b.li||a.ci-b.ci); let cur=0; const filled=new Array(blanks.length).fill(null);
-  const charPool=[...new Set(POEMS.flatMap(x=>x.lines.join("").split("")).filter(isHan))];
+  const charPool=[...new Set(pool.flatMap(x=>x.lines.join("").split("")).filter(isHan))];
   function renderPoemBody(){ return p.lines.map((line,li)=>{ let html=""; [...line].forEach((ch,ci)=>{ const bi=blanks.findIndex(b=>b.li===li&&b.ci===ci); if(bi>=0){ if(filled[bi]) html+=`<span class="poem-blank filled">${filled[bi]}</span>`; else html+=`<span class="poem-blank">${bi===cur?"❓":"＿"}</span>`; } else html+=ch; }); return `<div class="poem-line">${html}</div>`; }).join(""); }
   function show(){
     const b=blanks[cur]; const wrongs=pick(charPool.filter(c=>c!==b.ch),3);
