@@ -69,7 +69,7 @@ header {
 /* 顶部红栏居中时钟 */
 #hdrClock {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
-  color: #fff; font-size: 32px; font-weight: 600; letter-spacing: 3px;
+  color: #fff; font-size: 38px; font-weight: 600; letter-spacing: 3px;
   font-family: "Fredoka", "Comic Sans MS", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 2px 0 rgba(0,0,0,.22), 0 4px 10px rgba(0,0,0,.28);
@@ -131,17 +131,16 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .test-bar .big-btn.red { background: linear-gradient(180deg,#F58B8B,#E06060); border-color:#C94B4B; color:#fff; }
 .test-bar .big-btn.orange { background: linear-gradient(180deg,#F7B96B,#EE9A3C); border-color:#C97A22; color:#fff; }
 
-/* ---------- 家长设置齿轮（右下角悬浮按钮） ---------- */
+/* ---------- 家长设置齿轮（v3.29：并入底部导航栏右侧，仅图标不带文字） ---------- */
 #gearBtn {
-  position: fixed; right: 16px; bottom: 116px; z-index: 460;
-  width: 64px; height: 64px; border-radius: 50%;
-  background: linear-gradient(180deg, #FFE08A, #F5B83D);
-  border: 4px solid #fff; box-shadow: 0 6px 16px rgba(0,0,0,.28);
+  flex: 0 0 86px; height: 100%; border-radius: 24px;
+  background: linear-gradient(180deg, #FFF4DC, #FFE4AD);
+  border: none; box-shadow: inset 0 0 0 2px #fff, 0 4px 10px rgba(190,150,60,.18);
   display: flex; align-items: center; justify-content: center;
-  font-size: 34px; cursor: pointer; user-select: none;
-  transition: transform .2s ease;
+  font-size: 38px; line-height: 1; cursor: pointer; user-select: none; color: #A9791F;
+  transition: transform .18s ease;
 }
-#gearBtn:active { transform: scale(.9) rotate(-25deg); }
+#gearBtn:active { transform: scale(.94); }
 #gearBtn.spin { animation: gearSpin .6s ease; }
 @keyframes gearSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
 
@@ -177,7 +176,8 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .task-card:active { transform: translateY(-8px) scale(1.04); box-shadow: 0 18px 34px rgba(120,90,70,.26); }
 .task-card .icon { font-size: 58px; line-height: 1; filter: drop-shadow(2px 3px 3px rgba(0,0,0,.18)); }
 .task-card .name { font-size: 32px; font-weight: bold; text-shadow: 0 2px 3px rgba(0,0,0,.16); }
-.task-card .desc { font-size: 20px; opacity: .96; text-shadow: 0 1px 2px rgba(0,0,0,.12); }
+/* v3.29：描述加粗加深，平板远距离也看得清 */
+.task-card .desc { font-size: 22px; font-weight: bold; color: rgba(70,54,42,.88); text-shadow: 0 1px 0 rgba(255,255,255,.62); line-height: 1.35; }
 .task-card.pinyin  { background: linear-gradient(160deg, var(--card-pink-a),   var(--card-pink-b)); }
 .task-card.math    { background: linear-gradient(160deg, var(--card-orange-a), var(--card-orange-b)); }
 .task-card.english { background: linear-gradient(160deg, var(--card-blue-a),   var(--card-blue-b)); }
@@ -235,11 +235,32 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .evo-text { font-size: 13px; color: #B5762E; margin-bottom: 2px; }
 .evo-text.done { color: #3F9D3F; font-weight: bold; }
 
-/* ---------- 底部导航 ---------- */
-nav { position: fixed; left: 0; right: 0; bottom: 0; height: 100px; z-index: 50; background: #FFFDF8; display: flex; box-shadow: 0 -4px 14px rgba(0,0,0,.08); border-top: 4px solid var(--poke-yellow); }
-nav button { flex: 1; border: none; background: transparent; cursor: pointer; font-family: inherit; font-size: 26px; font-weight: bold; color: var(--text-soft); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-nav button .nav-icon { font-size: 40px; line-height: 1; }
-nav button.active { color: var(--poke-red); background: linear-gradient(180deg, #FFF4F1, #FFE7E1); }
+/* ---------- 底部导航（v3.29：胶囊选中态 + 卡通 SVG 图标 + 齿轮并入导航） ----------
+   尺寸经过核算，保证选中放大后图标+文字仍完整落在浅红胶囊内：
+   nav 100px - 上下 padding 8px×2 = 按钮高 84px；
+   内容 = 图标 36px + gap 3px + 文字 22px(行高 1.15≈25px) ≈ 64px，
+   选中时图标 scale(1.1)→40px，总高 ≈ 68px < 84px，四周仍有余量。 */
+nav { position: fixed; left: 0; right: 0; bottom: 0; height: 100px; z-index: 50; background: #FFFDF8; display: flex; align-items: stretch; gap: 12px; padding: 8px 16px; box-shadow: 0 -4px 14px rgba(0,0,0,.08); border-top: 4px solid var(--poke-yellow); }
+nav button {
+  flex: 1; height: 100%; border: none; border-radius: 24px; background: #F4F0E8; cursor: pointer;
+  font-family: inherit; font-size: 22px; font-weight: bold; color: #A2917F; line-height: 1.15;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  transition: background .18s ease, color .18s ease, transform .16s ease, box-shadow .18s ease;
+}
+nav button .nav-icon { line-height: 1; display: flex; align-items: center; justify-content: center; transition: transform .2s cubic-bezier(.3,1.4,.5,1); }
+nav button .nav-icon svg { width: 36px; height: 36px; display: block; }
+nav button:active { transform: scale(.96); }
+nav button.active {
+  color: var(--poke-red); font-weight: 900; letter-spacing: .5px;
+  background: linear-gradient(180deg, #FFEDE8 0%, #FFDCD5 100%);
+  box-shadow: inset 0 0 0 2px #fff, 0 4px 12px rgba(232,120,110,.24);
+}
+nav button.active .nav-icon { transform: scale(1.1); }
+/* SVG 线条/填充跟随选中态换色 */
+nav button .ic-line { stroke: #B3A492; }
+nav button .ic-fill { fill: #DFD6C8; }
+nav button.active .ic-line { stroke: #E0524C; }
+nav button.active .ic-fill { fill: #FFC9C2; }
 
 /* ---------- 通用弹窗 ---------- */
 .overlay { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background: rgba(80, 60, 50, .5); padding: 16px; }
@@ -297,10 +318,24 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 
 /* 收服宝可梦动画 */
 #gachaStage { min-height: 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
-.gacha-ball { width: 170px; height: 170px; border-radius: 50%; position: relative; background: linear-gradient(180deg, #F25C5C 0 46%, #2b2b2b 46% 54%, #fff 54% 100%); border: 7px solid #2b2b2b; box-shadow: inset 0 6px 10px rgba(255,255,255,.3); }
-.gacha-ball::after { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%,-50%); background: #fff; border: 7px solid #2b2b2b; border-radius: 50%; }
+/* v3.29：精灵球改为「上盖 / 下壳 / 中心钮」三段结构，开盖时真实掀开 + 白光爆闪 */
+.gacha-ball { width: 170px; height: 170px; position: relative; }
+.gacha-ball .gb-top, .gacha-ball .gb-bot { position: absolute; left: 0; width: 170px; height: 85px; box-sizing: border-box; border: 7px solid #2b2b2b; }
+.gacha-ball .gb-top { top: 0; border-radius: 85px 85px 0 0; border-bottom-width: 4px; background: linear-gradient(180deg, #FF8A80 0%, #E8514C 100%); box-shadow: inset 0 8px 14px rgba(255,255,255,.35); transform-origin: 50% 100%; }
+.gacha-ball .gb-bot { bottom: 0; border-radius: 0 0 85px 85px; border-top-width: 4px; background: linear-gradient(180deg, #FFFFFF 0%, #E6E6E6 100%); box-shadow: inset 0 -8px 14px rgba(0,0,0,.08); transform-origin: 50% 0%; }
+.gacha-ball .gb-core { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; box-sizing: border-box; transform: translate(-50%,-50%); background: #fff; border: 7px solid #2b2b2b; border-radius: 50%; z-index: 3; }
 .gacha-ball.shaking { animation: ballShake 1.4s ease-in-out; }
 @keyframes ballShake { 0%,100% { transform: rotate(0); } 10% { transform: rotate(-22deg) translateX(-8px); } 25% { transform: rotate(20deg) translateX(8px); } 40% { transform: rotate(-16deg); } 55% { transform: rotate(14deg); } 70% { transform: rotate(-8deg); } 85% { transform: rotate(6deg); } }
+/* 开盖：上半掀开、下半沉降、中心白光爆开 */
+.gacha-ball.opening .gb-top { animation: gbTopOpen .55s cubic-bezier(.3,1.4,.5,1) forwards; }
+.gacha-ball.opening .gb-bot { animation: gbBotOpen .55s ease forwards; }
+.gacha-ball.opening .gb-core { animation: gbCoreFlash .55s ease forwards; }
+.gacha-ball.opening::after { content: ""; position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: radial-gradient(circle, #fff 0%, #FFF3B0 45%, rgba(255,220,120,0) 72%); animation: gbFlash .55s ease-out forwards; z-index: 2; }
+@keyframes gbTopOpen { 0% { transform: rotate(0) translateY(0); } 100% { transform: rotate(-52deg) translate(-26px,-58px); opacity: .25; } }
+@keyframes gbBotOpen { 0% { transform: rotate(0) translateY(0); } 100% { transform: rotate(16deg) translateY(30px); opacity: .25; } }
+@keyframes gbCoreFlash { 0% { transform: translate(-50%,-50%) scale(1); } 45% { transform: translate(-50%,-50%) scale(1.6); filter: brightness(2.4); } 100% { transform: translate(-50%,-50%) scale(.2); opacity: 0; } }
+@keyframes gbFlash { 0% { transform: scale(.4); opacity: .9; } 60% { opacity: 1; } 100% { transform: scale(9); opacity: 0; } }
+/* 兼容旧类名（保留，避免其它地方仍在调用 burst） */
 .gacha-ball.burst { animation: ballBurst .4s forwards; }
 @keyframes ballBurst { to { transform: scale(2.2); opacity: 0; filter: brightness(3); } }
 #gachaResult img { width: 220px; height: 220px; image-rendering: pixelated; animation: appearUp .5s cubic-bezier(.2,1.4,.5,1); }
@@ -343,7 +378,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 .ach-prog-done { margin-top: 8px; font-size: 17px; font-weight: bold; color: #3F9D3F; }
 
 /* 伙伴挂件 */
-#partnerWidget { position: fixed; right: 14px; bottom: 230px; z-index: 60; width: 96px; height: 96px; cursor: grab; touch-action: none; display: none; }
+#partnerWidget { position: fixed; right: 14px; bottom: 124px; z-index: 60; width: 96px; height: 96px; cursor: grab; touch-action: none; display: none; }
 #partnerWidget img { width: 100%; height: 100%; image-rendering: pixelated; filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
 #partnerWidget .handle { position: absolute; top: -6px; left: -6px; background: #fff; border: 2px solid var(--poke-yellow); border-radius: 50%; width: 28px; height: 28px; font-size: 16px; display: flex; align-items: center; justify-content: center; color: var(--poke-red); }
 .partner-bubble { position: fixed; z-index: 70; max-width: 240px; min-width: 120px; background: linear-gradient(180deg,#FFFDF5,#FFF3D6); border: 3px solid #FFD66B; border-radius: 20px; padding: 12px 14px; font-size: 20px; line-height: 1.45; color: #5b4636; box-shadow: 0 8px 22px rgba(0,0,0,.22); opacity: 0; transform: scale(.6); transform-origin: center; pointer-events: none; transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1); }
@@ -391,16 +426,19 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
   /* 头部压扁 */
   header { height: 58px; padding: 0 12px; border-bottom-width: 3px; }
   #appTitle { font-size: 24px; min-height: 42px; letter-spacing: 0; }
-  #hdrClock { font-size: 20px; letter-spacing: 1px; }
+  #hdrClock { font-size: 27px; letter-spacing: 2px; }
   #appTitle .edit-hint { font-size: 15px; }
   .hdr-right { gap: 8px; }
   #ballCounter { padding: 4px 14px 4px 10px; min-height: 40px; gap: 6px; }
   #ballCounter .ball-icon { width: 26px; height: 26px; }
   #ballCount { font-size: 22px; }
-  /* 导航栏压扁 */
-  nav { height: 68px; border-top-width: 3px; }
-  nav button { font-size: 19px; gap: 1px; }
-  nav button .nav-icon { font-size: 28px; }
+  /* 导航栏压扁：nav 68px - padding 6px×2 = 按钮 56px；
+     内容 = 图标 26px + gap 2px + 文字 17px(行高≈20px) ≈ 48px，
+     选中放大后图标 ≈ 29px，总高 ≈ 51px < 56px，不会顶出胶囊。 */
+  nav { height: 68px; border-top-width: 3px; gap: 8px; padding: 6px 10px; }
+  nav button { font-size: 17px; gap: 2px; border-radius: 17px; }
+  nav button .nav-icon svg { width: 26px; height: 26px; }
+  #gearBtn { flex: 0 0 62px; border-radius: 17px; font-size: 27px; }
   /* 主内容区上移 */
   main { top: 58px; bottom: 68px; }
   /* 状态��缩小 */
@@ -410,7 +448,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
   .task-card:active { transform: translateY(-5px) scale(1.03); }
   .task-card .icon { font-size: 38px; }
   .task-card .name { font-size: 22px; }
-  .task-card .desc { font-size: 15px; }
+  .task-card .desc { font-size: 17px; }
   .task-card.done::after { width: 40px; height: 40px; top: -8px; right: -6px; font-size: 20px; border-width: 3px; }
   /* 弹窗整体压缩 */
   .overlay { padding: 10px; }
@@ -450,10 +488,8 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
   .py-cell { padding: 6px 10px; font-size: 18px; }
   .py-cell small { font-size: 13px; }
   .py-tabs button { font-size: 17px; padding: 6px 14px; }
-  /* 齿轮按钮 */
-  #gearBtn { width: 44px; height: 44px; font-size: 22px; line-height: 42px; bottom: 76px; right: 10px; }
-  /* 伙伴挂件 */
-  #partnerWidget { width: 70px; height: 70px; bottom: 160px; right: 8px; }
+  /* 伙伴挂件（齿轮已移入导航栏，挂件可下移贴近导航） */
+  #partnerWidget { width: 70px; height: 70px; bottom: 82px; right: 8px; }
   /* 成就墙 */
   .ach-grid { gap: 8px; }
   .ach-card { padding: 8px 10px; }
@@ -489,9 +525,6 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 
 <div id="storageWarn" class="storage-warn">⚠️ 当前浏览器无法保存进度，做完任务也不会保留。请改用电脑局域网网址（如 http://192.168.0.133:8000/index.html）打开，或在平板上装一个「本地服务器」APP 后用网址打开。</div>
 <div id="ttsWarn" class="tts-warn">🔇 设备没有系统中文语音，已自动改用云端语音（Edge-TTS）。若仍听不到声音，请确认平板音量已打开、未静音。</div>
-
-<!-- 家长设置齿轮（右下角悬浮，正式版保留） -->
-<div id="gearBtn" title="家长设置（调整数学难度）">⚙️</div>
 
 <header>
   <div id="appTitle" title="点击修改名字"><span id="titleText">苏打的宝可梦冒险</span><span class="edit-hint">✏️</span></div>
@@ -544,8 +577,10 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
 </main>
 
 <nav>
-  <button id="navTasks" class="active"><span class="nav-icon">📚</span>今日任务</button>
-  <button id="navDex"><span class="nav-icon">📕</span>宝可梦图鉴</button>
+  <button id="navTasks" class="active"><span class="nav-icon"><svg viewBox="0 0 48 48" fill="none"><rect x="7" y="7" width="27" height="34" rx="5" class="ic-fill"/><rect x="7" y="7" width="27" height="34" rx="5" class="ic-line" stroke-width="2.8"/><path d="M14 16h13M14 23h13M14 30h8" class="ic-line" stroke-width="2.8" stroke-linecap="round"/><circle cx="35" cy="33" r="10" fill="#fff" class="ic-line" stroke-width="2.6"/><path d="M25 33a10 10 0 0 1 20 0z" fill="#F25C5C" class="ic-line" stroke-width="2.6" stroke-linejoin="round"/><circle cx="35" cy="33" r="3.4" fill="#fff" class="ic-line" stroke-width="2.4"/></svg></span>今日任务</button>
+  <button id="navDex"><span class="nav-icon"><svg viewBox="0 0 48 48" fill="none"><rect x="6" y="8" width="36" height="32" rx="6" class="ic-fill"/><rect x="6" y="8" width="36" height="32" rx="6" class="ic-line" stroke-width="2.8"/><path d="M24 8v32" class="ic-line" stroke-width="2.8"/><circle cx="15" cy="20" r="6" fill="#fff" class="ic-line" stroke-width="2.4"/><path d="M9 20a6 6 0 0 1 12 0z" fill="#F25C5C" class="ic-line" stroke-width="2.4" stroke-linejoin="round"/><circle cx="15" cy="20" r="2" fill="#fff" class="ic-line" stroke-width="2"/><path d="M30 18h7M30 25h7M30 32h5" class="ic-line" stroke-width="2.8" stroke-linecap="round"/></svg></span>宝可梦图鉴</button>
+  <!-- 家长设置：v3.29 从右下角悬浮移入导航栏，仅显示齿轮图标 -->
+  <div id="gearBtn" title="家长设置（调整数学难度）">⚙️</div>
 </nav>
 
 <div class="overlay" id="overlay">
@@ -786,7 +821,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.28.1";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.29.1";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -894,26 +929,71 @@ function renderVoiceSelect(){
   if (tw) tw.style.display = (ZH_VOICES.length === 0 && !hasCloudTTS()) ? "" : "none";
 }
 function hasCloudTTS(){ return true; }  // 本站内置 /api/tts 常驻可用（免密钥 Edge-TTS），无需再判断是否填了 Worker
+
+/* ---------- 朗读策略（v3.29.1）----------
+   改为「云端小晓(XiaoxiaoNeural)优先，系统嗓音兜底」。
+   原先是系统优先，而 Windows PC 一定装有中文嗓音，导致 PC 端永远用不上云语音、
+   和平板的发音不一致。现在全平台统一走云端，只有以下情况回退系统嗓音：
+     · 用 file:// 直接打开本地文件（相对路径 /api/tts 无意义）
+     · 断网或 /api/tts 连续失败（自动降级，本次会话不再重试）      */
+let CLOUD_TTS_DOWN = false;      // 云端连续失败后置 true，本次会话降级为系统嗓音
+let _cloudFailCount = 0;
+function cloudTTSAvailable(){
+  if (CLOUD_TTS_DOWN) return false;
+  // file:// 下相对路径请求必然失败，直接不尝试
+  if (location.protocol === "file:") return false;
+  return hasCloudTTS();
+}
+/* 停止当前朗读（系统嗓音 + 云端音频都要停） */
+function stopSpeak(){
+  try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch(e){}
+  try { if (_ttsAudio){ _ttsAudio.pause(); _ttsAudio.currentTime = 0; } } catch(e){}
+}
+/* 系统嗓音朗读（兜底） */
+function speakLocal(text, rate = 0.9){
+  if (!window.speechSynthesis || !CURRENT_VOICE) return;
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-CN";
+    u.voice = CURRENT_VOICE;
+    u.rate = rate; u.pitch = 1.1; u.volume = 1;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
 function speak(text, rate = 0.9){
-  // 优先用系统中文嗓音（平板系统装了中文 TTS 时）
-  if (window.speechSynthesis && CURRENT_VOICE){
-    try{
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "zh-CN";
-      u.voice = CURRENT_VOICE;
-      u.rate = rate; u.pitch = 1.1; u.volume = 1;
-      speechSynthesis.speak(u);
-      return;
-    }catch(e){}
+  if (!text) return;
+  stopSpeak();
+  if (cloudTTSAvailable()){
+    // 云端出问题时回退系统嗓音，孩子不会听不到声音。
+    // kind="fetch"（取不到音频，多半是断网/接口挂了）才累计失败并降级；
+    // kind="play"（音频已拿到，只是被自动播放策略拦下等）不降级，否则会误伤云端。
+    speakWorker(text, rate, (msg, kind) => {
+      if (kind !== "play"){
+        _cloudFailCount++;
+        if (_cloudFailCount >= 2) CLOUD_TTS_DOWN = true;   // 连错两次直接降级，避免每句都干等
+      }
+      speakLocal(text, rate);
+    });
+    return;
   }
-  // 平板无系统中文嗓音 → 回退到云端 Edge-TTS（Cloudflare Worker 中转，免费、无需密钥）
-  if (hasCloudTTS()){ speakWorker(text, rate); return; }
+  speakLocal(text, rate);
 }
 /* 云端中文语音：Edge-TTS 经 Cloudflare Worker 中转（微软给 Edge 浏览器的免费通道，无需任何密钥）。
    前端只把文字 POST 到自己的 Worker，Worker 去合成 mp3 返回；前端不暴露任何厂商密钥 */
 let _ttsAudio = null;
+/* 音频缓存：同一句话（如「太棒了！」「再想想～」）只请求一次云端，之后秒播、省流量 */
+const _ttsCache = new Map();
+const _TTS_CACHE_MAX = 60;
+function _ttsCacheKey(text, rate){ return rate + "|" + text; }
 async function speakWorker(text, rate = 0.9, onErr, onInfo, onBlob){
+  // 命中缓存直接播放，不再走网络
+  const ck = _ttsCacheKey(text, rate);
+  const onPlayErr = onErr ? (m => onErr(m, "play")) : null;   // 播放层错误单独标记，不计入云端故障
+  if (!onBlob && !onInfo && _ttsCache.has(ck)){
+    playAudioBlob(_ttsCache.get(ck), onPlayErr, onInfo);
+    return;
+  }
   // 候选地址：优先用户填的 Worker（需带 /v1/audio/speech）；兜底用本站同域名 /api/tts（免跨域，平板最稳）
   const candidates = [];
   if (state.ttsWorker){
@@ -944,8 +1024,14 @@ async function speakWorker(text, rate = 0.9, onErr, onInfo, onBlob){
       const blob = await resp.blob();
       if (onInfo) onInfo("✅ " + c.label + "：已收到音频 " + (blob.size/1024).toFixed(1) + " KB(" + ct + ")");
       if (blob.size < 200){ lastErr = "返回的音频过小(" + blob.size + "字节)"; if (i < candidates.length - 1) continue; if (onErr) onErr(lastErr); return; }
+      // 成功一次即认为云端可用，清零失败计数并写入缓存（超上限时丢掉最早一条）
+      _cloudFailCount = 0;
+      try {
+        if (_ttsCache.size >= _TTS_CACHE_MAX) _ttsCache.delete(_ttsCache.keys().next().value);
+        _ttsCache.set(ck, blob);
+      } catch(e){}
       if (onBlob) onBlob(blob);
-      playAudioBlob(blob, onErr, onInfo);
+      playAudioBlob(blob, onPlayErr, onInfo);   // 播放层错误标记 play，不计入云端故障
       return;
     }catch(e){
       lastErr = "请求失败：" + (e && e.message ? e.message : e);
@@ -992,7 +1078,7 @@ function openDialog(html, { closable = true, onClose = null } = {}){
 function closeDialog(){ busyStudying = false;
   overlay.classList.remove("show");
   activeModule = null;
-  window.speechSynthesis && window.speechSynthesis.cancel();
+  stopSpeak();   // v3.29.1：系统嗓音 + 云端音频都要停，否则关弹窗后云语音还在念
   if (onDialogClose){ const f = onDialogClose; onDialogClose = null; f(); }
 }
 dialogClose.addEventListener("click", () => { sfx.click(); closeDialog(); });
@@ -1224,6 +1310,10 @@ function openSettings(){
     <div style="margin-top:16px;font-size:22px;color:#9b8676">当前难度：<b id="setCur" style="color:#F58A1F">${names[cur]}</b></div>
     <div style="margin-top:22px;border-top:2px dashed #e6d7c3;padding-top:16px">
       <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">Edge-TTS 语音（免密钥）。留空则用本站内置语音（最稳，推荐）；也可填自己的 Worker 地址</span></div>
+      <div style="font-size:16px;margin:-4px 0 10px;padding:8px 12px;border-radius:12px;background:#F7F3EA;color:#7a6a58;line-height:1.6">
+        当前朗读通道：<b style="color:${cloudTTSAvailable()?'#3F9D3F':'#C97A22'}">${cloudTTSAvailable() ? "☁️ 云端小晓（全平台统一）" : (CURRENT_VOICE ? "💻 系统嗓音｜" + (CURRENT_VOICE.name||"") : "⚠️ 无可用语音")}</b>
+        ${cloudTTSAvailable() ? "" : '<span style="display:block;font-size:14px;color:#bbb">' + (location.protocol === "file:" ? "本地 file:// 打开时无法访问云端接口，请用网址访问" : "云端请求失败已自动降级，刷新页面可重试") + "</span>"}
+      </div>
       <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
         <input id="ttsWorker" placeholder="可选：填自己的 Worker 地址；留空用本站内置语音" value="${state.ttsWorker||''}" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
         <div style="display:flex;gap:12px;justify-content:center;margin-top:4px">
@@ -1621,15 +1711,17 @@ function openGacha(ballType){
   if (ballType==="normal" && state.balls<=0) return noBallDialog("精灵球");
   if (ballType==="master" && state.masterBalls<=0) return noBallDialog("大师球");
   if (ballType==="super" && state.superBalls<=0) return noBallDialog("超级球");
-  openDialog(`<h2 style="color:var(--poke-red)">收服宝可梦！</h2><div id="gachaStage"><div class="gacha-ball shaking" id="gBall"></div>
+  openDialog(`<h2 style="color:var(--poke-red)">收服宝可梦！</h2><div id="gachaStage"><div class="gacha-ball shaking" id="gBall"><span class="gb-top"></span><span class="gb-bot"></span><span class="gb-core"></span></div>
     <div style="font-size:26px;color:#8a6d5c">${ballType==="master"?"🟣 紫色大师球光芒闪烁……":"精灵球在摇晃……里面是谁呢？"}</div></div>`, {closable:false});
   sfx.open();
   setTimeout(()=>{
     const id = drawPokemon({ guaranteedUncollected: ballType!=="normal" });
     if (id === null){ openDialog(`<h2 style="color:var(--poke-blue)">🎉 已经集齐全部 151 只啦！</h2><div style="font-size:60px">👑</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">太厉害了</button>`, {closable:false}); return; }
     const isNew = !state.dex.includes(id);
-    const ball = $("#gBall"); if (ball) ball.classList.replace("shaking","burst");
-    setTimeout(()=>revealGacha(id, isNew, ballType), 450);
+    const ball = $("#gBall");
+    if (ball){ ball.classList.replace("shaking","opening"); try { sfx.reward(); } catch(e){}
+      try { const r = ball.getBoundingClientRect(); starBurst(r.left+r.width/2, r.top+r.height/2, 16); } catch(e){} }
+    setTimeout(()=>revealGacha(id, isNew, ballType), 620);
   }, 1500);
 }
 function noBallDialog(name){ openDialog(`<h2 style="color:var(--poke-red)">${name}不够啦！</h2><div style="font-size:64px;margin:10px 0">🥺</div><div style="font-size:28px">${name==="精灵球"?"完成今日学习任务就能获得精灵球哦！":"去连续完成学习或完成成就来获取吧！"}</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`); }
