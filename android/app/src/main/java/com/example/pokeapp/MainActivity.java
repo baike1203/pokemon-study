@@ -206,38 +206,77 @@ public class MainActivity extends Activity {
                 try {
                     if (filename == null || filename.isEmpty()) filename = "pokemon-save.json";
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        // 删除所有同名文件（含 MediaStore 自动加 (1)(2) 后缀的孤儿），否则插入时仍会被再加后缀、越堆越多
+                        // 关键修复：Android 11+ 的 MediaStore.delete 会把文件移入「回收站」而非真正删除，
+                        // 导致同名基底仍被占用，下次 insert 又自动加 (N) 后缀 → 文件越堆越多。
+                        // 改用「覆盖写入」策略：找到已存在的同名文件就直接覆盖，找不到才 insert；从此永远只有 1 个文件被反复覆盖。
+                        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                        String actual = sp.getString("poke_actual_backup", null);
+                        Uri target = null;
+                        if (actual != null) {
+                            try (Cursor c = getContentResolver().query(
+                                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                                    new String[]{MediaStore.Downloads._ID},
+                                    MediaStore.Downloads.DISPLAY_NAME + "=?",
+                                    new String[]{actual}, null)) {
+                                if (c != null && c.moveToFirst()) {
+                                    target = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                                            c.getLong(c.getColumnIndexOrThrow(MediaStore.Downloads._ID)));
+                                }
+                            }
+                        }
+                        if (target == null) {
+                            ContentValues cv = new ContentValues();
+                            cv.put(MediaStore.Downloads.DISPLAY_NAME, filename);
+                            cv.put(MediaStore.Downloads.MIME_TYPE, "application/json");
+                            cv.put(MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
+                            target = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                            // 读取真实生成的文件名（MediaStore 可能自动加了 (N) 后缀），记住它以便下次覆盖，避免无限循环
+                            try (Cursor c = getContentResolver().query(
+                                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                                    new String[]{MediaStore.Downloads.DISPLAY_NAME},
+                                    MediaStore.Downloads._ID + "=?",
+                                    new String[]{String.valueOf(ContentUris.parseId(target))}, null)) {
+                                if (c != null && c.moveToFirst()) {
+                                    actual = c.getString(c.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME));
+                                    sp.edit().putString("poke_actual_backup", actual).apply();
+                                }
+                            }
+                        }
+                        try (OutputStream os = getContentResolver().openOutputStream(target)) {
+                            os.write(json.getBytes(StandardCharsets.UTF_8));
+                        }
+                        // 清理历史孤儿：删除「同名基底、但不等于当前文件」的旧备份（移入回收站，正常视图即消失）
                         int dot = filename.lastIndexOf('.');
                         String base = dot > 0 ? filename.substring(0, dot) : filename;
                         try (Cursor c = getContentResolver().query(
                                 MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                                new String[]{MediaStore.Downloads._ID},
+                                new String[]{MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME},
                                 MediaStore.Downloads.DISPLAY_NAME + " LIKE ?",
-                                new String[]{ base + "%" }, null)) {
-                            if (c != null) { while (c.moveToNext()) { long id = c.getLong(c.getColumnIndexOrThrow(MediaStore.Downloads._ID)); getContentResolver().delete(ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id), null, null); } }
+                                new String[]{base + "%"}, null)) {
+                            if (c != null) {
+                                int idIdx = c.getColumnIndexOrThrow(MediaStore.Downloads._ID);
+                                int nmIdx = c.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME);
+                                while (c.moveToNext()) {
+                                    if (!c.getString(nmIdx).equals(actual)) {
+                                        getContentResolver().delete(ContentUris.withAppendedId(
+                                                MediaStore.Downloads.EXTERNAL_CONTENT_URI, c.getLong(idIdx)), null, null);
+                                    }
+                                }
+                            }
                         }
-                        ContentValues cv = new ContentValues();
-                        cv.put(MediaStore.Downloads.DISPLAY_NAME, filename);
-                        cv.put(MediaStore.Downloads.MIME_TYPE, "application/json");
-                        cv.put(MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
-                        Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
-                        try (OutputStream os = getContentResolver().openOutputStream(uri)) {
-                            os.write(json.getBytes(StandardCharsets.UTF_8));
-                        }
-                        showToast("进度已保存到：平板「下载 / Download」文件夹\n文件名：" + filename);
+                        showToast("进度已自动备份到：平板「下载 / Download」\n" + actual);
                     } else {
                         File dir = android.os.Environment
                                 .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
                         dir.mkdirs();
                         File f = new File(dir, filename);
-                        if (f.exists()) f.delete();  // 旧系统也先删再写，确保覆盖
                         try (FileOutputStream fos = new FileOutputStream(f)) {
                             fos.write(json.getBytes(StandardCharsets.UTF_8));
                         }
-                        showToast("进度已保存到：" + f.getAbsolutePath());
+                        showToast("进度已自动备份到：" + f.getAbsolutePath());
                     }
                 } catch (Exception e) {
-                    showToast("导出失败：" + e.getMessage());
+                    showToast("自动备份失败：" + e.getMessage());
                 }
             }
 
