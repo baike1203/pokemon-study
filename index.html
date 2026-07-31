@@ -828,7 +828,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.31.7";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.31.8";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1821,6 +1821,7 @@ function openPokeDetail(id){
     <div style="margin:10px 0">
       <button class="big-btn blue" id="pokeSpeak">🔊 听一听</button>
       <button class="big-btn ${isPartner?'yellow':'blue'}" id="pokePartner">${isPartner?'🔄 换一个伙伴':'🤝 设为今日伙伴'}</button>
+      <button class="big-btn gray" id="pokeClose" style="cursor:pointer">✖️ 关闭</button>
     </div>`);
   $("#pokeSpeak").addEventListener("click", ()=>{ sfx.click(); speak(`${POKEMON[did-1]}。${typeTxt}属性宝可梦。${pd.d||''}`); });
   $("#pokePartner").addEventListener("click", ()=>{
@@ -1829,6 +1830,7 @@ function openPokeDetail(id){
     else { setPartner(id); }
     closeDialog(); renderDex(); renderPartner();
   });
+  $("#pokeClose").addEventListener("click", ()=>{ sfx.click(); closeDialog(); });
 }
 
 /* 抽取逻辑：优先未收集（未进化过的）宝可梦；保底模式 guaranteedUncollected 强制未收集 */
