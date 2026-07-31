@@ -191,29 +191,38 @@ public class MainActivity extends Activity {
                 try {
                     if (filename == null || filename.isEmpty()) filename = "pokemon-save.json";
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    ContentValues cv = new ContentValues();
-                    cv.put(MediaStore.Downloads.DISPLAY_NAME, filename);
-                    cv.put(MediaStore.Downloads.MIME_TYPE, "application/json");
-                    cv.put(MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
-                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
-                    try (OutputStream os = getContentResolver().openOutputStream(uri)) {
-                        os.write(json.getBytes(StandardCharsets.UTF_8));
+                        // 先删除已有的同名文件，避免 MediaStore 自动加 (1)(2) 序号导致堆积
+                        try (Cursor c = getContentResolver().query(
+                                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                                new String[]{MediaStore.Downloads._ID},
+                                MediaStore.Downloads.DISPLAY_NAME + "=?",
+                                new String[]{filename}, null)) {
+                            if (c != null) { while (c.moveToNext()) { long id = c.getLong(c.getColumnIndexOrThrow(MediaStore.Downloads._ID)); getContentResolver().delete(ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id), null, null); } }
+                        }
+                        ContentValues cv = new ContentValues();
+                        cv.put(MediaStore.Downloads.DISPLAY_NAME, filename);
+                        cv.put(MediaStore.Downloads.MIME_TYPE, "application/json");
+                        cv.put(MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
+                        Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                        try (OutputStream os = getContentResolver().openOutputStream(uri)) {
+                            os.write(json.getBytes(StandardCharsets.UTF_8));
+                        }
+                        showToast("进度已保存到：平板「下载 / Download」文件夹\n文件名：" + filename);
+                    } else {
+                        File dir = android.os.Environment
+                                .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                        dir.mkdirs();
+                        File f = new File(dir, filename);
+                        if (f.exists()) f.delete();  // 旧系统也先删再写，确保覆盖
+                        try (FileOutputStream fos = new FileOutputStream(f)) {
+                            fos.write(json.getBytes(StandardCharsets.UTF_8));
+                        }
+                        showToast("进度已保存到：" + f.getAbsolutePath());
                     }
-                    showToast("进度已保存到：平板「下载 / Download」文件夹\n文件名：" + filename);
-                } else {
-                    File dir = android.os.Environment
-                            .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
-                    dir.mkdirs();
-                    File f = new File(dir, filename);
-                    try (FileOutputStream fos = new FileOutputStream(f)) {
-                        fos.write(json.getBytes(StandardCharsets.UTF_8));
-                    }
-                    showToast("进度已保存到：" + f.getAbsolutePath());
+                } catch (Exception e) {
+                    showToast("导出失败：" + e.getMessage());
                 }
-            } catch (Exception e) {
-                showToast("导出失败：" + e.getMessage());
             }
-        }
 
         /** 直接读取"下载"目录里最新的 pokemon-save 进度文件并导入（APP 内一键导入，省去选文件） */
         @JavascriptInterface
