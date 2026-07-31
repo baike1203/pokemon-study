@@ -162,6 +162,10 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .switch.on .knob { left: 42px; }
 /* 家长设置里当前难度的高亮 */
 .set-diff.active { outline: 4px solid #fff; box-shadow: 0 0 0 4px rgba(245,138,31,.55), 0 8px 18px rgba(120,90,70,.25); }
+/* 家长设置：模块菜单 + 难度按钮内小字说明 */
+.set-modules { display:flex; flex-direction:column; gap:14px; margin:6px 0 4px; }
+.set-mod, .set-diff { text-align:center; }
+.set-mod small, .set-diff small { display:block; font-size:16px; font-weight:normal; opacity:.85; margin-top:3px; }
 
 .task-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
 
@@ -581,7 +585,7 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   <button id="navTasks" class="active"><span class="nav-icon"><svg viewBox="0 0 48 48" fill="none"><rect x="7" y="7" width="27" height="34" rx="5" class="ic-fill"/><rect x="7" y="7" width="27" height="34" rx="5" class="ic-line" stroke-width="2.8"/><path d="M14 16h13M14 23h13M14 30h8" class="ic-line" stroke-width="2.8" stroke-linecap="round"/><circle cx="35" cy="33" r="10" fill="#fff" class="ic-line" stroke-width="2.6"/><path d="M25 33a10 10 0 0 1 20 0z" fill="#F25C5C" class="ic-line" stroke-width="2.6" stroke-linejoin="round"/><circle cx="35" cy="33" r="3.4" fill="#fff" class="ic-line" stroke-width="2.4"/></svg></span>今日任务</button>
   <button id="navDex"><span class="nav-icon"><svg viewBox="0 0 48 48" fill="none"><rect x="6" y="8" width="36" height="32" rx="6" class="ic-fill"/><rect x="6" y="8" width="36" height="32" rx="6" class="ic-line" stroke-width="2.8"/><path d="M24 8v32" class="ic-line" stroke-width="2.8"/><circle cx="15" cy="20" r="6" fill="#fff" class="ic-line" stroke-width="2.4"/><path d="M9 20a6 6 0 0 1 12 0z" fill="#F25C5C" class="ic-line" stroke-width="2.4" stroke-linejoin="round"/><circle cx="15" cy="20" r="2" fill="#fff" class="ic-line" stroke-width="2"/><path d="M30 18h7M30 25h7M30 32h5" class="ic-line" stroke-width="2.8" stroke-linecap="round"/></svg></span>宝可梦图鉴</button>
   <!-- 家长设置：v3.29 从右下角悬浮移入导航栏，仅显示齿轮图标 -->
-  <div id="gearBtn" title="家长设置（调整数学难度）">⚙️</div>
+  <div id="gearBtn" title="家长设置">⚙️</div>
 </nav>
 
 <div class="overlay" id="overlay">
@@ -822,7 +826,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.30.0";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.31.0";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -847,6 +851,7 @@ function defaultState(){
     adventureCount: 0,      // 当日冒险次数（上限3）
     partnerId: null,        // 今日伙伴基础编号
     mathDiff: "10",         // 数学闯关难度（家长设置齿轮调整）：10/20/50/100/mul/div
+    hanziDiff: "0",         // 识字达人难度（家长设置分级）：0~5 对应 预备班/一上/一下/二上/二下/三及以上
     testMode: false,        // 测试模式（家长设置内输入密码 112233 开启，开启后首页显示测试按钮条）
     ttsWorker: "",           // 云端中文语音 Worker 地址（Edge-TTS 中转，留空=不启用；填 https://xxx.workers.dev）
     checkinLog: {}          // 打卡记录：{ "YYYY-MM-DD": 当天完成任务数 }，用于日历展示打卡情况
@@ -1294,12 +1299,71 @@ function mathTask(){
   activeModule = "math";
   mathQuiz(state.mathDiff || "10");
 }
-/* 家长设置：右下角齿轮打开，调整数学难度（也可在娃做数学途中即时切换） */
-function openSettings(){
-  const cur = state.mathDiff || "10";
+/* 家长设置：右下角齿轮打开。
+   主菜单列出各学习模块，点开进入对应难度设置（数学 / 识字；拼音、古诗后续可在 SETTING_MODULES 追加）。 */
+function openSettings(sub){
+  if (!sub){
+    openDialog(`<h2 style="color:#F58A1F">⚙️ 家长设置</h2>
+      <div style="font-size:20px;color:#9b8676;margin:6px 0 12px">点开下面的模块，分别设置难度</div>
+      <div class="set-modules">
+        <button class="big-btn set-mod" data-m="math">🔢 数学闯关<small>加减乘除 · 6 档难度</small></button>
+        <button class="big-btn set-mod" data-m="hanzi">✍️ 识字达人<small>6 级字库分级</small></button>
+      </div>
+      <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
+        <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">Edge-TTS 语音（免密钥）。留空则用本站内置语音（最稳，推荐）；也可填自己的 Worker 地址</span></div>
+        <div style="font-size:16px;margin:-4px 0 10px;padding:8px 12px;border-radius:12px;background:#F7F3EA;color:#7a6a58;line-height:1.6">
+          当前朗读通道：<b style="color:${cloudTTSAvailable()?'#3F9D3F':'#C97A22'}">${cloudTTSAvailable() ? "☁️ 云端小晓（全平台统一）" : (CURRENT_VOICE ? "💻 系统嗓音｜" + (CURRENT_VOICE.name||"") : "⚠️ 无可用语音")}</b>
+          ${cloudTTSAvailable() ? "" : '<span style="display:block;font-size:14px;color:#bbb">' + (location.protocol === "file:" ? "本地 file:// 打开时无法访问云端接口，请用网址访问" : "云端请求失败已自动降级，刷新页面可重试") + "</span>"}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
+          <input id="ttsWorker" placeholder="可选：填自己的 Worker 地址；留空用本站内置语音" value="${state.ttsWorker||''}" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
+          <div style="display:flex;gap:12px;justify-content:center;margin-top:4px">
+            <button class="big-btn blue" id="ttsSave" style="min-width:120px">保存</button>
+            <button class="big-btn yellow" id="ttsTest" style="min-width:120px">测试发音</button>
+          </div>
+          <div id="ttsStatus" style="font-size:16px;color:#3F9D3F;min-height:20px"></div>
+          <audio id="ttsManual" controls style="display:none;width:100%;margin-top:8px"></audio>
+          <div style="font-size:13px;color:#bbb;margin-top:4px">若自动播放没声音，可点上面这个播放器手动播放</div>
+        </div>
+      </div>
+      <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
+          <div style="font-size:22px;color:#9b8676">🛠 测试模式</div>
+          <button class="switch ${state.testMode?'on':''}" id="testSwitch" role="switch" aria-checked="${state.testMode}"><span class="knob"></span></button>
+        </div>
+      </div>
+      <div style="margin-top:14px;text-align:center;font-size:15px;color:#bbab98">当前版本：${APP_VERSION}</div>
+      <div style="margin-top:14px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`);
+    document.querySelectorAll(".set-mod").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); openSettings(b.dataset.m); }));
+    bindSettingsTTS(); bindSettingsTest();
+    $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
+    return;
+  }
+  if (sub==="math"){ renderMathSettings(); return; }
+  if (sub==="hanzi"){ renderHanziSettings(); return; }
+}
+function bindSettingsTTS(){
+  const ttsWorker = $("#ttsWorker"), ttsStatus = $("#ttsStatus");
+  function saveCloud(){ state.ttsWorker = (ttsWorker.value||"").trim().replace(/\/+$/,""); saveState(); const tw=document.getElementById("ttsWarn"); if(tw) tw.style.display="none"; }
+  $("#ttsSave").addEventListener("click", ()=>{ sfx.click(); saveCloud(); ttsStatus.textContent="✅ 已保存，朗读将使用云端语音"; });
+  $("#ttsTest").addEventListener("click", ()=>{ sfx.click(); saveCloud(); ttsStatus.textContent="🔊 正在试听…"; speakWorker("你好，我是你的学习伙伴，我们一起加油！",0.9, (err)=>{ ttsStatus.textContent="❌ "+err; }, (info)=>{ ttsStatus.textContent=info; }, (blob)=>{ const man=document.getElementById("ttsManual"); if(man){ man.src=URL.createObjectURL(blob); man.style.display="block"; } }); });
+}
+function bindSettingsTest(){
+  const testSwitch = $("#testSwitch"); if (!testSwitch) return;
+  testSwitch.addEventListener("click", ()=>{
+    sfx.click();
+    if (!state.testMode){
+      const pwd = prompt("请输入测试模式密码：",""); if (pwd===null) return;
+      if (pwd!=="112233"){ toast("密码错误，无法开启测试模式"); return; }
+      state.testMode=true; saveState(); applyTestMode(); testSwitch.classList.add("on"); testSwitch.setAttribute("aria-checked","true"); toast("测试模式已开启 🛠");
+    } else { state.testMode=false; saveState(); applyTestMode(); testSwitch.classList.remove("on"); testSwitch.setAttribute("aria-checked","false"); toast("测试模式已关闭"); }
+  });
+}
+function renderMathSettings(){
+  const cur = state.mathDiff||"10";
   const names = {10:"10 以内加减法",20:"20 以内加减法",50:"50 以内加减法",100:"100 以内加减法",mul:"99 乘法口诀",div:"表内除法"};
-  openDialog(`<h2 style="color:#F58A1F">⚙️ 家长设置</h2>
-    <div style="font-size:22px;color:#9b8676;margin:6px 0 14px">数学闯关难度（点「数学闯关」即按此难度出题）</div>
+  openDialog(`<h2 style="color:#F58A1F">🔢 数学闯关 · 难度</h2>
+    <button class="big-btn yellow" id="setBack" style="min-width:120px;margin-bottom:8px">← 返回</button>
     <div class="py-tabs" style="flex-direction:column;align-items:stretch;gap:14px">
       <button class="big-btn set-diff ${cur==="10"?"active":""}" data-d="10">➕➖ 10 以内加减法</button>
       <button class="big-btn set-diff ${cur==="20"?"active":""}" data-d="20">➕➖ 20 以内加减法</button>
@@ -1309,77 +1373,22 @@ function openSettings(){
       <button class="big-btn set-diff ${cur==="div"?"active":""}" data-d="div" style="background:linear-gradient(180deg,#7CD38B,#4FB866);border-color:#3E9C52;color:#fff">➗ 表内除法</button>
     </div>
     <div style="margin-top:16px;font-size:22px;color:#9b8676">当前难度：<b id="setCur" style="color:#F58A1F">${names[cur]}</b></div>
-    <div style="margin-top:22px;border-top:2px dashed #e6d7c3;padding-top:16px">
-      <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">Edge-TTS 语音（免密钥）。留空则用本站内置语音（最稳，推荐）；也可填自己的 Worker 地址</span></div>
-      <div style="font-size:16px;margin:-4px 0 10px;padding:8px 12px;border-radius:12px;background:#F7F3EA;color:#7a6a58;line-height:1.6">
-        当前朗读通道：<b style="color:${cloudTTSAvailable()?'#3F9D3F':'#C97A22'}">${cloudTTSAvailable() ? "☁️ 云端小晓（全平台统一）" : (CURRENT_VOICE ? "💻 系统嗓音｜" + (CURRENT_VOICE.name||"") : "⚠️ 无可用语音")}</b>
-        ${cloudTTSAvailable() ? "" : '<span style="display:block;font-size:14px;color:#bbb">' + (location.protocol === "file:" ? "本地 file:// 打开时无法访问云端接口，请用网址访问" : "云端请求失败已自动降级，刷新页面可重试") + "</span>"}
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
-        <input id="ttsWorker" placeholder="可选：填自己的 Worker 地址；留空用本站内置语音" value="${state.ttsWorker||''}" style="font-size:18px;padding:10px 12px;border-radius:12px;border:2px solid #e3d8c2;font-family:inherit">
-        <div style="display:flex;gap:12px;justify-content:center;margin-top:4px">
-          <button class="big-btn blue" id="ttsSave" style="min-width:120px">保存</button>
-          <button class="big-btn yellow" id="ttsTest" style="min-width:120px">测试发音</button>
-        </div>
-        <div id="ttsStatus" style="font-size:16px;color:#3F9D3F;min-height:20px"></div>
-        <audio id="ttsManual" controls style="display:none;width:100%;margin-top:8px"></audio>
-        <div style="font-size:13px;color:#bbb;margin-top:4px">若自动播放没声音，可点上面这个播放器手动播放</div>
-      </div>
-    </div>
-    <div style="margin-top:22px;border-top:2px dashed #e6d7c3;padding-top:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
-        <div style="font-size:22px;color:#9b8676">🛠 测试模式</div>
-        <button class="switch ${state.testMode?'on':''}" id="testSwitch" role="switch" aria-checked="${state.testMode}"><span class="knob"></span></button>
-      </div>
-    </div>
-    <div style="margin-top:14px;text-align:center;font-size:15px;color:#bbab98">当前版本：${APP_VERSION}</div>
-    <div style="margin-top:16px;display:flex;gap:12px;justify-content:center">
-      <button class="big-btn blue" id="setClose">完成</button>
-    </div>`);
-  document.querySelectorAll(".set-diff").forEach(b=>b.addEventListener("click",()=>{
-    sfx.click(); state.mathDiff = b.dataset.d; saveState();
-    document.querySelectorAll(".set-diff").forEach(x=>x.classList.remove("active")); b.classList.add("active");
-    $("#setCur").textContent = names[b.dataset.d];
-    toast("难度已设为：" + names[b.dataset.d]);
-    if (activeModule === "math"){            // 娃正在做数学 → 立即按新难度重开本场
-      setTimeout(()=>{ closeDialog(); activeModule="math"; mathTask(); }, 700);
-    }
-  }));
-  // 云端中文语音（Edge-TTS 经 Worker 中转）配置
-  const ttsWorker = $("#ttsWorker"), ttsStatus = $("#ttsStatus");
-  function saveCloud(){
-    state.ttsWorker = (ttsWorker.value||"").trim().replace(/\/+$/,"");
-    saveState();
-    const tw = document.getElementById("ttsWarn"); if (tw) tw.style.display = "none"; // 配好云端后隐藏提示条
-  }
-  $("#ttsSave").addEventListener("click", ()=>{ sfx.click(); saveCloud(); ttsStatus.textContent = "✅ 已保存，朗读将使用云端语音"; });
-  $("#ttsTest").addEventListener("click", ()=>{
-    sfx.click(); saveCloud();
-    ttsStatus.textContent = "🔊 正在试听…";
-    speakWorker("你好，我是你的学习伙伴，我们一起加油！", 0.9,
-      (err)=>{ ttsStatus.textContent = "❌ " + err; },
-      (info)=>{ ttsStatus.textContent = info; },
-      (blob)=>{ const man = document.getElementById("ttsManual"); if (man){ man.src = URL.createObjectURL(blob); man.style.display = "block"; } }
-    );
-  });
-  $("#setClose").addEventListener("click", ()=>{ sfx.click(); closeDialog(); });
-  // 测试模式开关：开启需输入密码 112233，关闭直接切换
-  const testSwitch = $("#testSwitch");
-  testSwitch.addEventListener("click", ()=>{
-    sfx.click();
-    if (!state.testMode){
-      const pwd = prompt("请输入测试模式密码：", "");
-      if (pwd === null) return;               // 用户取消
-      if (pwd !== "112233"){ toast("密码错误，无法开启测试模式"); return; }
-      state.testMode = true; saveState(); applyTestMode();
-      testSwitch.classList.add("on"); testSwitch.setAttribute("aria-checked","true");
-      toast("测试模式已开启 🛠");
-    } else {
-      state.testMode = false; saveState(); applyTestMode();
-      testSwitch.classList.remove("on"); testSwitch.setAttribute("aria-checked","false");
-      toast("测试模式已关闭");
-    }
-  });
+    <div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`);
+  $("#setBack").addEventListener("click",()=>{ sfx.click(); openSettings(); });
+  document.querySelectorAll(".set-diff").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); state.mathDiff=b.dataset.d; saveState(); document.querySelectorAll(".set-diff").forEach(x=>x.classList.remove("active")); b.classList.add("active"); $("#setCur").textContent=names[b.dataset.d]; toast("难度已设为："+names[b.dataset.d]); if(activeModule==="math"){ setTimeout(()=>{ closeDialog(); activeModule="math"; mathTask(); },700); } }));
+  $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
+}
+function renderHanziSettings(){
+  const cur = String(state.hanziDiff||"0");
+  const items = Object.keys(HANZI_LEVELS).map(k=>{ const L=HANZI_LEVELS[k]; const tag = k==="0"?"🌱 ":""; return `<button class="big-btn set-diff ${cur===k?"active":""}" data-d="${k}">${tag}难度${k}・${L.name}<small>${L.desc}</small></button>`; }).join("");
+  openDialog(`<h2 style="color:#45B045">✍️ 识字达人 · 难度</h2>
+    <button class="big-btn yellow" id="setBack" style="min-width:120px;margin-bottom:8px">← 返回</button>
+    <div class="py-tabs" style="flex-direction:column;align-items:stretch;gap:12px">${items}</div>
+    <div style="margin-top:16px;font-size:22px;color:#9b8676">当前难度：<b id="setCur" style="color:#45B045">难度${cur}・${hanziDiffName(cur)}</b></div>
+    <div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`);
+  $("#setBack").addEventListener("click",()=>{ sfx.click(); openSettings(); });
+  document.querySelectorAll(".set-diff").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); state.hanziDiff=b.dataset.d; saveState(); document.querySelectorAll(".set-diff").forEach(x=>x.classList.remove("active")); b.classList.add("active"); $("#setCur").textContent="难度"+b.dataset.d+"・"+hanziDiffName(b.dataset.d); toast("识字难度已设为：难度"+b.dataset.d); if(activeModule==="hanzi"){ setTimeout(()=>{ closeDialog(); activeModule="hanzi"; hanziTask(); },700); } }));
+  $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
 }
 /* 根据 state.testMode 显示/隐藏首页测试按钮条 */
 function applyTestMode(){
@@ -1420,13 +1429,117 @@ function razTask(){
     $("#razYes").addEventListener("click", ()=>{ state.razStreak+=1; state.razLastDate=todayStr(); saveState(); closeDialog(); completeTask("english"); setTimeout(()=>openDialog(`<h2 style="color:#3D8EE8">🎉 打卡成功！</h2><div style="font-size:64px">📚</div><div style="font-size:28px;margin:10px 0">已连续打卡 <b style="color:#F58A1F">${state.razStreak}</b> 天，奖励 1 个精灵球！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好耶！</button>`),1000); });
     $("#razNo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); }); }); }
 }
+/* ============ 识字分级系统（部编思路 · 代表性字库） ============
+   难度 0~5：预备班 / 一上 / 一下 / 二上 / 二下 / 三及以上。
+   每条 [汉字, 拼音, 组词]。后续可直接替换为完整官方部编字表，结构不变。 */
+const EMOJI_FOR = { "人":"👤","口":"👄","手":"✋","日":"🌞","月":"🌙","水":"💧","火":"🔥","山":"⛰️","石":"🪨","田":"🌾","土":"🟫","木":"🌳","林":"🌲","禾":"🌿","目":"👀","耳":"👂","心":"❤️","牙":"🦷","足":"🦶","刀":"🔪","尺":"📏","门":"🚪","车":"🚗","舟":"⛵","马":"🐴","牛":"🐮","羊":"🐑","鸟":"🐦","鱼":"🐟","虫":"🐛","花":"🌸","草":"🌿","云":"☁️","雨":"🌧️","风":"🌬️","电":"⚡","光":"💡","天":"🌌","地":"🌍","上":"⬆️","下":"⬇️","大":"🔼","小":"🔻","多":"➕","少":"➖","中":"🎯","力":"💪","气":"🎈","一":"1️⃣","二":"2️⃣","三":"3️⃣","四":"4️⃣","五":"5️⃣","六":"6️⃣","七":"7️⃣","八":"8️⃣","九":"9️⃣","十":"🔟","米":"🌾","面":"🍜","饭":"🍚","菜":"🥬","果":"🍎","瓜":"🍉","豆":"🫘","肉":"🍖","鸡":"🐔","狗":"🐶","猫":"🐱","兔":"🐰","猪":"🐷","红":"🔴","黄":"🟡","白":"⚪","黑":"⚫","绿":"🟢","蓝":"🔵","衣":"👕","帽":"🧢","鞋":"👟","书":"📖","笔":"✏️","画":"🎨","歌":"🎵","笑":"😄","哭":"😢","飞":"✈️","看":"👀","听":"👂","吃":"🍴","喝":"🥤","来":"➡️","去":"⬅️","开":"🔓","关":"🔒","早":"🌅","晚":"🌆","好":"👍","友":"🤝","学":"🏫","生":"🐣","河":"🌊","江":"🌊","湖":"🌊","海":"🌊","树":"🌳","桃":"🍑","李":"🍒","梅":"🌸","跑":"🏃","跳":"🤾","踢":"⚽","站":"🧍","抱":"🤗","找":"🔍","捉":"🐛","唱":"🎤","吹":"🌬️","叶":"🍃","苗":"🌱","茶":"🍵","爸":"👨","妈":"👩","奶":"👵","哥":"👦","姐":"👧","弟":"👦","妹":"👧","爷":"👴" };
+const HANZI_LEVELS = {
+  0:{ name:"预备班・幼升小", desc:"基础独体字 · 看图选字", chars:[
+    ["人","rén","人们"],["口","kǒu","人口"],["手","shǒu","小手"],["日","rì","日子"],["月","yuè","月亮"],["水","shuǐ","水果"],["火","huǒ","火苗"],["山","shān","大山"],["石","shí","石头"],["田","tián","田地"],["土","tǔ","泥土"],["木","mù","木头"],["林","lín","树林"],["禾","hé","禾苗"],["目","mù","目光"],["耳","ěr","耳朵"],["心","xīn","开心"],["牙","yá","牙齿"],["足","zú","足球"],["刀","dāo","小刀"],["尺","chǐ","尺子"],["门","mén","大门"],["车","chē","火车"],["舟","zhōu","小舟"],["马","mǎ","小马"],["牛","niú","小牛"],["羊","yáng","小羊"],["鸟","niǎo","小鸟"],["鱼","yú","小鱼"],["虫","chóng","虫子"],["花","huā","花朵"],["草","cǎo","草地"],["云","yún","白云"],["雨","yǔ","下雨"],["风","fēng","大风"],["电","diàn","雷电"],["光","guāng","阳光"],["天","tiān","天空"],["地","dì","大地"],["上","shàng","上学"],["下","xià","下课"],["大","dà","大小"],["小","xiǎo","小心"],["多","duō","多少"],["少","shǎo","少数"],["中","zhōng","中间"],["力","lì","力气"],["气","qì","天气"],["一","yī","一个"],["二","èr","二十"],["三","sān","三月"],["四","sì","四方"],["五","wǔ","五个"],["六","liù","六月"],["七","qī","七天"],["八","bā","八只"],["九","jiǔ","九个"],["十","shí","十分"]
+  ]},
+  1:{ name:"一年级上册", desc:"简单合体字 · 看图+认字混合", chars:[
+    ["你","nǐ","你好"],["我","wǒ","我们"],["他","tā","他们"],["爸","bà","爸爸"],["妈","mā","妈妈"],["哥","gē","哥哥"],["姐","jiě","姐姐"],["弟","dì","弟弟"],["妹","mèi","妹妹"],["爷","yé","爷爷"],["奶","nǎi","奶奶"],["米","mǐ","大米"],["面","miàn","面条"],["饭","fàn","吃饭"],["菜","cài","青菜"],["果","guǒ","苹果"],["瓜","guā","西瓜"],["豆","dòu","豆子"],["肉","ròu","鱼肉"],["鸡","jī","小鸡"],["狗","gǒu","小狗"],["猫","māo","小猫"],["兔","tù","兔子"],["猪","zhū","小猪"],["红","hóng","红色"],["黄","huáng","黄色"],["白","bái","白色"],["黑","hēi","黑色"],["绿","lǜ","绿色"],["蓝","lán","蓝色"],["衣","yī","衣服"],["帽","mào","帽子"],["鞋","xié","鞋子"],["书","shū","书本"],["笔","bǐ","铅笔"],["画","huà","画画"],["歌","gē","唱歌"],["跑","pǎo","跑步"],["笑","xiào","笑声"],["哭","kū","哭泣"],["坐","zuò","坐下"],["走","zǒu","走路"],["飞","fēi","飞机"],["看","kàn","看见"],["听","tīng","听见"],["说","shuō","说话"],["吃","chī","吃饭"],["喝","hē","喝水"],["来","lái","回来"],["去","qù","去年"],["开","kāi","开门"],["关","guān","关门"],["进","jìn","进去"],["出","chū","出门"],["问","wèn","问好"],["答","dá","回答"],["早","zǎo","早上"],["晚","wǎn","晚上"],["明","míng","明天"],["好","hǎo","好人"],["友","yǒu","朋友"],["同","tóng","同学"],["学","xué","学习"],["生","shēng","学生"],["先","xiān","首先"],["后","hòu","后面"]
+  ]},
+  2:{ name:"一年级下册", desc:"偏旁识字 · 看图+看拼音", chars:[
+    ["河","hé","小河"],["江","jiāng","长江"],["湖","hú","湖水"],["海","hǎi","大海"],["流","liú","流水"],["洗","xǐ","洗手"],["汽","qì","汽水"],["清","qīng","清水"],["树","shù","大树"],["松","sōng","松树"],["柏","bǎi","柏树"],["桃","táo","桃子"],["李","lǐ","李子"],["梅","méi","梅花"],["跑","pǎo","跑步"],["跳","tiào","跳高"],["踢","tī","踢球"],["路","lù","马路"],["跟","gēn","跟着"],["站","zhàn","站立"],["打","dǎ","打电话"],["拍","pāi","拍手"],["抱","bào","拥抱"],["拉","lā","拉手"],["找","zhǎo","找到"],["把","bǎ","把手"],["扫","sǎo","扫地"],["捉","zhuō","捉虫"],["唱","chàng","唱歌"],["吹","chuī","吹风"],["呼","hū","呼喊"],["叶","yè","叶子"],["苗","miáo","禾苗"],["草","cǎo","小草"],["茶","chá","喝茶"]
+  ]},
+  3:{ name:"二年级上册", desc:"形声字 · 拼音选字+组词", chars:[
+    ["园","yuán","公园"],["圆","yuán","圆形"],["份","fèn","一份"],["分","fēn","分开"],["城","chéng","城市"],["诚","chéng","诚实"],["进","jìn","进去"],["近","jìn","远近"],["晴","qíng","晴天"],["请","qǐng","请坐"],["清","qīng","清水"],["青","qīng","青草"],["今","jīn","今天"],["金","jīn","金色"],["生","shēng","学生"],["声","shēng","声音"],["在","zài","正在"],["再","zài","再见"],["已","yǐ","已经"],["以","yǐ","以后"],["做","zuò","做工"],["作","zuò","作业"],["坐","zuò","坐下"],["座","zuò","座位"],["话","huà","说话"],["化","huà","变化"],["子","zǐ","孩子"],["字","zì","写字"],["香","xiāng","香味"],["乡","xiāng","家乡"]
+  ]},
+  4:{ name:"二年级下册", desc:"易混字辨析 · 无图", chars:[
+    ["休","xiū","休息"],["体","tǐ","体育"],["峰","fēng","山峰"],["锋","fēng","刀锋"],["蜂","fēng","蜜蜂"],["该","gāi","应该"],["刻","kè","时刻"],["孩","hái","孩子"],["快","kuài","快乐"],["块","kuài","一块"],["挑","tiāo","挑水"],["跳","tiào","跳高"],["渴","kě","口渴"],["喝","hē","喝水"],["底","dǐ","底下"],["低","dī","低头"],["处","chù","到处"],["外","wài","外面"],["午","wǔ","中午"],["牛","niú","小牛"],["汽","qì","汽车"],["气","qì","生气"],["像","xiàng","好像"],["象","xiàng","大象"],["完","wán","完成"],["玩","wán","玩耍"],["同","tóng","同学"],["童","tóng","儿童"],["原","yuán","原来"],["园","yuán","公园"],["圆","yuán","圆形"]
+  ]},
+  5:{ name:"三年级及以上", desc:"多音近义 · 语境填空", chars:[
+    ["幕","mù","开幕"],["慕","mù","羡慕"],["暮","mù","暮色"],["辩","biàn","争辩"],["辨","biàn","分辨"],["辫","biàn","辫子"],["拌","bàn","搅拌"],["伴","bàn","同伴"],["竞","jìng","竞赛"],["竟","jìng","竟然"],["既","jì","既然"],["即","jí","立即"],["带","dài","带领"],["戴","dài","爱戴"],["查","chá","检查"],["察","chá","观察"],["须","xū","必须"],["需","xū","需要"],["的","de","我的"],["得","dé","觉得"],["地","de","轻轻地"],["坐","zuò","坐下"],["座","zuò","座位"],["做","zuò","做工"],["作","zuò","作业"],["漂","piào","漂亮"],["飘","piāo","飘落"],["州","zhōu","广州"],["洲","zhōu","亚洲"]
+  ]}
+};
+/* 形近 / 同音混淆组：用于中高年级干扰项与辨析题 */
+const HANZI_CONFUSE = [
+  ["人","入"],["天","无"],["田","由"],["日","目"],["木","本"],["土","士"],["干","千"],
+  ["园","圆"],["进","近"],["休","体"],["峰","锋","蜂"],["该","刻"],["孩","该"],["快","块"],
+  ["渴","喝"],["底","低"],["午","牛"],["汽","气"],["像","象"],["完","玩"],["原","园","圆"],
+  ["幕","慕","暮"],["辩","辨","辫"],["拌","伴"],["竞","竟"],["既","即"],["带","戴"],["查","察"],
+  ["须","需"],["的","得","地"],["坐","座"],["做","作"],["漂","飘"],["州","洲"],["青","清","晴","请"],
+  ["份","分"],["城","诚"],["生","声"],["在","再"],["已","以"],["话","化"],["子","字"],["香","乡"],
+  ["挑","跳"],["同","童"],["处","外"]
+];
+function hanziBank(lv){ return (HANZI_LEVELS[lv]||HANZI_LEVELS[0]).chars; }
+function hanziDiffName(lv){ return (HANZI_LEVELS[lv]||HANZI_LEVELS[0]).name; }
+function emojiFor(c){ return EMOJI_FOR[c] || ""; }
+function confuseGroup(c){ for (const g of HANZI_CONFUSE){ if (g.includes(c)) return g.filter(x=>x!==c); } return []; }
+function randomDistractors(c, bank, n){
+  const grp = new Set(confuseGroup(c)); grp.add(c);
+  let pool = bank.map(x=>x[0]).filter(x=>!grp.has(x));
+  const out = [];
+  while(out.length<n && pool.length){ const w = pick(pool,1)[0]; out.push(w); pool = pool.filter(x=>x!==w); }
+  return out;
+}
+function confuseDistractors(c, n, bank){
+  const out = confuseGroup(c).filter(x=>x!==c);
+  if (out.length<n){
+    const used = new Set([c,...out]);
+    let pool = bank.map(x=>x[0]).filter(x=>!used.has(x));
+    while(out.length<n && pool.length){ const w = pick(pool,1)[0]; out.push(w); pool = pool.filter(x=>x!==w); }
+  }
+  return out.slice(0,n);
+}
+function blankPhrase(c, word){
+  const idx = word.indexOf(c);
+  if (idx<0) return "（ ）";
+  return word.slice(0,idx) + "___" + word.slice(idx+1);
+}
+function replaceChar(word, c, rep){ return word.split("").map(ch=> ch===c?rep:ch).join(""); }
+function buildHanziQ(type, bank, lv, i){
+  const e = pick(bank,1)[0]; const [c, py, word] = e;
+  if (type==="emoji"){
+    const em = emojiFor(c);
+    const wrongs = randomDistractors(c, bank, 3);
+    return { id:"h"+i, prompt:(em? em+" ":"") + "这个字是？", sub:`（${word}）`, speakText:`${c}，${word}`, speakOnShow:true, options:shuffle([c,...wrongs]), answer:c };
+  }
+  if (type==="char2py"){
+    const ws = [...new Set(pick(bank.filter(x=>x[1]!==py).map(x=>x[1]), 6))].slice(0,3);
+    return { id:"h"+i, prompt:c, sub:`（${word}）它的拼音是？`, speakText:`${c}，${word}的${c}`, speakOnShow:lv<=1, options:shuffle([py,...ws]), answer:py };
+  }
+  if (type==="pinyin"){
+    const wrongs = confuseDistractors(c,3,bank);
+    return { id:"h"+i, prompt:py, promptClass:"small", sub:`（${word}）选正确的汉字`, speakText:`${c}，${word}`, speakOnShow:false, options:shuffle([c,...wrongs]), answer:c };
+  }
+  if (type==="word"){
+    const ws = [...new Set(pick(bank.filter(x=>x[2]!==word).map(x=>x[2]), 6))].slice(0,3);
+    return { id:"h"+i, prompt:c, sub:"选一个正确的组词", speakText:null, speakOnShow:false, options:shuffle([word,...ws]), answer:word };
+  }
+  if (type==="confuse" || type==="fill"){
+    const grp = confuseGroup(c);
+    if (grp.length){
+      const opts = shuffle([c, ...grp]).slice(0, Math.min(4, grp.length+1));
+      return { id:"h"+i, prompt:"选字填空：" + blankPhrase(c, word), sub: type==="fill" ? "（根据词语选字）" : "", speakText:word, speakOnShow:false, options:opts, answer:c };
+    }
+    const wrongs = randomDistractors(c, bank, 3);
+    return { id:"h"+i, prompt:py, promptClass:"small", sub:`（${word}）选正确的汉字`, speakText:`${c}，${word}`, speakOnShow:false, options:shuffle([c,...wrongs]), answer:c };
+  }
+  if (type==="judge"){
+    const grp = confuseGroup(c);
+    const wrongMember = grp.length ? pick(grp,1)[0] : null;
+    const showCorrect = (!wrongMember) || (Math.random()<0.4);
+    let phrase, ans;
+    if (showCorrect){ phrase = word; ans = "对"; }
+    else { phrase = replaceChar(word, c, wrongMember); ans = "错"; }
+    return { id:"h"+i, prompt:`这个词用字对吗：${phrase}？`, sub:"", speakText:null, speakOnShow:false, options:shuffle(["对","错"]), answer:ans };
+  }
+  const wrongs = randomDistractors(c, bank, 3);
+  return { id:"h"+i, prompt:c, sub:`（${word}）`, speakText:`${c}，${word}`, speakOnShow:lv<=1, options:shuffle([c,...wrongs]), answer:c };
+}
 function hanziTask(){
   if (state.daily.done.hanzi) return alreadyDone("✍️ 识字达人");
-  const questions = pick(HANZI,10).map(([zi,py,word],i)=>{
-    if (Math.random()<0.5){ const wrongs=pick(HANZI.filter(h=>h[1]!==py),3).map(h=>h[1]); return { id:"h"+i, prompt:zi, sub:`组词：${word} ｜ 它的拼音是哪个？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([py,...wrongs]), answer:py }; }
-    const wrongs=pick(HANZI.filter(h=>h[0]!==zi),3).map(h=>h[0]); return { id:"h"+i, prompt:py, promptClass:"small", sub:`提示组词：${word} ｜ 是哪个汉字呢？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...wrongs]), answer:zi };
-  });
-  runQuiz({ title:"✍️ 识字达人", color:"#45B045", questions,
+  activeModule = "hanzi";
+  const lv = String(state.hanziDiff||"0");
+  const bank = hanziBank(lv);
+  const lvNum = +lv;
+  const typePlan = { 0:["emoji"], 1:["emoji","char2py"], 2:["emoji","pinyin"], 3:["pinyin","word"], 4:["confuse"], 5:["fill","judge"] }[lvNum] || ["emoji"];
+  const questions = [];
+  for (let i=0;i<10;i++){ questions.push(buildHanziQ(typePlan[i % typePlan.length], bank, lvNum, i)); }
+  shuffle(questions);
+  runQuiz({ title:`✍️ 识字 · ${hanziDiffName(lv)}`, color:"#45B045", questions,
     onFinish(acc){ openDialog(`<h2 style="color:#45B045">🎉 识字任务完成！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">📝</div><div style="font-size:26px;margin:10px 0">又认识了好多字，奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('hanzi')">收下精灵球 ⚡</button>`, {closable:false}); }
   });
 }
