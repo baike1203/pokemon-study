@@ -935,7 +935,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.32.0";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.32.1";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1496,12 +1496,12 @@ function openSettings(sub){
         <button class="big-btn set-mod" data-m="poem">📜 古诗小舟<small>12 学期分级</small></button>
       </div>
       <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
-        <div style="font-size:22px;color:#9b8676;margin-bottom:10px">💾 进度备份 / 导入</div>
-        <button class="big-btn" id="backupBtn2" style="width:100%;min-width:0">💾 备份 / 导入进度</button>
-      </div>
-      <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
         <div style="font-size:22px;color:#9b8676;margin-bottom:10px">📊 学习数据</div>
         <button class="big-btn" id="reportBtn2" style="width:100%;min-width:0">📊 查看学习报告</button>
+      </div>
+      <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
+        <div style="font-size:22px;color:#9b8676;margin-bottom:10px">💾 进度备份 / 导入</div>
+        <button class="big-btn" id="backupBtn2" style="width:100%;min-width:0">💾 备份 / 导入进度</button>
       </div>
       <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
         <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🔊 云端中文语音<span style="font-size:15px;color:#bbb;display:block">Edge-TTS 语音（免密钥）。留空则用本站内置语音（最稳，推荐）；也可填自己的 Worker 地址</span></div>
@@ -2044,10 +2044,11 @@ function openGacha(ballType){
   if (ballType==="normal"){
     const X = TASKS.filter(t=>state.daily.done[t.key]).length;   // 今天已完成任务数
     const Y = X;                                                 // 每个任务奖励 1 个精灵球
-    openDialog(`<h2 style="color:var(--poke-red)">🎁 收服时间到！</h2>
+    openDialog(`<div style="position:relative"><button style="position:absolute;top:-8px;right:-8px;width:44px;height:44px;border-radius:50%;background:var(--poke-yellow);border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:5;line-height:1" onclick="document.querySelector('#dialogClose').click()">✖</button>
+      <h2 style="color:var(--poke-red)">🎁 收服时间到！</h2>
       <div style="font-size:27px;line-height:1.7;margin:14px 0">你今天完成了 <b style="color:var(--poke-red);font-size:38px">${X}</b> 个学习任务，<br>得到奖励 <b style="color:var(--poke-blue);font-size:38px">${Y}</b> 个精灵球！</div>
       <div style="font-size:23px;color:#8a6d5c;margin:10px 0">点下面的球，把<b>努力</b>变成新伙伴吧！⚡</div>
-      <button class="big-btn" id="toGacha">🎯 开始抽卡（剩 ${state.balls} 个精灵球）</button>`, {closable:false});
+      <button class="big-btn" id="toGacha">🎯 开始收服宝可梦（剩 ${state.balls} 个精灵球）</button></div>`, {closable:false});
     $("#toGacha").addEventListener("click", ()=>{ sfx.click(); closeDialog(); beginDraw("normal"); });
     return;
   }
@@ -2098,7 +2099,7 @@ function revealGacha(id, isNew, ballType){
       ${canAgain?'<button class="big-btn yellow" id="gAgain">再收服一只！（'+remText+'）</button>':''}</div>`, {closable:false});
     speak(`哇！收服了${POKEMON[displayId(id)-1]}！`);
     $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); checkAll151(); checkAchievements(); renderDex(); };
-    if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); openGacha(ballType); };
+    if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
   } else if (evolved){
     confetti(120); sfx.fanfare();
     openDialog(`<h2 style="color:var(--poke-red)">🌟 进化！</h2>
@@ -2118,7 +2119,7 @@ function revealGacha(id, isNew, ballType){
       <div style="font-size:26px;margin:8px 0">${dupMsg}</div>
       ${canAgain?'<button class="big-btn yellow" id="gOk">好耶，再收服一次！（'+remText+'）</button>':''}</div>`, {closable:false});
     speak(ballType==="normal" ? "这只宝可梦你已经有了，再送你一个精灵球！" : "这只宝可梦你已经有了，再试一次吧！");
-    if ($("#gOk")) $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); openGacha(ballType); };
+    if ($("#gOk")) $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
   }
 }
 
