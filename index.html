@@ -828,7 +828,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.31.3";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.31.4";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2383,6 +2383,7 @@ function doImport(txt){
     }
     rebuildCheckinLog(merged);   // 兜底：从 daily.done 反推补全缺失的打卡记录（如旧备份无 checkinLog）
     state = merged; saveState();
+    checkDailyReset();           // 导入后立刻判断跨天：若备份是过去的日期，则把「今日任务」重置为未做（打卡日历不受影响）
     renderHeader(); renderTasks(); renderDex(); closeDialog(); toast("进度导入成功！（打卡日历已合并，历史记录不会丢失）");
   }catch(err){ toast("导入失败：内容无效"); }
 }
