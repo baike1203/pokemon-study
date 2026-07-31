@@ -1524,7 +1524,7 @@ function renderHanziSettings(){
 }
 function renderPoemSettings(){
   const cur = String(state.poemDiff||"0");
-  const items = POEM_SEM_NAMES.map((nm,i)=>`<button class="big-btn set-diff ${cur===String(i)?"active":""}" data-d="${i}">${nm}<small>${i===0?"入门 · 必背古诗起步":(i===POEM_SEM_NAMES.length-1?"全学段 · 最难":"累计到本学年段")}</small></button>`).join("");
+  const items = POEM_SEM_NAMES.map((nm,i)=>`<button class="big-btn set-diff ${cur===String(i)?"active":""}" data-d="${i}">${nm}<small>本学期 ${POEMS.filter(p=>p.sem===i && p.req).length} 首必背古诗</small></button>`).join("");
   openDialog(`<h2 style="color:#8E6CF0">📜 古诗小舟 · 难度</h2>
     <button class="big-btn yellow" id="setBack" style="min-width:120px;margin-bottom:8px">← 返回</button>
     <div class="py-tabs" style="flex-direction:column;align-items:stretch;gap:10px">${items}</div>
