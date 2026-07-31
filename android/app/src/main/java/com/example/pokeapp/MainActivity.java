@@ -199,7 +199,7 @@ public class MainActivity extends Activity {
                     try (OutputStream os = getContentResolver().openOutputStream(uri)) {
                         os.write(json.getBytes(StandardCharsets.UTF_8));
                     }
-                    showToast("进度已保存到：下载/" + filename);
+                    showToast("进度已保存到：平板「下载 / Download」文件夹\n文件名：" + filename);
                 } else {
                     File dir = android.os.Environment
                             .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);

@@ -76,16 +76,8 @@ header {
   pointer-events: none; white-space: nowrap;
 }
 
-/* 右上角：语音选择器（多中文嗓音时显示，让家长挑最自然的嗓音） */
+/* 右上角：精灵球计数 + 时钟容器 */
 .hdr-right { display: flex; align-items: center; gap: 14px; }
-#voiceSel {
-  height: 52px; font-size: 18px; border-radius: 999px;
-  border: 2px solid #fff; background: linear-gradient(180deg, #FFFDF7 0%, #FFE9C4 100%);
-  color: #8a5a2b; padding: 0 16px; max-width: 230px; min-height: 52px;
-  box-shadow: inset 0 2px 4px rgba(255,255,255,.9), 0 4px 10px rgba(170,110,40,.3);
-  cursor: pointer; appearance: none; -webkit-appearance: none;
-}
-#voiceSel:focus { outline: 3px solid rgba(255,255,255,.6); }
 
 /* 右上角精灵球计数组件：立体药丸效果 */
 #ballCounter {
@@ -402,7 +394,6 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
   #hdrClock { font-size: 20px; letter-spacing: 1px; }
   #appTitle .edit-hint { font-size: 15px; }
   .hdr-right { gap: 8px; }
-  #voiceSel { height: 36px; font-size: 14px; padding: 0 10px; min-height: 36px; max-width: 160px; }
   #ballCounter { padding: 4px 14px 4px 10px; min-height: 40px; gap: 6px; }
   #ballCounter .ball-icon { width: 26px; height: 26px; }
   #ballCount { font-size: 22px; }
@@ -506,7 +497,6 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
   <div id="appTitle" title="点击修改名字"><span id="titleText">苏打的宝可梦冒险</span><span class="edit-hint">✏️</span></div>
   <div id="hdrClock" title="当前时间">--:--</div>
   <div class="hdr-right">
-    <select id="voiceSel" title="选择朗读语音" aria-label="选择朗读语音" style="display:none"></select>
     <div id="ballCounter"><div class="pokeball"></div><span class="x">×</span><span class="num" id="ballNum">0</span></div>
   </div>
 </header>
@@ -796,7 +786,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.27.3";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.28";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -820,7 +810,6 @@ function defaultState(){
     adventureDate: "",      // 当日冒险日期
     adventureCount: 0,      // 当日冒险次数（上限3）
     partnerId: null,        // 今日伙伴基础编号
-    voiceName: null,        // 用户手动选过的中文朗读嗓音（null=自动挑最自然的）
     mathDiff: "10",         // 数学闯关难度（家长设置齿轮调整）：10/20/50/100/mul/div
     testMode: false,        // 测试模式（家长设置内输入密码 112233 开启，开启后首页显示测试按钮条）
     ttsWorker: "",           // 云端中文语音 Worker 地址（Edge-TTS 中转，留空=不启用；填 https://xxx.workers.dev）
@@ -895,25 +884,14 @@ function loadVoices(){
   try { ALL_VOICES = window.speechSynthesis ? (speechSynthesis.getVoices() || []) : []; } catch(e){ ALL_VOICES = []; }
   // 筛出所有中文相关嗓音（lang 以 zh/cmn 开头，或名字里带 中文/普通话/国语）
   ZH_VOICES = ALL_VOICES.filter(v => /^(zh|cmn)|chinese|中文|普通话|国语/i.test((v.lang||"") + " " + (v.name||"")));
-  // 1) 优先用家长手动选过的嗓音
-  if (state.voiceName) CURRENT_VOICE = ZH_VOICES.find(v => v.name === state.voiceName) || null;
-  // 2) 否则按偏好自动挑最自然的
+  // 自动按偏好挑最自然的中文系统嗓音（标题栏已无手动切换器）
   if (!CURRENT_VOICE && ZH_VOICES.length) CURRENT_VOICE = ZH_VOICES.slice().sort((a,b)=>voiceScore(b)-voiceScore(a))[0];
   renderVoiceSelect();
 }
 function renderVoiceSelect(){
-  const sel = document.getElementById("voiceSel"); if (!sel) return;
+  // 标题栏已移除系统嗓音切换器；此处仅维护「无系统中文嗓音」的家长提示条
   const tw = document.getElementById("ttsWarn");
-  if (ZH_VOICES.length === 0){ if (tw && !hasCloudTTS()) tw.style.display = ""; sel.style.display = "none"; return; } // 没中文嗓音且没配云端→提示家长
-  if (tw) tw.style.display = "none";
-  if (ZH_VOICES.length < 2){ sel.style.display = "none"; return; } // 只有 1 个中文嗓音→不显示切换器（无需切换）
-  sel.style.display = "";
-  sel.innerHTML = "";
-  ZH_VOICES.forEach(v => {
-    const o = document.createElement("option"); o.value = v.name; o.textContent = v.name.replace(/\s*\(.*?\)\s*/g,""); // 去掉括号备注
-    sel.appendChild(o);
-  });
-  sel.value = CURRENT_VOICE ? CURRENT_VOICE.name : "";
+  if (tw) tw.style.display = (ZH_VOICES.length === 0 && !hasCloudTTS()) ? "" : "none";
 }
 function hasCloudTTS(){ return true; }  // 本站内置 /api/tts 常驻可用（免密钥 Edge-TTS），无需再判断是否填了 Worker
 function speak(text, rate = 0.9){
@@ -997,13 +975,6 @@ if (window.speechSynthesis){
   // 部分安卓浏览器首次 getVoices() 返回空、稍后才异步就绪，且不触发 onvoiceschanged，这里兜底重试
   setTimeout(loadVoices, 600);
   setTimeout(loadVoices, 2000);
-  const sel = document.getElementById("voiceSel");
-  if (sel) sel.addEventListener("change", () => {
-    state.voiceName = sel.value || null;
-    CURRENT_VOICE = ZH_VOICES.find(v => v.name === state.voiceName) || null;
-    saveState();
-    speak("你好，我是你的学习伙伴，我们一起加油！"); // 切换后试听
-  });
 } else {
   // 浏览器完全不支持 speechSynthesis（极老版本）→ 若也没配云端 TTS，提示家长
   const tw = document.getElementById("ttsWarn"); if (tw && !hasCloudTTS()) tw.style.display = "";
@@ -2100,13 +2071,23 @@ function renderAchievements(){
 function openBackup(){
   const data = JSON.stringify(state);
   openDialog(`<h2 style="color:var(--poke-blue)">💾 进度备份</h2>
-    <div style="font-size:20px;color:#9b8676;margin-bottom:8px">导出：下载或复制下面内容保存；导入：选择文件或粘贴内容后点导入。</div>
+    <div style="font-size:20px;color:#9b8676;margin-bottom:8px">导出：平板 APK 会保存到「下载 / Download」文件夹；电脑浏览器保存到默认下载目录。导入：选择文件或粘贴内容后点导入。</div>
     <button class="big-btn blue" id="expBtn">⬇️ 下载进度文件</button>
     <button class="big-btn yellow" id="copyBtn">📋 复制进度</button>
     <hr style="margin:14px 0;border:none;border-top:2px dashed #e3d8c2">
     <textarea id="ioText" style="width:100%;height:140px;font-size:16px;border-radius:12px;border:2px solid #e3d8c2;padding:8px">${data}</textarea>
     <div style="margin-top:10px"><button class="big-btn" id="impBtn">⬆️ 导入进度</button><input type="file" id="impFile" accept="application/json,.json" style="margin-top:10px;font-size:18px"></div>`);
-  $("#expBtn").addEventListener("click", ()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="pokemon-save.json"; a.click(); toast("已下载进度文件"); });
+  $("#expBtn").addEventListener("click", ()=>{
+    const d = new Date(), pad = n => String(n).padStart(2,"0");
+    const fn = `pokemon-save-${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.json`;
+    if (window.PokeBridge && PokeBridge.exportSave){       // 平板 APK 内：原生写入「下载/Download」目录并 Toast 完整位置
+      PokeBridge.exportSave(JSON.stringify(state,null,2), fn);
+    } else {                                               // 电脑浏览器：走普通下载
+      const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+      const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fn; a.click();
+      toast(`已下载进度文件：${fn}（浏览器默认下载目录）`);
+    }
+  });
   $("#copyBtn").addEventListener("click", ()=>{ if(navigator.clipboard) navigator.clipboard.writeText(data); toast("已复制到剪贴板"); });
   $("#impBtn").addEventListener("click", ()=>{ doImport($("#ioText").value.trim()); });
   $("#impFile").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>doImport(r.result); r.readAsText(f); });
