@@ -369,8 +369,10 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
 .ach-card { background: #FFFDF8; border: 3px solid #EFE3D2; border-radius: 18px; padding: 12px; text-align: center; box-shadow: 0 4px 10px rgba(120,90,70,.12); }
 .ach-card.got { border-color: var(--poke-yellow); background: linear-gradient(180deg, #FFFDF2, #FFF3D6); }
-.ach-ico { font-size: 40px; min-height: 52px; display: flex; align-items: center; justify-content: center; }
+.ach-ico { font-size: 40px; min-height: 52px; display: flex; align-items: center; justify-content: center; position: relative; }
 .ach-ico img { width: 48px; height: 48px; object-fit: contain; }
+.ach-card.got .ach-ico { filter: drop-shadow(0 0 7px rgba(245,200,60,.95)); }
+.ach-badge { position:absolute; right:-6px; top:-8px; width:26px; height:26px; border-radius:50%; background:#fff; border:2px solid var(--poke-yellow); display:flex; align-items:center; justify-content:center; font-size:15px; line-height:1; box-shadow:0 2px 5px rgba(120,90,70,.3); }
 .ach-name { font-size: 22px; font-weight: bold; margin: 4px 0; }
 .ach-desc { font-size: 17px; color: #9b8676; }
 .ach-reward { font-size: 18px; color: #E0524C; font-weight: bold; margin-top: 6px; }
@@ -826,7 +828,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.31.0";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.31.1";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2306,7 +2308,8 @@ function renderAchievements(){
       ? `<div class="ach-prog-done">✅ 已完成</div>`
       : `<div class="ach-prog-wrap"><div class="ach-prog-bar"><div class="ach-prog-fill" style="width:${pct}%"></div></div><div class="ach-prog-text">${p.label}</div></div>`;
     const icoHTML = d.icon.startsWith('data:image') ? `<img src="${d.icon}" style="width:48px;height:48px;object-fit:contain" alt="">` : d.icon;
-    return `<div class="ach-card ${got?'got':''}"><div class="ach-ico">${got?'🏆':icoHTML}</div><div class="ach-name">${d.name}</div><div class="ach-desc">${d.desc}</div>${progHTML}<div class="ach-reward ${got?'':'locked'}">${got?('+'+d.reward+' 超级球'):'未解锁'}</div></div>`;
+    const icoCell = `${icoHTML}${got?'<span class="ach-badge" title="已解锁">🏆</span>':''}`;
+    return `<div class="ach-card ${got?'got':''}"><div class="ach-ico">${icoCell}</div><div class="ach-name">${d.name}</div><div class="ach-desc">${d.desc}</div>${progHTML}<div class="ach-reward ${got?'':'locked'}">${got?('+'+d.reward+' 超级球'):'未解锁'}</div></div>`;
   }).join("");
   openDialog(`<h2 style="color:var(--poke-blue)">🏅 成就墙</h2><div class="ach-grid">${html}</div><button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">关闭</button>`);
 }
@@ -2338,8 +2341,21 @@ function openBackup(){
 function doImport(txt){
   try{
     const obj = JSON.parse(txt); if (typeof obj!=="object" || !obj.dex) throw 0;
-    state = Object.assign(defaultState(), obj); saveState();
-    renderHeader(); renderTasks(); renderDex(); closeDialog(); toast("进度导入成功！");
+    const merged = Object.assign(defaultState(), obj);
+    // 打卡日历（checkinLog）改为「合并」而非「覆盖」：
+    // 以日期为键，保留完成数更大者。这样导入旧备份时不会静默抹掉已有打卡记录。
+    if (obj.checkinLog && typeof obj.checkinLog === "object"){
+      const cur = (state.checkinLog && typeof state.checkinLog === "object") ? state.checkinLog : {};
+      const log = {};
+      Object.keys(cur).forEach(k => { if (typeof cur[k] === "number") log[k] = cur[k]; });
+      Object.keys(obj.checkinLog).forEach(k => {
+        const v = obj.checkinLog[k];
+        if (typeof v === "number" && (!(k in log) || v > log[k])) log[k] = v;
+      });
+      merged.checkinLog = log;
+    }
+    state = merged; saveState();
+    renderHeader(); renderTasks(); renderDex(); closeDialog(); toast("进度导入成功！（打卡日历已合并，历史记录不会丢失）");
   }catch(err){ toast("导入失败：内容无效"); }
 }
 
