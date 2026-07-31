@@ -828,7 +828,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.31.5";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.31.6";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2558,9 +2558,18 @@ renderHeader();
 renderTasks();
 renderDex();
 applyTestMode();          // 依据存储的测试模式开关，决定是否显示首页测试按钮条
-welcomeIfNeeded();
-// 空存档温和提示：换设备/重装导致本地进度丢失时，引导导入备份（避免静默开新档让人误以为"被清空"）
-if (loadedEmpty && !overlay.classList.contains("show")){ setTimeout(()=>toast("没有找到本地进度～若是换设备/重装后，可在设置里「💾 进度备份」导入之前的备份恢复原进度。"), 1600); }
+// 空存档处理：换设备 / 重装 / 打开了新的网址，localStorage 读取不到旧进度时，
+// 用一键导入引导替代普通的「每日欢迎」，避免娃/家长误以为"进度被清空"。
+if (loadedEmpty){
+  openDialog(`<h2 style="color:var(--poke-blue);font-size:30px">👋 没有找到本地进度</h2>
+    <div style="font-size:23px;line-height:1.7;color:#7a6a58;margin:10px 0 16px">可能是换了设备、重装了应用，<br>或打开的是<b>新的网址</b>（浏览器进度是按网址分开存的）。<br><br>如果你之前导出过备份文件，可以一键导入恢复；<br>没有的话就直接开始新的冒险吧！</div>
+    <button class="big-btn blue" id="recImport" style="width:100%;min-width:0;margin-bottom:12px">📂 导入备份，恢复进度</button>
+    <button class="big-btn" id="recFresh" style="width:100%;min-width:0">✨ 开始全新进度</button>`, {closable:false});
+  $("#recImport").addEventListener("click", ()=>{ sfx.click(); openBackup(); });
+  $("#recFresh").addEventListener("click", ()=>{ sfx.click(); state.lastVisit = todayStr(); saveState(); closeDialog(); });
+} else {
+  welcomeIfNeeded();
+}
 tickClock();              // 顶部时钟立即显示一次
 setInterval(tickClock, 1000);
 $("#dateLine").addEventListener("click", openCalendar);   // 点击日期 → 打卡日历
