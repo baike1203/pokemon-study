@@ -527,6 +527,7 @@ nav button.active { color: var(--poke-red); background: linear-gradient(180deg, 
       <button class="big-btn" id="testAddMaster" style="background:linear-gradient(180deg,#C792FF,#9B5DE5);border-color:#7B3FC4;color:#fff">➕ 加 1 大师球</button>
       <button class="big-btn red" id="testReset">🗑 重置所有进度</button>
       <button class="big-btn orange" id="testResetDay">🔄 重置本日任务</button>
+      <button class="big-btn" id="testGetAll" style="background:linear-gradient(180deg,#FFE066,#FFC93C);border-color:#E0A800;color:#5a4500">🌟 获得所有宝可梦</button>
     </div>
     <!-- ======================================================= -->
 
@@ -2165,6 +2166,18 @@ $("#testResetDay").addEventListener("click", ()=>{
   renderTasks(); renderHeader(); renderDex(); renderBalls();
   closeDialog();
   toast("已重置本日任务 🔄 重新开始吧！");
+});
+$("#testGetAll").addEventListener("click", ()=>{
+  if (!confirm("测试：把全部 151 只宝可梦加入图鉴？\n（精灵球 / 进化进度不变，仅用于测试）")) return;
+  sfx.click();
+  const all = [];
+  for (let i=1;i<=151;i++){ all.push(i); if (state.copyCount[i]==null) state.copyCount[i]=1; if (state.evoStage[i]==null) state.evoStage[i]=0; }
+  state.dex = all;
+  saveState();
+  renderHeader(); renderDex(); renderBalls();
+  try { checkAchievements(); } catch(e){}
+  closeDialog();
+  toast("已获得全部 151 只宝可梦 🌟");
 });
 /* ======================================================= */
 
