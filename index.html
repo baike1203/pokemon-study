@@ -810,11 +810,12 @@ const POKEMON = [
 ];
 
 /* 精灵图：Pokémon HOME 3D 渲染图（PokeAPI，清晰立体）。 */
-// 走本站点自建 Cloudflare Function 代理（/api/sprite），免去第三方公共代理跑路风险 + 边缘缓存加速。
-// 若部署平台不支持 Functions（如 GitHub Pages），把下一行改回直连即可：
+// 151 张已预处理为静态文件 assets/sprites/home/{id}.png，部署后走 Cloudflare 静态 CDN（自动边缘缓存，秒开）。
+// 相比之前的 /api/sprite Function 代理：免去 151 个并发请求排队 + 函数实时转发延迟，图鉴加载从 ~10s 降到瞬间。
+// 若部署平台不打包 assets（如某些静态托管），改用直连即可：
 //   const spriteUrl = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${id}.png`;
 const SPRITES = [];
-const spriteUrl = id => `/api/sprite?id=${id}`;
+const spriteUrl = id => `assets/sprites/home/${id}.png`;
 
 /* ---------- 进化链（第一世代） ----------
    每条链首元素为“基础形态”编号；进化时该基础编号的图鉴卡片会升级显示下一个形态。
@@ -938,7 +939,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.32.5";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.32.6";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
