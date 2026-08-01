@@ -2751,7 +2751,7 @@ function openReport(){
     return `<div class="report-row"><span>${nm}</span><b>${pct===null ? "—" : pct+"%"}</b></div>`;
   }).join("");
   let weak = null;
-  MODS.forEach(([k])=>{ const t = state.stat.modTotal[k]||0, r = state.stat.modRight[k]||0; if (!t) return; const pct = r/t; if (!weak || pct < weak.pct) weak = { k, pct: Math.round(pct*100) }; });
+  MODS.forEach(([k])=>{ const t = state.stat.modTotal[k]||0, r = state.stat.modRight[k]||0; if (!t) return; const pct = Math.round(r/t*100); if (pct >= 100) return; if (!weak || pct < weak.pct) weak = { k, pct }; });
   const weakHTML = weak
     ? `<div class="report-weak">💡 薄弱点建议：多练习 <b>${NM[weak.k]}</b>（正确率 ${weak.pct}%）</div>`
     : `<div class="report-weak">💡 先做几道题，我就能告诉你薄弱点啦～</div>`;
