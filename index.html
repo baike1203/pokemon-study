@@ -988,6 +988,7 @@ function defaultState(){
     poemDiff: "0",          // 古诗小舟难度（家长设置分级）：0~11 对应 一年级上~六年级下 共 12 学期
     testMode: false,        // 测试模式（家长设置内输入密码 112233 开启，开启后首页显示测试按钮条）
     ttsWorker: "",           // 云端中文语音 Worker 地址（Edge-TTS 中转，留空=不启用；填 https://xxx.workers.dev）
+    autoBackup: true,        // 平板 APK 自动备份开关（仅 APK 内有意义；默认开启，保持原“自动落盘”行为）
     checkinLog: {},         // 打卡记录：{ "YYYY-MM-DD": 当天完成任务数 }，用于日历展示打卡情况
     /* 学习报告统计：各模块完成次数 + 答题正确率累计（用于「设置→学习报告」） */
     stat: {
@@ -1016,6 +1017,7 @@ function scheduleAutoBackup(){
 }
 function doAutoBackup(){
   try {
+    if (state.autoBackup === false) return;          // 自动备份开关已关闭：不写文件
     if (!hasMeaningfulProgress()) return;            // 进度为空（如刚被清空）时不覆盖，避免冲掉已有的好备份
     const json = JSON.stringify(state, null, 2);
     const fn = "pokemon-study-auto-backup.json";     // 固定文件名，每次覆盖，下载目录里始终只有这一个
@@ -2677,6 +2679,7 @@ function openBackup(){
   openDialog(`<h2 style="color:var(--poke-blue)">💾 进度备份</h2>
     <div style="font-size:20px;color:#9b8676;margin-bottom:8px">导出：平板 APK 会保存到「下载 / Download」文件夹；电脑浏览器保存到默认下载目录。导入：选择文件或粘贴内容后点导入。</div>
     ${cloudInfo}
+    ${window.PokeBridge ? `<div style="font-size:15px;color:#7a6a58;background:#FFF7E8;border-radius:10px;padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:14px"><div>📥 自动备份到平板「下载」文件夹<br><span style="font-size:13px;color:#bbb">进度变化时自动保存（文件名含 auto-backup，始终 1 个文件）</span></div><button class="switch ${state.autoBackup !== false ? 'on':''}" id="autoBkSwitch" role="switch" aria-checked="${state.autoBackup !== false}"><span class="knob"></span></button></div>` : ""}
     <button class="big-btn blue" id="expBtn">⬇️ 下载进度文件</button>
     <button class="big-btn yellow" id="copyBtn">📋 复制进度</button>
     <hr style="margin:14px 0;border:none;border-top:2px dashed #e3d8c2">
@@ -2696,6 +2699,16 @@ function openBackup(){
   $("#copyBtn").addEventListener("click", ()=>{ if(navigator.clipboard) navigator.clipboard.writeText(data); toast("已复制到剪贴板"); });
   $("#impBtn").addEventListener("click", ()=>{ doImport($("#ioText").value.trim()); });
   $("#impFile").addEventListener("change", e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>doImport(r.result); r.readAsText(f); });
+  const autoBkSwitch = $("#autoBkSwitch");
+  if (autoBkSwitch) autoBkSwitch.addEventListener("click", ()=>{
+    sfx.click();
+    const nowOn = !(state.autoBackup !== false);     // 切换：undefined/true → false，false → true
+    state.autoBackup = nowOn; saveState();
+    autoBkSwitch.classList.toggle("on", nowOn);
+    autoBkSwitch.setAttribute("aria-checked", String(nowOn));
+    toast(nowOn ? "✅ 已开启自动备份" : "⏸ 已关闭自动备份");
+    if (nowOn) doAutoBackup();                        // 开启后立即备份一次
+  });
 }
 /* 学习报告：家长查看打卡天数、各模块完成次数、答题正确率与薄弱点、收集进度 */
 function openReport(){
