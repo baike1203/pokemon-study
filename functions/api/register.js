@@ -11,8 +11,8 @@ export async function onRequestPost(context) {
   const existing = await env.POKEMON_DB.prepare("SELECT username FROM accounts WHERE username = ?").bind(username).first();
   if (existing) return json({ error: "用户名已存在，请直接登录" }, 409);
   const pw_hash = await hashPassword(password);
-  await env.POKEMON_DB.prepare("INSERT INTO accounts (username, password_hash, progress, updated_at) VALUES (?, ?, ?, datetime('now'))")
-    .bind(username, pw_hash, Date.now()).run();
+  await env.POKEMON_DB.prepare("INSERT INTO accounts (username, password_hash, progress, updated_at) VALUES (?, ?, NULL, datetime('now'))")
+    .bind(username, pw_hash).run();
   const token = newToken();
   await env.POKEMON_DB.prepare("INSERT INTO sessions (token, username, expires_at) VALUES (?, ?, datetime('now','+30 days'))")
     .bind(token, username).run();
