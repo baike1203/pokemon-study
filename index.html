@@ -939,28 +939,27 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-/* 云端进度（Cloudflare KV）：平板杀后台/重装后能从云端自动恢复。
-   - 按环境分槽、互不影响：平板真实进度与电脑测试进度完全隔离，绝不会互相覆盖。
-   - CLOUD_TOKEN：须与 functions/api/save.js、load.js 中的 EXPECTED_TOKEN 完全一致。
-   - 仅在 Cloudflare Pages（pokemon-study.pages.dev）生效；GitHub Pages 无 Functions 会优雅降级到本地存储。 */
-const CLOUD_TOKEN = "poke-study-cloud-7f3a9c2e";
+/* 云端进度（Cloudflare D1 账号系统）：进度按「账号」隔离，可跨设备、可分享。
+   - 登录令牌：浏览器存 localStorage；平板 APK 经 PokeBridge 存原生 SharedPreferences（希沃清 WebView 也清不到），娃免重复登录。
+   - 仅在 Cloudflare Pages（pokemon-study.pages.dev）生效；GitHub Pages 无 Functions 时自动降级为纯本地存储。 */
 const CLOUD_API = "/api";
-/* 云端存档槽（每个环境独立）：
-   - 平板 APK 内（window.PokeBridge 存在）→ "soda-prod-v1"：女儿真实进度，杀后台/重装后自动恢复。
-   - 电脑浏览器地址加 ?test=1 → "soda-test-v1"：仅测试用，与平板完全隔离。
-   - 电脑浏览器地址加 ?slot=xxx → "u_xxx"：自定义账号槽，可给不同孩子分独立存档。
-   - 普通浏览器（无参数、非 APK）→ 返回 null：不启用云端，避免污染平板真实进度。 */
-function cloudSlot(){
-  try {
-    const u = new URL(location.href);
-    const custom = u.searchParams.get("slot");
-    if (custom) return "u_" + custom;
-    if (u.searchParams.get("test")) return "soda-test-v1";
-  } catch(e){}
-  if (window.PokeBridge) return "soda-prod-v1";   // 平板 APK 内运行的真实进度
-  return null;
+const TOKEN_KEY = "pokeCloudToken";
+const USER_KEY  = "pokeCloudUser";
+function getStoredToken(){
+  try { if (window.PokeBridge && window.PokeBridge.getToken){ const t = window.PokeBridge.getToken(); if (t) return t; } } catch(e){}
+  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch(e){ return ""; }
 }
-const APP_VERSION = "v3.33.0";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+function getStoredUser(){ try { return localStorage.getItem(USER_KEY) || ""; } catch(e){ return ""; } }
+function setStoredToken(token, username){
+  try { localStorage.setItem(TOKEN_KEY, token); localStorage.setItem(USER_KEY, username); } catch(e){}
+  try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(token); } catch(e){}
+}
+function clearStoredToken(){
+  try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); } catch(e){}
+  try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
+}
+function cloudLoggedIn(){ return !!getStoredToken(); }
+const APP_VERSION = "v3.34.0";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1028,30 +1027,31 @@ function doAutoBackup(){
 }
 function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); loadedEmpty = !raw; if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s); return s; } catch(e){ loadedEmpty = true; return defaultState(); } }
 function saveState(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){ /* 某些浏览器/方式下 localStorage 不可用，忽略写入错误，保证不中断交互 */ } scheduleAutoBackup(); cloudSave(); }
-/* ============ 云端进度（Cloudflare KV：平板/电脑共用，杀后台可恢复） ============ */
+/* ============ 云端进度（Cloudflare D1 账号系统） ============ */
 let _cloudTimer = null;
 function cloudSave(){           // 防抖：连续多次保存合并成一次云端写入
-  const slot = cloudSlot();
-  if (!slot) return;            // 本环境不启用云端（如普通浏览器），仅本地存储
+  const token = getStoredToken();
+  if (!token) return;           // 未登录：仅本地存储
   if (_cloudTimer) clearTimeout(_cloudTimer);
-  _cloudTimer = setTimeout(()=>{ _cloudTimer = null; doCloudSave(slot); }, 1500);
+  _cloudTimer = setTimeout(()=>{ _cloudTimer = null; doCloudSave(token); }, 1500);
 }
-async function doCloudSave(slot){
+async function doCloudSave(token){
   try {
-    await fetch(CLOUD_API + "/save", {
+    await fetch(CLOUD_API + "/progress", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: CLOUD_TOKEN, slot: slot, data: state })
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: JSON.stringify({ progress: state })
     });
-  } catch(e){ /* 离线 / 未绑定 KV / 非 Pages：静默降级，下次联网保存时再同步 */ }
+  } catch(e){ /* 离线 / 未绑定 D1 / 非 Pages：静默降级，下次联网保存时再同步 */ }
 }
 async function cloudLoad(){
-  const slot = cloudSlot();
-  if (!slot) return null;        // 本环境不启用云端
+  const token = getStoredToken();
+  if (!token) return null;
   try {
-    const r = await fetch(CLOUD_API + "/load?slot=" + encodeURIComponent(slot) + "&token=" + encodeURIComponent(CLOUD_TOKEN), { cache: "no-store" });
+    const r = await fetch(CLOUD_API + "/progress", { headers: { "Authorization": "Bearer " + token }, cache: "no-store" });
     if (!r.ok) return null;
-    return await r.json();
+    const j = await r.json();
+    return j.progress || null;
   } catch(e){ return null; }
 }
 async function restoreFromCloud(){
@@ -1061,9 +1061,59 @@ async function restoreFromCloud(){
   rebuildCheckinLog(state);
   saveState();                                   // 写回本地，保证本地也有一份
   renderHeader(); renderTasks(); renderDex(); applyTestMode();
-  toast("☁️ 已从云端恢复进度");
+  toast("☁️ 已登录并恢复进度：" + getStoredUser());
   welcomeIfNeeded();
   return true;
+}
+/* 登录 / 注册弹窗 */
+function showLoginDialog(){
+  const html = `<h2 style="color:var(--poke-blue);font-size:26px;margin:0 0 6px">🔐 登录账号，进度云同步</h2>
+    <div style="font-size:15px;color:#7a6a58;line-height:1.6;margin-bottom:10px">用账号登录后进度自动存云端：<b>换平板 / 重装 / 清缓存</b>都不丢，还能在电脑上接着玩。朋友各自建号，进度互不干扰。</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button id="tabLogin" style="flex:1;padding:10px;border-radius:12px;border:2px solid var(--poke-blue);font-size:17px;cursor:pointer;background:var(--poke-blue);color:#fff">登录</button>
+      <button id="tabReg" style="flex:1;padding:10px;border-radius:12px;border:2px solid var(--poke-blue);font-size:17px;cursor:pointer;background:#fff;color:#5b4a3a">注册新账号</button>
+    </div>
+    <div id="lgMsg" style="min-height:20px;color:#e0533d;font-size:15px;margin-bottom:6px"></div>
+    <div style="text-align:left;font-size:17px;color:#5b4a3a">
+      <div style="margin-bottom:10px">👤 用户名<br><input id="lgUser" style="width:100%;font-size:18px;padding:10px;border-radius:12px;border:2px solid #e3d8c2;box-sizing:border-box" placeholder="字母/数字/中文，2-20 位"></div>
+      <div style="margin-bottom:14px">🔑 密码<br><input id="lgPw" type="password" style="width:100%;font-size:18px;padding:10px;border-radius:12px;border:2px solid #e3d8c2;box-sizing:border-box" placeholder="至少 6 位"></div>
+      <button id="lgSubmit" class="big-btn blue" style="width:100%">登录</button>
+      <button id="lgSkip" class="big-btn" style="width:100%;margin-top:10px;background:#eee;color:#7a6a58">暂不登录，本地使用</button>
+    </div>`;
+  openDialog(html, { closable: false });
+  let mode = "login";
+  const tabs = { login: document.getElementById("tabLogin"), reg: document.getElementById("tabReg") };
+  const setMode = m => {
+    mode = m;
+    tabs.login.style.background = m === "login" ? "var(--poke-blue)" : "#fff";
+    tabs.login.style.color = m === "login" ? "#fff" : "#5b4a3a";
+    tabs.reg.style.background = m === "reg" ? "var(--poke-blue)" : "#fff";
+    tabs.reg.style.color = m === "reg" ? "#fff" : "#5b4a3a";
+    document.getElementById("lgSubmit").textContent = m === "login" ? "登录" : "注册并登录";
+  };
+  tabs.login.onclick = ()=>setMode("login");
+  tabs.reg.onclick   = ()=>setMode("reg");
+  document.getElementById("lgSkip").onclick = ()=>{ sfx.click(); closeDialog(); if (loadedEmpty){ state.lastVisit = todayStr(); saveState(); } welcomeIfNeeded(); };
+  document.getElementById("lgSubmit").onclick = async ()=>{
+    const username = document.getElementById("lgUser").value.trim();
+    const password = document.getElementById("lgPw").value;
+    document.getElementById("lgMsg").textContent = "";
+    if (!/^[A-Za-z0-9_\u4e00-\u9fa5]{2,20}$/.test(username)){ document.getElementById("lgMsg").textContent = "用户名需 2-20 位（字母/数字/中文）"; return; }
+    if (password.length < 6){ document.getElementById("lgMsg").textContent = "密码至少 6 位"; return; }
+    sfx.click();
+    const btn = document.getElementById("lgSubmit"); btn.textContent = "处理中…"; btn.disabled = true;
+    try {
+      const r = await fetch(CLOUD_API + (mode === "login" ? "/login" : "/register"), { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ username, password }) });
+      const j = await r.json().catch(()=>({}));
+      if (!r.ok){ document.getElementById("lgMsg").textContent = j.error || "操作失败，请重试"; btn.textContent = mode === "login" ? "登录" : "注册并登录"; btn.disabled = false; return; }
+      setStoredToken(j.token, j.username);
+      closeDialog();
+      const ok = await restoreFromCloud();
+      if (!ok && !loadedEmpty) cloudSave();
+      if (!ok && loadedEmpty){ state.lastVisit = todayStr(); saveState(); }
+      toast("☁️ 已登录：" + j.username);
+    } catch(e){ document.getElementById("lgMsg").textContent = "网络错误，请稍后重试"; btn.textContent = mode === "login" ? "登录" : "注册并登录"; btn.disabled = false; }
+  };
 }
 /* 兜底重建：若某天的打卡日历 checkinLog 缺失（旧备份 / 早期写入异常导致 state.checkinLog 为 undefined），
    用当日 daily.done 反推补全（完成几个任务就记几个），避免日历空白。
@@ -2620,9 +2670,13 @@ function renderAchievements(){
 /* 进度导出 / 导入 */
 function openBackup(){
   const data = JSON.stringify(state);
+  const loggedIn = cloudLoggedIn();
+  const cloudInfo = loggedIn
+    ? `<div style="font-size:15px;color:#3F9D3F;background:#F2FAF2;border-radius:10px;padding:8px 10px;margin-bottom:8px">✅ 已用账号 <b>${getStoredUser()}</b> 登录，进度实时同步到 Cloudflare 云端：<b>换平板 / 重装 / 清缓存</b>都不丢。本地备份文件（下载目录 <b>pokemon-study-auto-backup.json</b>）与夸克网盘每日备份仍作双保险。<br><button class="big-btn" style="width:100%;margin-top:8px;background:#ffe9e4;color:#e0533d" onclick="clearStoredToken();toast('已退出登录');openBackup();">退出登录</button></div>`
+    : `<div style="font-size:15px;color:#3F9D3F;background:#F2FAF2;border-radius:10px;padding:8px 10px;margin-bottom:8px">✅ 可登录账号把进度同步到云端：<b>换平板 / 重装 / 清缓存</b>都不丢，朋友各自建号互不干扰。本地备份文件仍作双保险。</div>`;
   openDialog(`<h2 style="color:var(--poke-blue)">💾 进度备份</h2>
     <div style="font-size:20px;color:#9b8676;margin-bottom:8px">导出：平板 APK 会保存到「下载 / Download」文件夹；电脑浏览器保存到默认下载目录。导入：选择文件或粘贴内容后点导入。</div>
-    <div style="font-size:15px;color:#3F9D3F;background:#F2FAF2;border-radius:10px;padding:8px 10px;margin-bottom:8px">✅ 已开启云端自动同步：平板（APK）进度实时存到 Cloudflare 云端，<b>杀后台 / 重装</b>后重开即从云端恢复。云端按环境分槽、互不影响：平板真实进度独立保存；电脑浏览器仅在地址加 <b>?test=1</b> 时才用独立的测试槽，绝不会污染平板进度。本地备份文件（下载目录 <b>pokemon-study-auto-backup.json</b>）与夸克网盘每日备份仍作双保险。</div>
+    ${cloudInfo}
     <button class="big-btn blue" id="expBtn">⬇️ 下载进度文件</button>
     <button class="big-btn yellow" id="copyBtn">📋 复制进度</button>
     <hr style="margin:14px 0;border:none;border-top:2px dashed #e3d8c2">
@@ -2861,24 +2915,16 @@ applyTestMode();          // 依据存储的测试模式开关，决定是否显
 // 空存档处理：换设备 / 重装 / 打开了新的网址，localStorage 读取不到旧进度时，
 // 用一键导入引导替代普通的「每日欢迎」，避免娃/家长误以为"进度被清空"。
 if (loadedEmpty){
-  // 本地无进度：本环境启用云端则先尝试从云端恢复（平板杀后台最常见）；否则直接引导导入/新建。
-  if (cloudSlot()){
-    toast("正在检查云端进度…");
-    restoreFromCloud().then(ok => { if (!ok) showEmptyProgressDialog(); });
+  // 本地无进度：已登录则从云端恢复；否则弹登录/注册引导（也能在备份里导入本地文件）。
+  if (cloudLoggedIn()){
+    toast("正在从云端恢复进度…");
+    restoreFromCloud().then(ok => { if (!ok) showLoginDialog(); });
   } else {
-    showEmptyProgressDialog();
+    showLoginDialog();
   }
 } else {
   welcomeIfNeeded();
-  cloudSave();           // 本地已有进度：首次打开即把当前进度上传云端（仅本环境对应的槽）
-}
-function showEmptyProgressDialog(){
-  openDialog(`<h2 style="color:var(--poke-blue);font-size:30px">👋 没有找到本地进度</h2>
-    <div style="font-size:23px;line-height:1.7;color:#7a6a58;margin:10px 0 16px">可能是换了设备、重装了应用，<br>或打开的是<b>新的网址</b>（浏览器进度是按网址分开存的）。<br><br>如果你之前导出过备份文件，可以一键导入恢复；<br>没有的话就直接开始新的冒险吧！</div>
-    <button class="big-btn blue" id="recImport" style="width:100%;min-width:0;margin-bottom:12px">📂 导入备份，恢复进度</button>
-    <button class="big-btn" id="recFresh" style="width:100%;min-width:0">✨ 开始全新进度</button>`, {closable:false});
-  $("#recImport").addEventListener("click", ()=>{ sfx.click(); openBackup(); });
-  $("#recFresh").addEventListener("click", ()=>{ sfx.click(); state.lastVisit = todayStr(); saveState(); closeDialog(); });
+  if (cloudLoggedIn()) cloudSave();   // 已登录：把当前本地进度同步到云端
 }
 tickClock();              // 顶部时钟立即显示一次
 setInterval(tickClock, 1000);

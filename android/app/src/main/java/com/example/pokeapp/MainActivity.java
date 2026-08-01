@@ -201,6 +201,23 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** 登录令牌：存原生 SharedPreferences（希沃清 WebView 也清不到），让娃免重复登录 */
+        @JavascriptInterface
+        public String getToken() {
+            try {
+                SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                String v = sp.getString("poke_token", null);
+                return v == null ? "" : v;
+            } catch (Exception e) { return ""; }
+        }
+        @JavascriptInterface
+        public void saveToken(String token) {
+            try {
+                SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                sp.edit().putString("poke_token", token == null ? "" : token).apply();
+            } catch (Exception ignored) {}
+        }
+
             @JavascriptInterface
             public void exportSave(String json, String filename) {
                 try {
