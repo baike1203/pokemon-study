@@ -809,16 +809,12 @@ const POKEMON = [
 "镰刀盔","化石翼龙","卡比兽","急冻鸟","闪电鸟","火焰鸟","迷你龙","哈克龙","快龙","超梦","梦幻"
 ];
 
-/* 精灵图：已内嵌 base64（离线可用），spriteUrl 优先读内嵌数组 */
+/* 精灵图：Pokémon HOME 3D 渲染图（PokeAPI，清晰立体）。 */
+// 走本站点自建 Cloudflare Function 代理（/api/sprite），免去第三方公共代理跑路风险 + 边缘缓存加速。
+// 若部署平台不支持 Functions（如 GitHub Pages），把下一行改回直连即可：
+//   const spriteUrl = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${id}.png`;
 const SPRITES = [];
-// 宝可梦精灵图：改用 Pokémon HOME 3D 渲染图（PokeAPI，清晰统一）。
-// 大陆访问 raw.githubusercontent.com 可能不稳，默认走公共代理 ghproxy.net。
-// 若图片加载不出：把 SPRITE_PROXY 改为 "" 直连；或换成你自建的 Cloudflare 代理地址。
-const SPRITE_PROXY = "https://ghproxy.net/";
-const spriteUrl = id => {
-  const raw = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/" + id + ".png";
-  return (SPRITE_PROXY ? SPRITE_PROXY : "") + raw;
-};
+const spriteUrl = id => `/api/sprite?id=${id}`;
 
 /* ---------- 进化链（第一世代） ----------
    每条链首元素为“基础形态”编号；进化时该基础编号的图鉴卡片会升级显示下一个形态。
@@ -942,7 +938,7 @@ const POKEDATA = [null, {"t": ["草", "毒"], "h": 70, "w": 6.9, "d": "背上有
 
 /* ==================== 2. 存储区 ==================== */
 const STORE_KEY = "pokeStudyV1";
-const APP_VERSION = "v3.32.4";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.32.5";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
