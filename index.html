@@ -205,6 +205,21 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 /* ---------- 图鉴页 ---------- */
 #dexHeader { text-align: center; margin-bottom: 14px; }
 #dexCount { font-size: 30px; font-weight: bold; color: var(--poke-blue); background: #FFFDF8; border: 2px solid #E2E8F4; border-radius: 999px; display: inline-block; padding: 8px 24px; box-shadow: 0 4px 12px rgba(120,140,190,.18); margin-bottom: 8px; }
+#dexTitle { font-size:18px; color:#9b8676; }
+/* 图鉴书架 */
+.shelf-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; margin:12px 0; }
+.shelf-book { background:#FFFDF8; border:2px solid #E2E8F4; border-radius:14px; padding:12px; text-align:center; }
+.shelf-book.done { border-color:#bfe3bf; background:#F2FAF2; }
+.shelf-book.active { border-color:#FFC93C; box-shadow:0 0 0 3px rgba(255,201,60,.25); }
+.shelf-book .sb-spine { font-size:12px; color:#aaa; }
+.shelf-book .sb-title { font-size:17px; font-weight:bold; color:var(--poke-blue); margin:4px 0; }
+.shelf-book .sb-badge { font-size:13px; color:#8a6d5c; margin-bottom:8px; min-height:18px; }
+/* 合书动画 */
+.book-close-wrap { text-align:center; padding:20px; }
+.book-close { width:170px; height:124px; margin:0 auto; position:relative; transform-style:preserve-3d; transform:rotateY(0deg); transition:transform 1.2s ease; }
+.book-close.closed { transform:rotateY(-162deg); }
+.book-close .bk-cover { position:absolute; inset:0; background:linear-gradient(135deg,#E0533D,#B23A2A); border-radius:10px 4px 4px 10px; display:flex; align-items:center; justify-content:center; font-size:54px; backface-visibility:hidden; box-shadow:0 6px 18px rgba(0,0,0,.2); }
+.book-close .bk-pages { position:absolute; right:0; top:6px; bottom:6px; width:16px; background:#fff; border-radius:0 4px 4px 0; box-shadow:inset -2px 0 4px rgba(0,0,0,.12); }
 /* 开球按钮行（普通/大师/超级） */
 .ball-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px; margin: 6px 0; }
 #gachaBtn { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; border: none; background: transparent; font-family: inherit; min-height: 60px; }
@@ -590,6 +605,7 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   <section class="page" id="pageDex">
     <div id="dexHeader">
       <div id="dexCount">已收集 0/151</div>
+      <div id="dexTitle" style="font-size:18px;color:#9b8676;margin:2px 0 6px">第一世代 · 关都</div>
       <div class="ball-row">
         <button id="gachaBtn"><div class="big-ball"></div><span class="label" id="gachaLabel">收服宝可梦！</span></button>
         <button id="superBtn" class="mini-ball super"><div class="b2"></div><span class="label" id="superLabel">超级球×0</span></button>
@@ -598,6 +614,7 @@ nav button.active .ic-fill { fill: #FFC9C2; }
       <div class="dex-actions">
         <button class="big-btn blue" id="adventureBtn">⚔️ 去冒险</button>
         <button class="big-btn yellow" id="achBtn">🏅 成就墙</button>
+        <button class="big-btn" id="shelfBtn" style="background:#fff7e6;color:#b8860b;border-color:#e0c068">📚 图鉴书架</button>
       </div>
     </div>
     <div class="dex-grid" id="dexGrid"></div>
@@ -803,7 +820,18 @@ const POKEMON = [
 "独角犀牛","钻角犀兽","吉利蛋","蔓藤怪","袋兽","墨海马","海刺龙","角金鱼","金鱼王","海星星",
 "宝石海星","魔墙人偶","飞天螳螂","迷唇姐","电击兽","鸭嘴火兽","凯罗斯","肯泰罗","鲤鱼王","暴鲤龙",
 "拉普拉斯","百变怪","伊布","水伊布","雷伊布","火伊布","多边兽","菊石兽","多刺菊石兽","化石盔",
-"镰刀盔","化石翼龙","卡比兽","急冻鸟","闪电鸟","火焰鸟","迷你龙","哈克龙","快龙","超梦","梦幻"
+"镰刀盔","化石翼龙","卡比兽","急冻鸟","闪电鸟","火焰鸟","迷你龙","哈克龙","快龙","超梦","梦幻",
+/* --- 第二世代 152-251 --- */
+"菊草叶","月桂叶","大竺葵","火球鼠","火岩鼠","火暴兽","小锯鳄","蓝鳄","大力鳄","尾立",
+"大尾立","咕咕","猫头夜鹰","芭瓢虫","安瓢虫","圆丝蛛","阿利多斯","叉字蝠","灯笼鱼","电灯怪",
+"皮丘","皮宝宝","宝宝丁","波克比","波克基古","天然雀","天然鸟","咩利羊","茸茸羊","电龙",
+"美丽花","玛力露","玛力露丽","树才怪","蚊香蛙皇","毽子草","毽子花","毽子棉","长尾怪手","向日种子",
+"向日花怪","蜻蜻蜓","乌波","沼王","太阳伊布","月亮伊布","黑暗鸦","呆呆王","梦妖","未知图腾",
+"果然翁","麒麟奇","榛果球","佛烈托斯","土龙弟弟","天蝎","大钢蛇","布鲁","布鲁皇","千针鱼",
+"巨钳螳螂","壶壶","赫拉克罗斯","狃拉","熊宝宝","圈圈熊","熔岩虫","熔岩蜗牛","小山猪","长毛猪",
+"太阳珊瑚","铁炮鱼","章鱼桶","信使鸟","巨翅飞鱼","盔甲鸟","戴鲁比","黑鲁加","刺龙王","小小象",
+"顿甲","多边兽２型","惊角鹿","图图犬","无畏小子","战舞郎","迷唇娃","电击怪","鸭嘴宝宝","大奶罐",
+"幸福蛋","雷公","炎帝","水君","幼基拉斯","沙基拉斯","班基拉斯","洛奇亚","凤王","时拉比"
 ];
 
 /* 精灵图：Pokémon HOME 3D 渲染图（PokeAPI，清晰立体）。 */
@@ -900,6 +928,46 @@ const BASE_FORMS = (function(){
 })();
 function isBaseForm(id){ return BASE_FORMS.has(id); }
 
+/* ==================== 多世代书架（图鉴分本收集） ====================
+   每本对应一个游戏世代（地区），各自有独立的编号区间。用户已收集的宝可梦统一存放在扁平的
+   state.dex（含所有已收集编号）里；每本只展示/统计自己区间 [minId,maxId] 内的编号。
+   集齐一本 → 合书归档 → 书架里开启下一本继续收集。后续世代只需补充对应精灵图与（可选）进化链/属性。 */
+const BOOKS = {
+  gen1: { title:"第一世代 · 关都",   region:"关都",   minId:1,   maxId:151  },
+  gen2: { title:"第二世代 · 城都",   region:"城都",   minId:152, maxId:251  },
+  gen3: { title:"第三世代 · 丰缘",   region:"丰缘",   minId:252, maxId:386  },
+  gen4: { title:"第四世代 · 神奥",   region:"神奥",   minId:387, maxId:493  },
+  gen5: { title:"第五世代 · 合众",   region:"合众",   minId:494, maxId:649  },
+  gen6: { title:"第六世代 · 卡洛斯", region:"卡洛斯", minId:650, maxId:721  },
+  gen7: { title:"第七世代 · 阿罗拉", region:"阿罗拉", minId:722, maxId:809  },
+  gen8: { title:"第八世代 · 伽勒尔", region:"伽勒尔", minId:810, maxId:905  },
+  gen9: { title:"第九世代 · 帕底亚", region:"帕底亚", minId:906, maxId:1025 }
+};
+const BOOK_ORDER = Object.keys(BOOKS);
+function bookOf(gen){ return BOOKS[gen]; }
+function activeRange(){ const b = BOOKS[state.activeBook]; return [b.minId, b.maxId]; }
+function bookCapacity(gen){ const b = BOOKS[gen]; return b.maxId - b.minId + 1; }
+function bookDexCount(gen){ const b = BOOKS[gen]; let c = 0; for (const id of state.dex){ if (id>=b.minId && id<=b.maxId) c++; } return c; }
+function isBookComplete(gen){ return bookDexCount(gen) >= bookCapacity(gen); }
+function isBookUnlocked(gen){
+  if (gen === "gen1") return true;
+  const idx = BOOK_ORDER.indexOf(gen);
+  const prev = BOOK_ORDER[idx-1];
+  return !!state.completedBooks[prev];
+}
+function nextBookKey(){ const idx = BOOK_ORDER.indexOf(state.activeBook); return BOOK_ORDER[idx+1] || null; }
+/* 某世代的“基础形态”集合：不属于本世代任何进化链“进化位”的编号。
+   有进化链时按链计算；未录入 EVO_CHAINS 的世代（如 gen2 暂未补链）则全部视为可抽基础形态，
+   保证该世代始终可被集齐。 */
+function baseFormsForBook(gen){
+  const b = BOOKS[gen]; const set = new Set();
+  const chainsInBook = EVO_CHAINS.filter(c => c.flat().some(id => id>=b.minId && id<=b.maxId));
+  const evolvedInBook = new Set();
+  chainsInBook.forEach(c => c.slice(1).flat().forEach(id => { if (id>=b.minId && id<=b.maxId) evolvedInBook.add(id); }));
+  for (let i=b.minId;i<=b.maxId;i++){ if (!evolvedInBook.has(i)) set.add(i); }
+  return set;
+}
+
 /* ---------- 属性分组（用于“xx系大师”成就） ----------
    由 POKEDATA 自动派生：每个宝可梦的 t 字段列出其属性（单/双属性），
    双属性宝可梦会同时被加进两个系的列表 → 自然计入两个系的成就。
@@ -956,7 +1024,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.34.2";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.35.0";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -964,7 +1032,9 @@ function defaultState(){
   return {
     name: "苏打",           // 孩子名字
     balls: 0,               // 当前精灵球（累积不清零）
-    dex: [],                // 已收集宝可梦基础编号数组（1..151）
+    dex: [],                // 已收集宝可梦基础编号数组（扁平：含所有世代已收集编号）
+    activeBook: "gen1",     // 当前正在收集的图鉴（书架中的“进行中”那本）
+    completedBooks: {},     // 已集齐并归档的世代 key -> true（如 {gen1:true}）
     daily: { date: todayStr(), done: { pinyin:false, math:false, english:false, hanzi:false, poem:false }, celebrated:false },
     razStreak: 0, razLastDate: "", lastVisit: "", congratulated151: false,
     /* ---- 新增字段 ---- */
@@ -1024,7 +1094,13 @@ function doAutoBackup(){
     // 电脑浏览器端不自动落文件：localStorage 已自动保存；且 blob 同名下载会被加 (1) 累积，反而更乱
   } catch(e){}
 }
-function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); loadedEmpty = !raw; if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s); return s; } catch(e){ loadedEmpty = true; return defaultState(); } }
+function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); loadedEmpty = !raw; if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s);
+  if (!s.activeBook) s.activeBook = "gen1";
+  if (!s.completedBooks || typeof s.completedBooks !== "object") s.completedBooks = {};
+  // 兼容老用户：若 gen1 已实际集齐但未记录，则补记（使书架正确显示“已收藏”）
+  let c1 = 0; for (const id of (s.dex||[])){ if (id>=1 && id<=151) c1++; }
+  if (c1 >= 151 && !s.completedBooks.gen1) s.completedBooks.gen1 = true;
+  return s; } catch(e){ loadedEmpty = true; return defaultState(); } }
 function saveState(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){ /* 某些浏览器/方式下 localStorage 不可用，忽略写入错误，保证不中断交互 */ } scheduleAutoBackup(); cloudSave(); }
 /* ============ 云端进度（Cloudflare D1 账号系统） ============ */
 let _cloudTimer = null;
@@ -1982,12 +2058,14 @@ function tryEvolve(id){
 
 /* ==================== 7. 收服宝可梦与图鉴 ==================== */
 function renderDex(){
-  $("#dexCount").textContent = `已收集 ${state.dex.length}/151`;
+  const bk = BOOKS[state.activeBook];
+  $("#dexCount").textContent = `已收集 ${bookDexCount(state.activeBook)}/${bookCapacity(state.activeBook)}`;
+  const dt = document.getElementById("dexTitle"); if (dt) dt.textContent = bk.title;
   $("#gachaLabel").textContent = state.balls>0 ? `收服宝可梦！（还有 ${state.balls} 个精灵球）` : "没有精灵球啦，先去做任务吧！";
   renderBalls();
   renderPartner();
   const grid = $("#dexGrid"); grid.innerHTML = "";
-  for (let id=1; id<=151; id++){
+  for (let id=bk.minId; id<=bk.maxId; id++){
     const owned = state.dex.includes(id);
     const cell = document.createElement("div");
     cell.className = "dex-cell " + (owned ? "owned" : "locked");
@@ -2153,9 +2231,11 @@ function openPokeDetail(id){
 /* 可收服池：①基础形态（含无进化链的独立宝可梦）；②已通过进化获得过的形态。
    进化前的形态不会被直接抽到，必须先抽到基础形态并进化解锁。 */
 function drawableIds(){
+  const [lo, hi] = activeRange();
+  const bases = baseFormsForBook(state.activeBook);
   const res = [];
-  for (let i=1;i<=151;i++){
-    if (isBaseForm(i)) res.push(i);
+  for (let i=lo;i<=hi;i++){
+    if (bases.has(i)) res.push(i);
     else if (state.dex.includes(i)) res.push(i); // 只有已进化获得的形态才能再次抽到
   }
   return res;
@@ -2174,11 +2254,13 @@ function drawPokemon({ guaranteedUncollected = false } = {}){
 /* 收服宝可梦：ballType = normal|master|super */
 function openGacha(ballType){
   sfx.click();
-  if (state.dex.length >= 151){   // 已集齐全部 151 只：三种球统一给出引导提示，不再抽出重复
-    openDialog(`<h2 style="color:var(--poke-blue)">🎉 已经集齐全部 151 只宝可梦啦！</h2>
+  if (isBookComplete(state.activeBook)){   // 当前图鉴已集齐：引导去书架开启新地区，不再抽出重复
+    const b = BOOKS[state.activeBook];
+    openDialog(`<h2 style="color:var(--poke-blue)">🎉 已经集齐《${b.title}》全部 ${bookCapacity(state.activeBook)} 只宝可梦啦！</h2>
       <div style="font-size:64px;margin:10px 0">👑</div>
-      <div style="font-size:26px;color:#8a6d5c;line-height:1.7">${state.name} 已经是真正的<b>图鉴大师</b>啦！<br>精灵球先留着，<br>等去<b>新的地区</b>冒险吧～🌏</div>
-      <button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`, {closable:false});
+      <div style="font-size:26px;color:#8a6d5c;line-height:1.7">${state.name} 已经是这本图鉴的<b>大师</b>啦！<br>精灵球先留着，<br>去<b>新的地区</b>冒险吧～🌏</div>
+      <button class="big-btn" id="toShelf">📚 打开图鉴书架</button>`, {closable:false});
+    const tb = document.getElementById("toShelf"); if (tb) tb.onclick = ()=>{ sfx.click(); openBookshelf(); };
     return;
   }
   if (ballType==="normal" && state.balls<=0) return noBallDialog("精灵球");
@@ -2204,7 +2286,7 @@ function beginDraw(ballType){
   sfx.open();
   setTimeout(()=>{
     const id = drawPokemon({ guaranteedUncollected: ballType!=="normal" });
-    if (id === null){ openDialog(`<h2 style="color:var(--poke-blue)">🎉 已经集齐全部 151 只啦！</h2><div style="font-size:60px">👑</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">太厉害了</button>`, {closable:false}); return; }
+    if (id === null){ const b = BOOKS[state.activeBook]; openDialog(`<h2 style="color:var(--poke-blue)">🎉 已经集齐《${b.title}》全部 ${bookCapacity(state.activeBook)} 只啦！</h2><div style="font-size:60px">👑</div><button class="big-btn" onclick="openBookshelf()">📚 打开图鉴书架</button>`, {closable:false}); return; }
     const isNew = !state.dex.includes(id);
     const ball = $("#gBall");
     if (ball){ ball.classList.replace("shaking","opening"); try { sfx.reward(); } catch(e){}
@@ -2241,7 +2323,7 @@ function revealGacha(id, isNew, ballType){
       <button class="big-btn" id="gOk">收入图鉴 📕</button>
       ${canAgain?'<button class="big-btn yellow" id="gAgain">再收服一只！（'+remText+'）</button>':''}</div>`, {closable:false});
     speak(`哇！收服了${POKEMON[displayId(id)-1]}！`);
-    $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); checkAll151(); checkAchievements(); renderDex(); };
+    $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); checkBookComplete(); checkAchievements(); renderDex(); };
     if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
   } else if (evolved){
     confetti(120); sfx.fanfare();
@@ -2266,16 +2348,62 @@ function revealGacha(id, isNew, ballType){
   }
 }
 
-/* 集满 151 彩蛋 + 8bit 旋律 */
-function checkAll151(){
-  if (state.dex.length>=151 && !state.congratulated151){
-    state.congratulated151 = true; saveState();
+/* 当前图鉴集满彩蛋 + 8bit 旋律 + 合书归档 → 打开书架 */
+function checkBookComplete(){
+  const gen = state.activeBook;
+  if (isBookComplete(gen) && !state.completedBooks[gen]){
+    state.completedBooks[gen] = true; saveState(); renderDex();
     confetti(200); sfx.fanfare(); play8bitMelody();
+    const b = BOOKS[gen];
     setTimeout(()=>openDialog(`<h2 style="color:var(--poke-red)">🏆 图鉴大师！🏆</h2><div style="font-size:80px">🎉👑🎉</div>
-      <div style="font-size:30px;line-height:1.6;margin:12px 0">不得了！${state.name} 集齐了全部 <b style="color:var(--poke-blue)">151</b> 只宝可梦！<br>你是真正的<b style="color:var(--poke-red)">宝可梦图鉴大师</b>！</div>
-      <button class="big-btn" onclick="document.querySelector('#dialogClose').click()">谢谢博士！</button>`),600);
-    speak(`恭喜${state.name}！集齐了全部一百五十一只宝可梦，你是宝可梦图鉴大师！`);
+      <div style="font-size:28px;line-height:1.6;margin:12px 0">不得了！${state.name} 集齐了《<b style="color:var(--poke-blue)">${b.title}</b>》全部 <b style="color:var(--poke-blue)">${bookCapacity(gen)}</b> 只宝可梦！<br>这本图鉴合上归档啦，<br>去<b style="color:var(--poke-red)">新的地区</b>继续冒险吧！🌏</div>
+      <button class="big-btn" id="toShelf2">📚 打开图鉴书架</button>`),600);
+    const tb = document.getElementById("toShelf2"); if (tb) tb.onclick = ()=>{ sfx.click(); openBookshelf(); };
+    speak(`恭喜${state.name}！集齐了${b.title}的全部${bookCapacity(gen)}只宝可梦，你是宝可梦图鉴大师！`);
   }
+}
+/* 图鉴书架：列出全部世代，已收藏✓/进行中🔥/可开启🆕/未解锁🔒；点选切换 activeBook */
+function openBookshelf(){
+  closeDialog();
+  const rows = BOOK_ORDER.map(gen=>{
+    const b = BOOKS[gen];
+    const cnt = bookDexCount(gen), cap = bookCapacity(gen);
+    const done = !!state.completedBooks[gen];
+    const isActive = gen === state.activeBook;
+    const unlocked = isBookUnlocked(gen);
+    let badge, act;
+    if (done){
+      badge = `✅ 已收藏（${cnt}/${cap}）`;
+      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="view">📖 回看这本</button>`;
+    } else if (isActive){
+      badge = `🔥 收集中（${cnt}/${cap}）`;
+      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="continue">继续这本</button>`;
+    } else if (unlocked){
+      badge = `🆕 可开启（${cnt}/${cap}）`;
+      act = `<button class="big-btn blue shelf-pick" data-book="${gen}" data-act="open">🌟 开启新图鉴</button>`;
+    } else {
+      const prevTitle = BOOKS[BOOK_ORDER[BOOK_ORDER.indexOf(gen)-1]].title;
+      badge = `🔒 未解锁（先集齐《${prevTitle}》）`;
+      act = `<button class="big-btn" disabled style="opacity:.5;cursor:not-allowed">未解锁</button>`;
+    }
+    return `<div class="shelf-book ${done?'done':''} ${isActive?'active':''}">
+      <div class="sb-spine">No.${String(b.minId).padStart(3,'0')}–${String(b.maxId).padStart(3,'0')}</div>
+      <div class="sb-title">${b.title}</div>
+      <div class="sb-badge">${badge}</div>
+      ${act}
+    </div>`;
+  }).join("");
+  openDialog(`<h2 style="color:var(--poke-blue)">📚 图鉴书架</h2>
+    <div style="font-size:16px;color:#9b8676;margin-bottom:10px">每集齐一本，就合上归档；开启下一本，去新的地区冒险！</div>
+    <div class="shelf-grid">${rows}</div>
+    <button class="big-btn yellow" onclick="closeDialog()">关闭</button>`, { dialogClass:"shelf-dialog" });
+  document.querySelectorAll(".shelf-pick").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const gen = btn.dataset.book, act = btn.dataset.act; sfx.click();
+      state.activeBook = gen; saveState(); closeDialog(); renderDex();
+      if (act === "open") toast("🌟 开启了《"+BOOKS[gen].title+"》！");
+    });
+  });
 }
 /* 简易初代主题曲风格 8bit 旋律（方波振荡器模拟） */
 function play8bitMelody(){ const notes=[523,659,784,659,523,659,784,1047,880,784,659,587,523]; notes.forEach((f,i)=>tone(f, i*0.18, 0.16, "square", 0.18)); }
@@ -2301,7 +2429,7 @@ function startAdventure(){
 }
 function beginBattle(myId){
   state.adventureCount++; saveState(); // 占用一次冒险机会
-  let wildId = drawPokemon({ guaranteedUncollected:true }); if (!wildId) wildId = rnd(1,151);
+  let wildId = drawPokemon({ guaranteedUncollected:true }); if (!wildId){ const [lo,hi] = activeRange(); wildId = rnd(lo,hi); }
   let myHP=3, wildHP=3, endured=false; const myName = POKEMON[displayId(myId)-1];
   function render(){
     openDialog(`<h2 style="color:var(--poke-red)">⚔️ 宝可梦大冒险</h2>
@@ -2634,9 +2762,10 @@ function achievementDefs(){
     {key:"partner", icon: spriteUrl(25), name:"最初的伙伴", desc:"获得皮卡丘", reward:2},
     {key:"starters", icon: startersIcon, name:"御三家", desc:"集齐妙蛙种子・小火龙・杰尼龟", reward:3},
     {key:"streak7", icon:"🔥", name:"坚持不懈", desc:"连续 7 天完成全部学习任务", reward:2},
-    {key:"mid", icon:"🥈", name:"中级训练家", desc:"集齐 50 只宝可梦", reward:2},
-    {key:"high", icon:"🥇", name:"高级训练家", desc:"集齐 100 只宝可梦", reward:3},
-    {key:"master", icon:"👑", name:"大师训练家", desc:"集齐 151 只宝可梦", reward:5}
+    {key:"mid", icon:"🥈", name:"中级训练家", desc:"集齐本图鉴一半的宝可梦", reward:2},
+    {key:"high", icon:"🥇", name:"高级训练家", desc:"集齐本图鉴九成宝可梦", reward:3},
+    {key:"master", icon:"👑", name:"大师训练家", desc:"集齐本图鉴全部宝可梦", reward:5},
+    {key:"grandmaster", icon:"🌟", name:"全世代大师", desc:"集齐全部 9 个世代图鉴", reward:10}
   ];
   for (const [tp, ids] of Object.entries(TYPES)){
     const th = Math.min(5, ids.length);
@@ -2647,16 +2776,19 @@ function achievementDefs(){
 /* 检查并解锁成就（发放超级球奖励） */
 function checkAchievements(){
   const a = state.achievements, defs = achievementDefs(), newly = [];
-  const owned = state.dex.length;
+  const totalOwned = state.dex.length;
+  const cap = bookCapacity(state.activeBook);
+  const owned = bookDexCount(state.activeBook);
   defs.forEach(d=>{
     let ok = false;
-    if (d.key==="first") ok = owned>=1;
+    if (d.key==="first") ok = totalOwned>=1;
     else if (d.key==="partner") ok = state.dex.includes(25);          // 皮卡丘
     else if (d.key==="starters") ok = state.dex.includes(1) && state.dex.includes(4) && state.dex.includes(7); // 御三家
     else if (d.key==="streak7") ok = state.allCompleteStreak>=7;
-    else if (d.key==="mid") ok = owned>=50;
-    else if (d.key==="high") ok = owned>=100;
-    else if (d.key==="master") ok = owned>=151;
+    else if (d.key==="mid") ok = owned >= Math.ceil(cap/2);
+    else if (d.key==="high") ok = owned >= Math.ceil(cap*0.9);
+    else if (d.key==="master") ok = isBookComplete(state.activeBook);
+    else if (d.key==="grandmaster") ok = BOOK_ORDER.every(g => state.completedBooks[g]);
     else if (d.key.startsWith("type_")){ const tp=d.key.slice(5); const ids=TYPES[tp]; const th=Math.min(5,ids.length); const cnt=ids.filter(id=>state.dex.includes(id)).length; ok = cnt>=th; }
     if (ok && !a[d.key]){ a[d.key]=true; state.superBalls += d.reward; newly.push(d); }
   });
@@ -2666,14 +2798,17 @@ function checkAchievements(){
 }
 /* 计算某成就当前进度：返回 {cur,need,label} */
 function achievementProgress(d){
-  const owned = state.dex.length;
-  if (d.key==="first"){ const c=Math.min(owned,1); return {cur:c,need:1,label:"已收集 "+c+"/1"}; }
+  const totalOwned = state.dex.length;
+  const cap = bookCapacity(state.activeBook);
+  const owned = bookDexCount(state.activeBook);
+  if (d.key==="first"){ const c=Math.min(totalOwned,1); return {cur:c,need:1,label:"已收集 "+c+"/1"}; }
   if (d.key==="partner"){ const c=state.dex.includes(25)?1:0; return {cur:c,need:1,label:"皮卡丘 "+c+"/1"}; }
   if (d.key==="starters"){ const ids=[1,4,7]; const c=ids.filter(id=>state.dex.includes(id)).length; return {cur:c,need:3,label:"已收集 "+c+"/3"}; }
   if (d.key==="streak7"){ const c=Math.min(state.allCompleteStreak,7); return {cur:c,need:7,label:"连续全勤 "+c+"/7 天"}; }
-  if (d.key==="mid"){ const c=Math.min(owned,50); return {cur:c,need:50,label:"已收集 "+c+"/50"}; }
-  if (d.key==="high"){ const c=Math.min(owned,100); return {cur:c,need:100,label:"已收集 "+c+"/100"}; }
-  if (d.key==="master"){ const c=Math.min(owned,151); return {cur:c,need:151,label:"已收集 "+c+"/151"}; }
+  if (d.key==="mid"){ const need=Math.ceil(cap/2); const c=Math.min(owned,need); return {cur:c,need,label:"已收集 "+c+"/"+need}; }
+  if (d.key==="high"){ const need=Math.ceil(cap*0.9); const c=Math.min(owned,need); return {cur:c,need,label:"已收集 "+c+"/"+need}; }
+  if (d.key==="master"){ const c=Math.min(owned,cap); return {cur:c,need:cap,label:"已收集 "+c+"/"+cap}; }
+  if (d.key==="grandmaster"){ const c=BOOK_ORDER.filter(g=>state.completedBooks[g]).length; return {cur:c,need:BOOK_ORDER.length,label:"已收藏 "+c+"/"+BOOK_ORDER.length+" 本"}; }
   if (d.key.startsWith("type_")){ const tp=d.key.slice(5); const ids=TYPES[tp]; const th=Math.min(5,ids.length); const cnt=ids.filter(id=>state.dex.includes(id)).length; const c=Math.min(cnt,th); return {cur:c,need:th,label:"已收集 "+c+"/"+th}; }
   return {cur:0,need:1,label:""};
 }
@@ -2755,7 +2890,7 @@ function openReport(){
     </div>
     <div class="report-sec"><h3>✅ 各模块完成次数</h3>${doneRows}</div>
     <div class="report-sec"><h3>🎯 答题正确率</h3>${accRows}${weakHTML}</div>
-    <div class="report-sec"><h3>⭐ 收集进度</h3><div class="report-row"><span>宝可梦图鉴</span><b>${state.dex.length} / 151</b></div></div>
+    <div class="report-sec"><h3>⭐ 收集进度</h3><div class="report-row"><span>当前图鉴（${BOOKS[state.activeBook].title}）</span><b>${bookDexCount(state.activeBook)} / ${bookCapacity(state.activeBook)}</b></div></div>
     <button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">关闭</button>`, { dialogClass:"" });
 }
 /* 护眼休息提醒：连续使用 20 分钟后弹出（点「休息一下」后重新计时） */
@@ -2814,6 +2949,7 @@ $("#superBtn").addEventListener("click", ()=>{
 });
 $("#adventureBtn").addEventListener("click", ()=>{ sfx.click(); startAdventure(); });
 $("#achBtn").addEventListener("click", ()=>{ sfx.click(); renderAchievements(); });
+$("#shelfBtn").addEventListener("click", ()=>{ sfx.click(); openBookshelf(); });
 /* 备份按钮已移入设置面板（备份 / 导入进度），图鉴页不再保留 */
 
 /* 家长设置齿轮（右下角悬浮） */
@@ -2855,16 +2991,18 @@ $("#testResetDay").addEventListener("click", ()=>{
   toast("已重置本日任务 🔄 重新开始吧！");
 });
 $("#testGetAll").addEventListener("click", ()=>{
-  if (!confirm("测试：把全部 151 只宝可梦加入图鉴？\n（精灵球 / 进化进度不变，仅用于测试）")) return;
+  if (!confirm("测试：把当前图鉴全部宝可梦加入图鉴？\n（精灵球 / 进化进度不变，仅用于测试）")) return;
   sfx.click();
+  const [lo,hi] = activeRange();
   const all = [];
-  for (let i=1;i<=151;i++){ all.push(i); if (state.copyCount[i]==null) state.copyCount[i]=1; if (state.evoStage[i]==null) state.evoStage[i]=0; }
+  for (let i=lo;i<=hi;i++){ all.push(i); if (state.copyCount[i]==null) state.copyCount[i]=1; if (state.evoStage[i]==null) state.evoStage[i]=0; }
   state.dex = all;
   saveState();
   renderHeader(); renderDex(); renderBalls();
   try { checkAchievements(); } catch(e){}
+  try { checkBookComplete(); } catch(e){}
   closeDialog();
-  toast("已获得全部 151 只宝可梦 🌟");
+  toast("已获得当前图鉴全部宝可梦 🌟");
 });
 /* ======================================================= */
 
