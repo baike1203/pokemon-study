@@ -222,12 +222,13 @@ public class MainActivity extends Activity {
             public void exportSave(String json, String filename) {
                 try {
                     if (filename == null || filename.isEmpty()) filename = "pokemon-save.json";
+                    // 自动备份固定用 pokemon-study-auto-backup.json：需要「始终覆盖同一文件」策略；
+                    // 手动导出用时间戳文件名（天然唯一）：直接新建，不走覆盖追踪，避免两类文件名互相串台。
+                    boolean isAutoBackup = filename.startsWith("pokemon-study-auto-backup");
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        // 关键修复：Android 11+ 的 MediaStore.delete 会把文件移入「回收站」而非真正删除，
-                        // 导致同名基底仍被占用，下次 insert 又自动加 (N) 后缀 → 文件越堆越多。
-                        // 改用「覆盖写入」策略：找到已存在的同名文件就直接覆盖，找不到才 insert；从此永远只有 1 个文件被反复覆盖。
+                        // Android 11+ 用 MediaStore；自动备份靠 SP 记住真实文件名反复覆盖，避免 (N) 后缀越堆越多。
                         SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-                        String actual = sp.getString("poke_actual_backup", null);
+                        String actual = isAutoBackup ? sp.getString("poke_actual_backup", null) : null;
                         Uri target = null;
                         if (actual != null) {
                             try (Cursor c = getContentResolver().query(
@@ -255,33 +256,37 @@ public class MainActivity extends Activity {
                                     new String[]{String.valueOf(ContentUris.parseId(target))}, null)) {
                                 if (c != null && c.moveToFirst()) {
                                     actual = c.getString(c.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME));
-                                    sp.edit().putString("poke_actual_backup", actual).apply();
+                                    if (isAutoBackup) sp.edit().putString("poke_actual_backup", actual).apply();
                                 }
                             }
                         }
                         try (OutputStream os = getContentResolver().openOutputStream(target)) {
                             os.write(json.getBytes(StandardCharsets.UTF_8));
                         }
-                        // 清理历史孤儿：删除「同名基底、但不等于当前文件」的旧备份（移入回收站，正常视图即消失）
-                        int dot = filename.lastIndexOf('.');
-                        String base = dot > 0 ? filename.substring(0, dot) : filename;
-                        try (Cursor c = getContentResolver().query(
-                                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                                new String[]{MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME},
-                                MediaStore.Downloads.DISPLAY_NAME + " LIKE ?",
-                                new String[]{base + "%"}, null)) {
-                            if (c != null) {
-                                int idIdx = c.getColumnIndexOrThrow(MediaStore.Downloads._ID);
-                                int nmIdx = c.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME);
-                                while (c.moveToNext()) {
-                                    if (!c.getString(nmIdx).equals(actual)) {
-                                        getContentResolver().delete(ContentUris.withAppendedId(
-                                                MediaStore.Downloads.EXTERNAL_CONTENT_URI, c.getLong(idIdx)), null, null);
+                        if (isAutoBackup) {
+                            // 仅自动备份清理「同名基底」的历史孤儿，避免越堆越多
+                            int dot = filename.lastIndexOf('.');
+                            String base = dot > 0 ? filename.substring(0, dot) : filename;
+                            try (Cursor c = getContentResolver().query(
+                                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                                    new String[]{MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME},
+                                    MediaStore.Downloads.DISPLAY_NAME + " LIKE ?",
+                                    new String[]{base + "%"}, null)) {
+                                if (c != null) {
+                                    int idIdx = c.getColumnIndexOrThrow(MediaStore.Downloads._ID);
+                                    int nmIdx = c.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME);
+                                    while (c.moveToNext()) {
+                                        if (!c.getString(nmIdx).equals(actual)) {
+                                            getContentResolver().delete(ContentUris.withAppendedId(
+                                                    MediaStore.Downloads.EXTERNAL_CONTENT_URI, c.getLong(idIdx)), null, null);
+                                        }
                                     }
                                 }
                             }
                         }
-                        showToast("进度已自动备份到：平板「下载 / Download」\n" + actual);
+                        showToast(isAutoBackup
+                                ? "进度已自动备份到：平板「下载 / Download」\n" + actual
+                                : "进度文件已下载到：平板「下载 / Download」\n" + filename);
                     } else {
                         File dir = android.os.Environment
                                 .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
@@ -310,8 +315,8 @@ public class MainActivity extends Activity {
                 try (Cursor c = getContentResolver().query(
                         MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                         new String[]{MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME},
-                        MediaStore.Downloads.DISPLAY_NAME + " LIKE ?",
-                        new String[]{"pokemon-save-%"},
+                        "(" + MediaStore.Downloads.DISPLAY_NAME + " LIKE ? OR " + MediaStore.Downloads.DISPLAY_NAME + " LIKE ?)",
+                        new String[]{"pokemon-save-%", "pokemon-study-auto-backup%"},
                         MediaStore.Downloads.DATE_MODIFIED + " DESC")) {
                     if (c != null && c.moveToFirst()) {
                         long id = c.getLong(c.getColumnIndexOrThrow(MediaStore.Downloads._ID));
@@ -320,7 +325,7 @@ public class MainActivity extends Activity {
                     }
                 }
                 if (uri == null) {
-                    showToast("下载目录未找到 pokemon-save 进度文件，请改用选择文件");
+                    showToast("下载目录未找到进度备份文件，请改用选择文件");
                     return;
                 }
                 String text = readUriText(uri);
