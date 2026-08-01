@@ -959,7 +959,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.34.0";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
+const APP_VERSION = "v3.34.2";   // 改版时同步更新此值，家长设置面板底部会显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -1068,7 +1068,7 @@ async function restoreFromCloud(){
   return true;
 }
 /* 登录 / 注册弹窗 */
-function showLoginDialog(){
+function showLoginDialog(onDone){
   const html = `<h2 style="color:var(--poke-blue);font-size:26px;margin:0 0 6px">🔐 登录账号，进度云同步</h2>
     <div style="font-size:15px;color:#7a6a58;line-height:1.6;margin-bottom:10px">用账号登录后进度自动存云端：<b>换平板 / 重装 / 清缓存</b>都不丢，还能在电脑上接着玩。朋友各自建号，进度互不干扰。</div>
     <div style="display:flex;gap:8px;margin-bottom:10px">
@@ -1114,6 +1114,7 @@ function showLoginDialog(){
       if (!ok && !loadedEmpty) cloudSave();
       if (!ok && loadedEmpty){ state.lastVisit = todayStr(); saveState(); }
       toast("☁️ 已登录：" + j.username);
+      if (onDone) onDone();
     } catch(e){ document.getElementById("lgMsg").textContent = "网络错误，请稍后重试"; btn.textContent = mode === "login" ? "登录" : "注册并登录"; btn.disabled = false; }
   };
 }
@@ -1602,10 +1603,32 @@ function mathTask(){
 }
 /* 家长设置：右下角齿轮打开。
    主菜单列出各学习模块，点开进入对应难度设置（数学 / 识字；拼音、古诗后续可在 SETTING_MODULES 追加）。 */
+
+/* 设置面板顶部「云端账号」状态卡：已登录显示用户名+退出，未登录提示去登录 */
+function accountBlockHTML(){
+  if (cloudLoggedIn()){
+    const user = getStoredUser();
+    return `<div style="background:#F2FAF2;border:1px solid #BFE6BF;border-radius:14px;padding:12px 14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="font-size:20px;color:#3F9D3F">☁️ 云端账号</div>
+        <span style="font-size:14px;color:#fff;background:#3F9D3F;border-radius:20px;padding:3px 12px">已登录</span>
+      </div>
+      <div style="font-size:18px;color:#356b35;margin-top:6px">用户名：<b>${user}</b></div>
+      <div style="font-size:14px;color:#7a9a7a;margin-top:2px">进度实时同步云端，换设备 / 重装都不丢</div>
+      <button class="big-btn" id="acctLogout" style="width:100%;margin-top:10px;background:#ffe9e4;color:#e0533d">退出登录</button>
+    </div>`;
+  }
+  return `<div style="background:#FFF7E6;border:1px solid #FFE0A3;border-radius:14px;padding:12px 14px;margin-bottom:14px">
+    <div style="font-size:20px;color:#8a6d3b">☁️ 云端账号</div>
+    <div style="font-size:15px;color:#9b8048;margin-top:6px">未登录：进度只存本机，换设备 / 重装可能丢失</div>
+    <button class="big-btn blue" id="acctLogin" style="width:100%;margin-top:10px">🔐 登录 / 注册账号</button>
+  </div>`;
+}
 function openSettings(sub){
   if (!sub){
     openDialog(`<h2 style="color:#F58A1F">⚙️ 家长设置</h2>
       <div style="font-size:20px;color:#9b8676;margin:6px 0 12px">点开下面的模块，分别设置难度</div>
+      ${accountBlockHTML()}
       <div class="set-modules">
         <button class="big-btn set-mod" data-m="math">🔢 数学闯关<small>加减乘除 · 6 档难度</small></button>
         <button class="big-btn set-mod" data-m="hanzi">✍️ 识字达人<small>6 级字库分级</small></button>
@@ -1651,6 +1674,10 @@ function openSettings(sub){
     const rb = document.getElementById("reportBtn2");
     if (rb) rb.addEventListener("click", ()=>{ sfx.click(); openReport(); });
     $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
+    const acctLogin = document.getElementById("acctLogin");
+    if (acctLogin) acctLogin.addEventListener("click", ()=>{ sfx.click(); showLoginDialog(()=>openSettings()); });
+    const acctLogout = document.getElementById("acctLogout");
+    if (acctLogout) acctLogout.addEventListener("click", ()=>{ sfx.click(); clearStoredToken(); toast("已退出登录"); openSettings(); });
     return;
   }
   if (sub==="math"){ renderMathSettings(); return; }
