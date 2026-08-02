@@ -2424,7 +2424,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.17";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.18";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2851,7 +2851,24 @@ function showPage(which){
 }
 $("#navTasks").addEventListener("click", () => { sfx.click(); showPage("tasks"); });
 $("#navDex").addEventListener("click", () => { sfx.click(); showPage("dex"); });
-$("#appTitle").addEventListener("click", () => { const n = prompt("请输入宝贝的名字：", state.name); if (n && n.trim()){ state.name = n.trim().slice(0,8); saveState(); renderHeader(); } });
+$("#appTitle").addEventListener("click", () => {
+  sfx.click();
+  openDialog(`<h2 style="color:var(--poke-blue)">✏️ 修改名字</h2>
+    <div style="font-size:20px;color:#5b4a3a;margin:8px 0">请输入宝贝的名字：</div>
+    <input type="text" id="nameInput" placeholder="最多8个字" value="${(state.name||"").replace(/"/g,"&quot;")}" maxlength="8" style="width:220px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;box-sizing:border-box">
+    <button class="big-btn" id="nameOk">保存</button>
+    <button class="big-btn gray" id="nameCancel" style="margin-top:6px">取消</button>`, {closable:false});
+  const inp = $("#nameInput");
+  const okBtn = $("#nameOk");
+  const cancelBtn = $("#nameCancel");
+  if (inp){ inp.focus(); inp.select(); inp.addEventListener("keydown",(e)=>{ if (e.key==="Enter"){ e.preventDefault(); okBtn.click(); } }); }
+  if (okBtn) okBtn.onclick = ()=>{
+    const n = inp ? inp.value : "";
+    closeDialog();
+    if (n && n.trim()){ state.name = n.trim().slice(0,8); saveState(); renderHeader(); }
+  };
+  if (cancelBtn) cancelBtn.onclick = ()=>{ sfx.click(); closeDialog(); };
+});
 
 function renderHeader(){ $("#titleText").textContent = state.name + "的宝可梦冒险"; $("#ballNum").textContent = state.balls; }
 
@@ -3178,9 +3195,22 @@ function bindSettingsTest(){
   testSwitch.addEventListener("click", ()=>{
     sfx.click();
     if (!state.testMode){
-      const pwd = prompt("请输入测试模式密码：",""); if (pwd===null) return;
-      if (pwd!=="112233"){ toast("密码错误，无法开启测试模式"); return; }
-      state.testMode=true; saveState(); applyTestMode(); testSwitch.classList.add("on"); testSwitch.setAttribute("aria-checked","true"); toast("测试模式已开启 🛠");
+      openDialog(`<h2 style="color:var(--poke-red)">🛠 测试模式</h2>
+        <div style="font-size:20px;color:#5b4a3a;margin:8px 0">请输入测试模式密码：</div>
+        <input type="password" id="testPwdInput" placeholder="输入密码" style="width:200px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;box-sizing:border-box">
+        <button class="big-btn" id="testPwdOk">确认</button>
+        <button class="big-btn gray" id="testPwdCancel" style="margin-top:6px">取消</button>`, {closable:false});
+      const inp = $("#testPwdInput");
+      const okBtn = $("#testPwdOk");
+      const cancelBtn = $("#testPwdCancel");
+      if (inp){ inp.focus(); inp.addEventListener("keydown",(e)=>{ if (e.key==="Enter"){ e.preventDefault(); okBtn.click(); } }); }
+      if (okBtn) okBtn.onclick = ()=>{
+        const pwd = inp ? inp.value : "";
+        closeDialog();
+        if (pwd!=="112233"){ toast("密码错误，无法开启测试模式"); return; }
+        state.testMode=true; saveState(); applyTestMode(); testSwitch.classList.add("on"); testSwitch.setAttribute("aria-checked","true"); toast("测试模式已开启 🛠");
+      };
+      if (cancelBtn) cancelBtn.onclick = ()=>{ sfx.click(); closeDialog(); };
     } else { state.testMode=false; saveState(); applyTestMode(); testSwitch.classList.remove("on"); testSwitch.setAttribute("aria-checked","false"); toast("测试模式已关闭"); }
   });
 }
