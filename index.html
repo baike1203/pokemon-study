@@ -2081,7 +2081,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.10";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.11";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2152,14 +2152,22 @@ function doAutoBackup(){
     // 电脑浏览器端不自动落文件：localStorage 已自动保存；且 blob 同名下载会被加 (1) 累积，反而更乱
   } catch(e){}
 }
-function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); loadedEmpty = !raw; if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s);
+// 统一的状态规范化（兼容老用户）：4 个读/合入口（loadState / restoreFromCloud / doImport / 由 save 反推）共用，
+// 确保无论数据来自本地、云端还是导入备份，都能正确补记 activeBook / activeAchBook / 已集齐世代。
+// 关键修复：云端存档是书架功能上线前保存的，当时 completedBooks 为空 {}，登录恢复后不会自动补记 gen1，
+// 导致“已集齐151只的老用户”看不到图鉴书架、点按钮提示“先收集151只”。
+function normalizeState(s){
+  if (!s || typeof s !== "object") s = defaultState();
   if (!s.activeBook) s.activeBook = "gen1";
   if (!s.completedBooks || typeof s.completedBooks !== "object") s.completedBooks = {};
   if (!s.activeAchBook) s.activeAchBook = "gen1";
-  // 兼容老用户：若 gen1 已实际集齐但未记录，则补记（使书架正确显示“已收藏”）
+  // 兼容老用户：若 gen1 已实际集齐（含 allComplete 标记或 dex 含 1-151 全部）但未记录，则补记
   let c1 = 0; for (const id of (s.dex||[])){ if (id>=1 && id<=151) c1++; }
-  if (c1 >= 151 && !s.completedBooks.gen1) s.completedBooks.gen1 = true;
-  return s; } catch(e){ loadedEmpty = true; return defaultState(); } }
+  const gen1Done = (s.allComplete===true) || c1 >= 151;
+  if (gen1Done && !s.completedBooks.gen1) s.completedBooks.gen1 = true;
+  return s;
+}
+function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); loadedEmpty = !raw; if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s); return normalizeState(s); } catch(e){ loadedEmpty = true; return defaultState(); } }
 function saveState(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){ /* 某些浏览器/方式下 localStorage 不可用，忽略写入错误，保证不中断交互 */ } scheduleAutoBackup(); cloudSave(); }
 /* ============ 云端进度（Cloudflare D1 账号系统） ============ */
 let _cloudTimer = null;
@@ -2193,6 +2201,7 @@ async function restoreFromCloud(){
   if (!data || typeof data !== "object") return false;
   state = Object.assign(defaultState(), data);
   rebuildCheckinLog(state);
+  normalizeState(state);                         // 兼容老用户：云端存档若是书架功能上线前保存的，补记已完成世代
   saveState();                                   // 写回本地，保证本地也有一份
   renderHeader(); renderTasks(); renderDex(); applyTestMode();
   welcomeIfNeeded();
@@ -4064,6 +4073,7 @@ function doImport(txt){
       merged.checkinLog = log;
     }
     rebuildCheckinLog(merged);   // 兜底：从 daily.done 反推补全缺失的打卡记录（如旧备份无 checkinLog）
+    normalizeState(merged);       // 兼容老用户：导入旧备份时同样补记 activeBook / 已集齐世代等
     state = merged; saveState();
     checkDailyReset();           // 导入后立刻判断跨天：若备份是过去的日期，则把「今日任务」重置为未做（打卡日历不受影响）
     renderHeader(); renderTasks(); renderDex(); closeDialog(); toast("进度导入成功！（打卡日历已合并，历史记录不会丢失）");
