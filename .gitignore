@@ -2,6 +2,7 @@
 .DS_Store
 *.log
 *.tmp
+index.html.bak.inject
 
 # 精灵图下载脚本产出的临时文件（中文名缓存/清单，非发布内容）
 _gen2_names.txt
