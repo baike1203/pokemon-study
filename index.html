@@ -1081,15 +1081,39 @@ const ACH_BOOKS = {
   gen9: { title:"第九世代 · 帕底亚", region:"帕底亚" }
 };
 const ACH_BOOK_ORDER = Object.keys(ACH_BOOKS);
+/* 各世代御三家（草/火/水初始宝可梦）编号，用于「御三家」成就；gen1 不含“最初的伙伴”（皮卡丘）专属成就，gen2-gen9 不单独设“最初的伙伴” */
+const STARTERS = {
+  gen1:[1,4,7], gen2:[152,155,158], gen3:[252,255,258], gen4:[387,390,393],
+  gen5:[495,498,501], gen6:[650,653,656], gen7:[722,725,728], gen8:[810,813,816], gen9:[906,909,912]
+};
+function startersIconFor(gen){ const ids=STARTERS[gen]||[]; return ids.map(id=>`<img src="${spriteUrl(id)}" style="width:38px;height:38px;image-rendering:auto;object-fit:contain">`).join(""); }
 /* 成就书架解锁规则与图鉴一致：gen1 恒解锁；集齐第一世代 151 只后，gen2-gen9 全部可直接开启（不强制顺序） */
 function isAchBookUnlocked(gen){
   if (gen === "gen1") return true;
   return !!state.completedBooks.gen1;
 }
 /* 某世代成就书内的成就定义；gen1 = 当前全部成就（御三家/连续打卡/进度/属性系大师），gen2-gen9 暂未布置（待后续逐世代填充） */
+/* 某世代成就书内的成就定义。
+   gen1 = 现有全部成就（御三家/最初的伙伴/连续打卡/进度/属性系大师）。
+   gen2-gen9 = 与第一世代同构，但不含「最初的伙伴」：初次邂逅 / 御三家 / 坚持不懈 / 中级·高级·大师训练家 / 各属性系大师。
+   所有 key 加世代前缀（gen2_first 等）避免与扁平的 state.achievements 冲突。 */
 function achDefsForGen(gen){
   if (gen === "gen1") return achievementDefsGen1();
-  return [];   // gen2-gen9 占位：后续按用户指示逐世代布置
+  const byGen = TYPES_BY_GEN[gen] || {};
+  const defs = [
+    {key: gen+"_first",   icon:"🌟", name:"初次邂逅",   desc:"抽到本世代第一只宝可梦", reward:1},
+    {key: gen+"_starters",icon: startersIconFor(gen), name:"御三家", desc:"集齐本世代御三家（草/火/水）", reward:3},
+    {key: gen+"_streak7", icon:"🔥", name:"坚持不懈",   desc:"连续 7 天完成全部学习任务", reward:2},
+    {key: gen+"_mid",     icon:"🥈", name:"中级训练家", desc:"集齐本世代一半的宝可梦", reward:2},
+    {key: gen+"_high",    icon:"🥇", name:"高级训练家", desc:"集齐本世代九成宝可梦", reward:3},
+    {key: gen+"_master",  icon:"👑", name:"大师训练家", desc:"集齐本世代全部宝可梦", reward:5}
+  ];
+  // 各属性系大师：阈值 = min(5, 本世代该属性宝可梦数量)
+  for (const [tp, ids] of Object.entries(byGen)){
+    const th = Math.min(5, ids.length);
+    defs.push({ key: gen+"_type_"+tp, icon: TYPE_ICON[tp] || "⭐", name: tp+"系大师", desc:`收集 ${th} 只${tp}系宝可梦`, reward:1 });
+  }
+  return defs;
 }
 function allAchDefs(){ let a=[]; for (const g of ACH_BOOK_ORDER) a = a.concat(achDefsForGen(g)); return a; }
 function nextBookKey(){ const idx = BOOK_ORDER.indexOf(state.activeBook); return BOOK_ORDER[idx+1] || null; }
@@ -1111,6 +1135,7 @@ function baseFormsForBook(gen){
    门槛：该系总数<=5 则收齐全部，否则收 5 只。
    注意：POKEDATA 在下方才声明，故此处仅前向声明，真正赋值放在 POKEDATA 之后（见 buildTypes() 调用）。 */
 let TYPES = null;
+let TYPES_BY_GEN = {};   // 各世代内 属性→编号列表（用于「xx系大师」按本世代数量定阈值）
 
 /* 叫声文字（部分知名宝可梦有专属，其余用名字后两字重复模拟） */
 const CRIES = { 1:"妙蛙",4:"小火",6:"喷喷",7:"杰尼",9:"水箭",10:"绿毛",25:"皮卡皮卡",26:"雷丘",
@@ -2016,6 +2041,22 @@ POKEDATA.push(...POKEDATA_EXTRA);
     console.error("buildTypes 失败：", e);
     TYPES = {};
   }
+  // 按世代统计属性分布（覆盖全部世代 1-1025），供 gen2-gen9 的「xx系大师」成就用本世代数量定阈值
+  try {
+    const g = {};
+    for (const gen of BOOK_ORDER){
+      const b = BOOKS[gen]; const gm = {};
+      for (let i=b.minId;i<=b.maxId;i++){
+        const pd = POKEDATA[i]; if (!pd || !pd.t) continue;
+        pd.t.forEach(tp => { (gm[tp] = gm[tp] || []).push(i); });   // 双属性 → 两个系都计入
+      }
+      g[gen] = gm;
+    }
+    TYPES_BY_GEN = g;
+  } catch(e){
+    console.error("buildTypesByGen 失败：", e);
+    TYPES_BY_GEN = {};
+  }
 })();
 
 /* ==================== 2. 存储区 ==================== */
@@ -2040,7 +2081,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.5";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.6";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3848,21 +3889,23 @@ function achievementDefs(){ return allAchDefs(); }
 /* 检查并解锁成就（发放超级球奖励）——按成就书架逐世代评估，使第一世代成就始终以 gen1 范围为基准 */
 function checkAchievements(){
   const a = state.achievements, newly = [];
-  const totalOwned = state.dex.length;
   ACH_BOOK_ORDER.forEach(gen=>{
     const defs = achDefsForGen(gen);
     const cap = bookCapacity(gen);
     const owned = bookDexCount(gen);
+    const byGen = TYPES_BY_GEN[gen] || {};
+    const starterIds = STARTERS[gen] || [];
     defs.forEach(d=>{
+      const base = d.key.replace(/^gen\d+_/, "");   // 去掉世代前缀，得到基础键（gen1 原本就无前缀）
       let ok = false;
-      if (d.key==="first") ok = totalOwned>=1;
-      else if (d.key==="partner") ok = state.dex.includes(25);          // 皮卡丘
-      else if (d.key==="starters") ok = state.dex.includes(1) && state.dex.includes(4) && state.dex.includes(7); // 御三家
-      else if (d.key==="streak7") ok = state.allCompleteStreak>=7;
-      else if (d.key==="mid") ok = owned >= Math.ceil(cap/2);
-      else if (d.key==="high") ok = owned >= Math.ceil(cap*0.9);
-      else if (d.key==="master") ok = isBookComplete(gen);
-      else if (d.key.startsWith("type_")){ const tp=d.key.slice(5); const ids=TYPES[tp]; const th=Math.min(5,ids.length); const cnt=ids.filter(id=>state.dex.includes(id)).length; ok = cnt>=th; }
+      if (base==="first") ok = owned>=1;
+      else if (base==="partner") ok = state.dex.includes(25);            // 最初的伙伴：仅 gen1 含此键
+      else if (base==="starters") ok = starterIds.length>0 && starterIds.every(id=>state.dex.includes(id));
+      else if (base==="streak7") ok = state.allCompleteStreak>=7;
+      else if (base==="mid") ok = owned >= Math.ceil(cap/2);
+      else if (base==="high") ok = owned >= Math.ceil(cap*0.9);
+      else if (base==="master") ok = isBookComplete(gen);
+      else if (base.startsWith("type_")){ const tp=base.slice(5); const ids=byGen[tp]; const th=Math.min(5, ids?ids.length:0); const cnt=ids?ids.filter(id=>state.dex.includes(id)).length:0; ok = cnt>=th; }
       if (ok && !a[d.key]){ a[d.key]=true; state.superBalls += d.reward; newly.push(d); }
     });
   });
@@ -3872,17 +3915,20 @@ function checkAchievements(){
 }
 /* 计算某成就当前进度：返回 {cur,need,label}（以当前成就书架 state.activeAchBook 为基准） */
 function achievementProgress(d){
-  const totalOwned = state.dex.length;
-  const cap = bookCapacity(state.activeAchBook);
-  const owned = bookDexCount(state.activeAchBook);
-  if (d.key==="first"){ const c=Math.min(totalOwned,1); return {cur:c,need:1,label:"已收集 "+c+"/1"}; }
-  if (d.key==="partner"){ const c=state.dex.includes(25)?1:0; return {cur:c,need:1,label:"皮卡丘 "+c+"/1"}; }
-  if (d.key==="starters"){ const ids=[1,4,7]; const c=ids.filter(id=>state.dex.includes(id)).length; return {cur:c,need:3,label:"已收集 "+c+"/3"}; }
-  if (d.key==="streak7"){ const c=Math.min(state.allCompleteStreak,7); return {cur:c,need:7,label:"连续全勤 "+c+"/7 天"}; }
-  if (d.key==="mid"){ const need=Math.ceil(cap/2); const c=Math.min(owned,need); return {cur:c,need,label:"已收集 "+c+"/"+need}; }
-  if (d.key==="high"){ const need=Math.ceil(cap*0.9); const c=Math.min(owned,need); return {cur:c,need,label:"已收集 "+c+"/"+need}; }
-  if (d.key==="master"){ const c=Math.min(owned,cap); return {cur:c,need:cap,label:"已收集 "+c+"/"+cap}; }
-  if (d.key.startsWith("type_")){ const tp=d.key.slice(5); const ids=TYPES[tp]; const th=Math.min(5,ids.length); const cnt=ids.filter(id=>state.dex.includes(id)).length; const c=Math.min(cnt,th); return {cur:c,need:th,label:"已收集 "+c+"/"+th}; }
+  const gen = state.activeAchBook;
+  const cap = bookCapacity(gen);
+  const owned = bookDexCount(gen);
+  const byGen = TYPES_BY_GEN[gen] || {};
+  const starterIds = STARTERS[gen] || [];
+  const base = d.key.replace(/^gen\d+_/, "");
+  if (base==="first"){ const c=Math.min(owned,1); return {cur:c,need:1,label:"已收集 "+c+"/1"}; }
+  if (base==="partner"){ const c=state.dex.includes(25)?1:0; return {cur:c,need:1,label:"皮卡丘 "+c+"/1"}; }
+  if (base==="starters"){ const c=starterIds.filter(id=>state.dex.includes(id)).length; return {cur:c,need:starterIds.length,label:"已收集 "+c+"/"+starterIds.length}; }
+  if (base==="streak7"){ const c=Math.min(state.allCompleteStreak,7); return {cur:c,need:7,label:"连续全勤 "+c+"/7 天"}; }
+  if (base==="mid"){ const need=Math.ceil(cap/2); const c=Math.min(owned,need); return {cur:c,need,label:"已收集 "+c+"/"+need}; }
+  if (base==="high"){ const need=Math.ceil(cap*0.9); const c=Math.min(owned,need); return {cur:c,need,label:"已收集 "+c+"/"+need}; }
+  if (base==="master"){ const c=Math.min(owned,cap); return {cur:c,need:cap,label:"已收集 "+c+"/"+cap}; }
+  if (base.startsWith("type_")){ const tp=base.slice(5); const ids=byGen[tp]||[]; const th=Math.min(5,ids.length); const cnt=ids.filter(id=>state.dex.includes(id)).length; const c=Math.min(cnt,th); return {cur:c,need:th,label:"已收集 "+c+"/"+th}; }
   return {cur:0,need:1,label:""};
 }
 function renderAchievements(){
