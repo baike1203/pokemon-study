@@ -2424,7 +2424,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.18";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.19";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3949,7 +3949,34 @@ function play8bitMelody(){ const notes=[523,659,784,659,523,659,784,1047,880,784
 function makePinyinQ(){ const [py,chr]=pick(ALL_PINYIN,1)[0]; const wrongs=pick(ALL_PINYIN.filter(p=>p[0]!==py),3).map(p=>p[0]); return { prompt:"👂 听一听，是哪个拼音？", promptClass:"small", speakText:chr, options:shuffle([py,...wrongs]), answer:py }; }
 function makeMathQ(){ let a,b,op,ans; if(Math.random()<0.5){a=rnd(1,19);b=rnd(1,20-a);op="+";ans=a+b;} else {a=rnd(2,20);b=rnd(1,a-1);op="−";ans=a-b;} const w=new Set(); while(w.size<3){let x=ans+rnd(-4,4); if(x!==ans&&x>=0&&x<=20)w.add(x);} return { prompt:`${a} ${op} ${b} = ?`, options:shuffle([ans,...w]), answer:ans }; }
 function makeHanziQ(){ const [zi,py,word]=pick(HANZI,1)[0]; if(Math.random()<0.5){ const w=pick(HANZI.filter(h=>h[1]!==py),3).map(h=>h[1]); return { prompt:zi, sub:`组词：${word}｜它的拼音是哪个？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([py,...w]), answer:py }; } const w=pick(HANZI.filter(h=>h[0]!==zi),3).map(h=>h[0]); return { prompt:py, promptClass:"small", sub:`提示组词：${word}｜是哪个汉字？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...w]), answer:zi }; }
-function randomQuestion(){ return pick([makePinyinQ,makeMathQ,makeHanziQ],1)[0](); }
+/* 冒险可出的模块 + 出题函数；并按学习报告正确率计算薄弱模块（正确率最低者优先） */
+function adventurePoolWithRate(){
+  const POOL = [["pinyin",makePinyinQ],["math",makeMathQ],["hanzi",makeHanziQ]];
+  const withRate = POOL.map(([k,fn])=>{
+    const t = state.stat.modTotal[k]||0, r = state.stat.modRight[k]||0;
+    return { k, fn, total:t, rate: t ? r/t : 1 };   // 无数据视为满分，不优先
+  });
+  const weak = withRate.filter(x=> x.total>0 && x.rate<1).sort((a,b)=> a.rate-b.rate);
+  return { POOL:withRate, weak };
+}
+/* 随机出一道学习题，优先薄弱模块（学习报告正确率低的），保证 25% 概率随机保持多样性 */
+function randomQuestion(preferWeak = true){
+  const { POOL, weak } = adventurePoolWithRate();
+  let chosen;
+  if (preferWeak && weak.length){
+    if (Math.random() < 0.75){
+      // 越薄弱权重越高（正确率升序加权）
+      const weights = weak.map(w => 1 - w.rate + 0.05);
+      const total = weights.reduce((a,b)=>a+b,0);
+      let r = Math.random()*total, i=0;
+      while (i < weak.length-1 && (r -= weights[i]) > 0) i++;
+      chosen = weak[i];
+    } else { chosen = POOL[rnd(0,POOL.length-1)]; }
+  } else { chosen = POOL[rnd(0,POOL.length-1)]; }
+  const q = chosen.fn();
+  q.module = chosen.k;   // 标记模块，便于答题后回写正确率
+  return q;
+}
 
 /* 进入冒险：先选一只已收集宝可梦当伙伴 */
 function startAdventure(){
@@ -3987,6 +4014,7 @@ function beginBattle(myId){
     if (q.speakText){ $("#bSpeak").addEventListener("click",()=>{ sfx.click(); speak(q.speakText); }); setTimeout(()=>speak(q.speakText),300); }
     const grid=$("#bOpt");
     q.options.forEach(opt=>{ const b=document.createElement("button"); b.className="opt-btn"; b.textContent=opt; b.addEventListener("click",()=>{ const fb=$("#bFb");
+      if (q.module) recordAccuracy(q.module, opt===q.answer?1:0, 1);   // 冒险答题回写正确率，闭环薄弱点统计
       if (opt===q.answer){ sfx.correct(); b.classList.add("right"); fb.textContent="答对啦！攻击命中！⚔️"; fb.className="feedback-line good"; grid.querySelectorAll(".opt-btn").forEach(x=>x.disabled=true); wildHP--; setTimeout(()=>{ if(wildHP<=0) win(); else render(); },900); }
       else { sfx.wrong(); b.classList.add("wrong"); fb.textContent="答错啦，野生宝可梦反击！💥"; fb.className="feedback-line bad"; grid.querySelectorAll(".opt-btn").forEach(x=>x.disabled=true); myHP--; setTimeout(()=>{
         if (myHP<=0){
