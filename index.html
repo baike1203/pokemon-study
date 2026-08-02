@@ -424,6 +424,27 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .ach-prog-text { font-size: 15px; color: #9b8676; margin-top: 3px; }
 .ach-prog-done { margin-top: 8px; font-size: 17px; font-weight: bold; color: #3F9D3F; }
 
+/* 成就墙：顶部固定首行（成就书架 / 标题+世代 / 关闭）不随滚动翻页 */
+.dialog.ach-wall .close-x { display: none; }   /* 关闭 X 已移入顶部首行 */
+.ach-wall-head {
+  position: sticky; top: 0; z-index: 10;
+  margin: -28px -26px 0;            /* 顶到弹窗内边距，做成通栏条 */
+  padding: 26px 26px 12px;
+  background: #FFFDF8;
+  display: flex; align-items: center; gap: 12px;
+  text-align: left;
+  border-bottom: 2px dashed #e3d8c2;
+}
+.ach-wall-titles { flex: 1 1 auto; min-width: 0; }
+.ach-wall-close {
+  flex: 0 0 auto;
+  width: 56px; height: 56px; border-radius: 50%;
+  border: none; background: #FFE3E3; color: var(--poke-red);
+  font-size: 28px; font-weight: bold; cursor: pointer; font-family: inherit;
+}
+.ach-wall-close:active { transform: scale(.94); }
+.ach-wall-body { padding-top: 4px; }
+
 /* 伙伴挂件 */
 #partnerWidget { position: fixed; right: 14px; bottom: 124px; z-index: 60; width: 96px; height: 96px; cursor: grab; touch-action: none; display: none; }
 #partnerWidget img { width: 100%; height: 100%; image-rendering: auto;object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
@@ -499,6 +520,9 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   .dialog { border-radius: 24px; padding: 16px 16px 18px; max-height: calc(100vh - 40px); border-width: 4px; }
   .dialog h2 { font-size: 26px; margin-bottom: 8px; }
   .dialog .close-x { width: 42px; height: 42px; font-size: 22px; top: 8px; right: 8px; }
+  .ach-wall-head { margin: -16px -16px 0; padding: 16px 16px 10px; }
+  .ach-wall-head h2 { font-size: 24px; }
+  .ach-wall-close { width: 44px; height: 44px; font-size: 22px; }
   /* 大按钮缩小 */
   .big-btn { min-height: 50px; min-width: 130px; padding: 9px 24px; font-size: 21px; margin: 5px; box-shadow: 0 4px 0 #C0403F, 0 5px 10px rgba(0,0,0,.14); }
   .big-btn:active { transform: translateY(3px); }
@@ -1042,6 +1066,30 @@ function isBookUnlocked(gen){
   // 第一世代集齐后，其余任何世代都可直接开启，不强制按 第二→第三→第四… 的顺序
   return !!state.completedBooks.gen1;
 }
+/* ============ 成就书架（与图鉴书架同构：gen1 集齐后开启 gen2-gen9） ============ */
+const ACH_BOOKS = {
+  gen1: { title:"第一世代 · 关都", region:"关都" },
+  gen2: { title:"第二世代 · 城都", region:"城都" },
+  gen3: { title:"第三世代 · 丰缘", region:"丰缘" },
+  gen4: { title:"第四世代 · 神奥", region:"神奥" },
+  gen5: { title:"第五世代 · 合众", region:"合众" },
+  gen6: { title:"第六世代 · 卡洛斯", region:"卡洛斯" },
+  gen7: { title:"第七世代 · 阿罗拉", region:"阿罗拉" },
+  gen8: { title:"第八世代 · 伽勒尔", region:"伽勒尔" },
+  gen9: { title:"第九世代 · 帕底亚", region:"帕底亚" }
+};
+const ACH_BOOK_ORDER = Object.keys(ACH_BOOKS);
+/* 成就书架解锁规则与图鉴一致：gen1 恒解锁；集齐第一世代 151 只后，gen2-gen9 全部可直接开启（不强制顺序） */
+function isAchBookUnlocked(gen){
+  if (gen === "gen1") return true;
+  return !!state.completedBooks.gen1;
+}
+/* 某世代成就书内的成就定义；gen1 = 当前全部成就（御三家/连续打卡/进度/属性系大师），gen2-gen9 暂未布置（待后续逐世代填充） */
+function achDefsForGen(gen){
+  if (gen === "gen1") return achievementDefsGen1();
+  return [];   // gen2-gen9 占位：后续按用户指示逐世代布置
+}
+function allAchDefs(){ let a=[]; for (const g of ACH_BOOK_ORDER) a = a.concat(achDefsForGen(g)); return a; }
 function nextBookKey(){ const idx = BOOK_ORDER.indexOf(state.activeBook); return BOOK_ORDER[idx+1] || null; }
 /* 某世代的“基础形态”集合：不属于本世代任何进化链“进化位”的编号。
    有进化链时按链计算；未录入 EVO_CHAINS 的世代（如 gen2 暂未补链）则全部视为可抽基础形态，
@@ -1990,7 +2038,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.38.0";   // 改版时同步更新此值，家长设置面板底部地显示，便于确认线上版本
+const APP_VERSION = "v3.40.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2001,6 +2049,7 @@ function defaultState(){
     dex: [],                // 已收集宝可梦基础编号数组（扁平：含所有世代已收集编号）
     activeBook: "gen1",     // 当前正在收集的图鉴（书架中的“进行中”那本）
     completedBooks: {},     // 已集齐并归档的世代 key -> true（如 {gen1:true}）
+    activeAchBook: "gen1",  // 当前正在查看的成就书（成就书架中的“进行中”那本）
     daily: { date: todayStr(), done: { pinyin:false, math:false, english:false, hanzi:false, poem:false }, celebrated:false },
     razStreak: 0, razLastDate: "", lastVisit: "", congratulated151: false,
     /* ---- 新增字段 ---- */
@@ -2063,6 +2112,7 @@ function doAutoBackup(){
 function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); loadedEmpty = !raw; if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s);
   if (!s.activeBook) s.activeBook = "gen1";
   if (!s.completedBooks || typeof s.completedBooks !== "object") s.completedBooks = {};
+  if (!s.activeAchBook) s.activeAchBook = "gen1";
   // 兼容老用户：若 gen1 已实际集齐但未记录，则补记（使书架正确显示“已收藏”）
   let c1 = 0; for (const id of (s.dex||[])){ if (id>=1 && id<=151) c1++; }
   if (c1 >= 151 && !s.completedBooks.gen1) s.completedBooks.gen1 = true;
@@ -3377,6 +3427,57 @@ function openBookshelf(){
     });
   });
 }
+/* 成就书架：列出全部世代成就书，已收藏✓/进行中🔥/可开启🆕/未解锁🔒；点选切换 activeAchBook（与图鉴书架同构） */
+function openAchBookshelf(){
+  closeDialog();
+  if (!state.completedBooks.gen1){
+    toast("先集齐第一世代 151 只宝可梦，才能开启成就书架哦！");
+    return;
+  }
+  const rows = ACH_BOOK_ORDER.map(gen=>{
+    const b = ACH_BOOKS[gen];
+    const defs = achDefsForGen(gen);
+    const total = defs.length;
+    const got = defs.filter(d=> state.achievements[d.key]).length;
+    const done = total>0 && got>=total;
+    const isActive = gen === state.activeAchBook;
+    const unlocked = isAchBookUnlocked(gen);
+    let badge, act;
+    if (total === 0){
+      badge = `📭 待布置`;
+      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="view">📖 看看这本</button>`;
+    } else if (done){
+      badge = `✅ 已全部解锁（${got}/${total}）`;
+      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="view">📖 回看这本</button>`;
+    } else if (isActive){
+      badge = `🔥 进行中（${got}/${total}）`;
+      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="continue">继续这本</button>`;
+    } else if (unlocked){
+      badge = `🆕 可开启（${got}/${total}）`;
+      act = `<button class="big-btn blue shelf-pick" data-book="${gen}" data-act="open">🌟 开启新成就书</button>`;
+    } else {
+      badge = `🔒 未解锁（先集齐第一世代 151 只）`;
+      act = `<button class="big-btn" disabled style="opacity:.5;cursor:not-allowed">未解锁</button>`;
+    }
+    return `<div class="shelf-book ${done?'done':''} ${isActive?'active':''}">
+      <div class="sb-spine">${b.region}</div>
+      <div class="sb-title">${b.title}</div>
+      <div class="sb-badge">${badge}</div>
+      ${act}
+    </div>`;
+  }).join("");
+  openDialog(`<h2 style="color:var(--poke-blue)">📚 成就书架</h2>
+    <div style="font-size:16px;color:#9b8676;margin-bottom:10px">每集齐一本，就合上归档；开启下一本，去新的地区冒险！</div>
+    <div class="shelf-grid">${rows}</div>
+    <button class="big-btn yellow" onclick="closeDialog()">关闭</button>`, { dialogClass:"shelf-dialog" });
+  document.querySelectorAll(".shelf-pick").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const gen = btn.dataset.book, act = btn.dataset.act; sfx.click();
+      state.activeAchBook = gen; saveState(); closeDialog(); renderAchievements();
+      if (act === "open") toast("🌟 开启了《"+ACH_BOOKS[gen].title+"》成就书！");
+    });
+  });
+}
 /* 简易初代主题曲风格 8bit 旋律（方波振荡器模拟） */
 function play8bitMelody(){ const notes=[523,659,784,659,523,659,784,1047,880,784,659,587,523]; notes.forEach((f,i)=>tone(f, i*0.18, 0.16, "square", 0.18)); }
 
@@ -3726,7 +3827,7 @@ const TYPE_ICON = {
   "钢": "assets/types/steel.webp",
   "妖精": "assets/types/fairy.webp",
 };
-function achievementDefs(){
+function achievementDefsGen1(){
   // 御三家组合图标：妙蛙种子(1) + 小火龙(4) + 杰尼龟(7) 三个初始御三家精灵并排
   const startersIcon = [1,4,7].map(id=>`<img src="${spriteUrl(id)}" style="width:38px;height:38px;image-rendering:auto;object-fit:contain">`).join("");
   const defs=[
@@ -3744,33 +3845,38 @@ function achievementDefs(){
   }
   return defs;
 }
-/* 检查并解锁成就（发放超级球奖励） */
+/* 兼容别名：返回全部世代成就定义（checkAchievements 已改为按世代逐本评估，这里保留以免其它调用方遗漏） */
+function achievementDefs(){ return allAchDefs(); }
+/* 检查并解锁成就（发放超级球奖励）——按成就书架逐世代评估，使第一世代成就始终以 gen1 范围为基准 */
 function checkAchievements(){
-  const a = state.achievements, defs = achievementDefs(), newly = [];
+  const a = state.achievements, newly = [];
   const totalOwned = state.dex.length;
-  const cap = bookCapacity(state.activeBook);
-  const owned = bookDexCount(state.activeBook);
-  defs.forEach(d=>{
-    let ok = false;
-    if (d.key==="first") ok = totalOwned>=1;
-    else if (d.key==="partner") ok = state.dex.includes(25);          // 皮卡丘
-    else if (d.key==="starters") ok = state.dex.includes(1) && state.dex.includes(4) && state.dex.includes(7); // 御三家
-    else if (d.key==="streak7") ok = state.allCompleteStreak>=7;
-    else if (d.key==="mid") ok = owned >= Math.ceil(cap/2);
-    else if (d.key==="high") ok = owned >= Math.ceil(cap*0.9);
-    else if (d.key==="master") ok = isBookComplete(state.activeBook);
-    else if (d.key.startsWith("type_")){ const tp=d.key.slice(5); const ids=TYPES[tp]; const th=Math.min(5,ids.length); const cnt=ids.filter(id=>state.dex.includes(id)).length; ok = cnt>=th; }
-    if (ok && !a[d.key]){ a[d.key]=true; state.superBalls += d.reward; newly.push(d); }
+  ACH_BOOK_ORDER.forEach(gen=>{
+    const defs = achDefsForGen(gen);
+    const cap = bookCapacity(gen);
+    const owned = bookDexCount(gen);
+    defs.forEach(d=>{
+      let ok = false;
+      if (d.key==="first") ok = totalOwned>=1;
+      else if (d.key==="partner") ok = state.dex.includes(25);          // 皮卡丘
+      else if (d.key==="starters") ok = state.dex.includes(1) && state.dex.includes(4) && state.dex.includes(7); // 御三家
+      else if (d.key==="streak7") ok = state.allCompleteStreak>=7;
+      else if (d.key==="mid") ok = owned >= Math.ceil(cap/2);
+      else if (d.key==="high") ok = owned >= Math.ceil(cap*0.9);
+      else if (d.key==="master") ok = isBookComplete(gen);
+      else if (d.key.startsWith("type_")){ const tp=d.key.slice(5); const ids=TYPES[tp]; const th=Math.min(5,ids.length); const cnt=ids.filter(id=>state.dex.includes(id)).length; ok = cnt>=th; }
+      if (ok && !a[d.key]){ a[d.key]=true; state.superBalls += d.reward; newly.push(d); }
+    });
   });
   saveState();
   renderBalls();   // 即时刷新顶部超级球数量，无需刷新整页
   if (newly.length){ newly.forEach((d,i)=> setTimeout(()=>celebrateAchievement(d), i*450)); }
 }
-/* 计算某成就当前进度：返回 {cur,need,label} */
+/* 计算某成就当前进度：返回 {cur,need,label}（以当前成就书架 state.activeAchBook 为基准） */
 function achievementProgress(d){
   const totalOwned = state.dex.length;
-  const cap = bookCapacity(state.activeBook);
-  const owned = bookDexCount(state.activeBook);
+  const cap = bookCapacity(state.activeAchBook);
+  const owned = bookDexCount(state.activeAchBook);
   if (d.key==="first"){ const c=Math.min(totalOwned,1); return {cur:c,need:1,label:"已收集 "+c+"/1"}; }
   if (d.key==="partner"){ const c=state.dex.includes(25)?1:0; return {cur:c,need:1,label:"皮卡丘 "+c+"/1"}; }
   if (d.key==="starters"){ const ids=[1,4,7]; const c=ids.filter(id=>state.dex.includes(id)).length; return {cur:c,need:3,label:"已收集 "+c+"/3"}; }
@@ -3782,19 +3888,44 @@ function achievementProgress(d){
   return {cur:0,need:1,label:""};
 }
 function renderAchievements(){
-  const defs = achievementDefs();
-  let html = defs.map(d=>{
-    const got = state.achievements[d.key];
-    const p = achievementProgress(d);
-    const pct = Math.max(4, Math.round(p.cur/p.need*100));
-    const progHTML = got
-      ? `<div class="ach-prog-done">✅ 已完成</div>`
-      : `<div class="ach-prog-wrap"><div class="ach-prog-bar"><div class="ach-prog-fill" style="width:${pct}%"></div></div><div class="ach-prog-text">${p.label}</div></div>`;
-    const icoHTML = isImageIcon(d.icon) ? `<img src="${d.icon}" style="width:48px;height:48px;object-fit:contain" alt="">` : d.icon;
-    const icoCell = `${icoHTML}${got?'<span class="ach-badge" title="已解锁">🏆</span>':''}`;
-    return `<div class="ach-card ${got?'got':''}"><div class="ach-ico">${icoCell}</div><div class="ach-name">${d.name}</div><div class="ach-desc">${d.desc}</div>${progHTML}<div class="ach-reward ${got?'':'locked'}">${got?('+'+d.reward+' 超级球'):'未解锁'}</div></div>`;
-  }).join("");
-  openDialog(`<h2 style="color:var(--poke-blue)">🏅 成就墙</h2><div class="ach-grid">${html}</div><button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">关闭</button>`);
+  const gen = state.activeAchBook, bk = ACH_BOOKS[gen];
+  const defs = achDefsForGen(gen);
+  const shelfBtn = state.completedBooks.gen1
+    ? `<button class="big-btn" id="achShelfPick" style="background:#fff7e6;color:#b8860b;border-color:#e0c068">📚 成就书架</button>`
+    : "";
+  let body;
+  if (defs.length === 0){
+    body = `<div style="font-size:17px;color:#9b8676;text-align:center;padding:30px 10px">📭 这一世代的成就还在布置中，敬请期待～<br><span style="font-size:14px">（当前成就书架：<b>${bk.title}</b>）</span></div>`;
+  } else {
+    const cards = defs.map(d=>{
+      const got = state.achievements[d.key];
+      const p = achievementProgress(d);
+      const pct = Math.max(4, Math.round(p.cur/p.need*100));
+      const progHTML = got
+        ? `<div class="ach-prog-done">✅ 已完成</div>`
+        : `<div class="ach-prog-wrap"><div class="ach-prog-bar"><div class="ach-prog-fill" style="width:${pct}%"></div></div><div class="ach-prog-text">${p.label}</div></div>`;
+      const icoHTML = isImageIcon(d.icon) ? `<img src="${d.icon}" style="width:48px;height:48px;object-fit:contain" alt="">` : d.icon;
+      const icoCell = `${icoHTML}${got?'<span class="ach-badge" title="已解锁">🏆</span>':''}`;
+      return `<div class="ach-card ${got?'got':''}"><div class="ach-ico">${icoCell}</div><div class="ach-name">${d.name}</div><div class="ach-desc">${d.desc}</div>${progHTML}<div class="ach-reward ${got?'':'locked'}">${got?('+'+d.reward+' 超级球'):'未解锁'}</div></div>`;
+    }).join("");
+    body = `<div class="ach-grid">${cards}</div>`;
+  }
+  openDialog(`<div class="ach-wall-head">
+      ${shelfBtn}
+      <div class="ach-wall-titles">
+        <h2 style="color:var(--poke-blue);margin:0;font-size:28px;line-height:1.15">🏅 成就墙</h2>
+        <div id="achTitle" style="font-size:18px;color:#9b8676;margin-top:2px">${bk.title}</div>
+      </div>
+      <button class="ach-wall-close" onclick="closeDialog()" aria-label="关闭">✕</button>
+    </div>
+    <div class="ach-wall-body">
+    ${body}
+    <div style="display:flex;gap:10px;margin-top:12px;justify-content:center">
+      <button class="big-btn yellow" onclick="closeDialog()">关闭</button>
+    </div>
+    </div>`, { dialogClass:"ach-wall" });
+  const sp = document.getElementById("achShelfPick");
+  if (sp) sp.addEventListener("click", ()=>{ sfx.click(); openAchBookshelf(); });
 }
 /* 进度导出 / 导入 */
 function openBackup(){
