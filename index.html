@@ -608,6 +608,66 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .poke-detail .pd-right { flex:1 1 280px; min-width:240px; max-width:460px; text-align:left; }
 .poke-detail .pd-right .poke-info { max-width:none; margin:0; }
 .poke-name { font-size:36px; font-weight:bold; color:#5b4a3a; margin-top:8px; text-shadow:0 1px 2px rgba(0,0,0,.1); }
+
+/* ===== 宝可梦进化动画（仿 Switch：白屏闪光 + 剪影放射光束 + 彩色填充定格） ===== */
+.evo-overlay{
+  position:fixed; inset:0; z-index:9999; pointer-events:none;
+  background:radial-gradient(circle at 50% 50%, #34344a 0%, #15151f 70%, #050509 100%);
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+  opacity:0; transition:opacity .35s ease;
+}
+.evo-overlay.go{ opacity:1; }
+.evo-overlay.out{ opacity:0; }
+.evo-rays{
+  position:absolute; left:50%; top:50%; width:240vmax; height:240vmax;
+  transform:translate(-50%,-50%);
+  background:conic-gradient(from 0deg,
+    rgba(255,255,255,0) 0deg, rgba(255,255,255,.9) 7deg, rgba(255,255,255,0) 14deg,
+    rgba(255,255,255,0) 30deg, rgba(255,255,255,.9) 37deg, rgba(255,255,255,0) 44deg,
+    rgba(255,255,255,0) 60deg, rgba(255,255,255,.9) 67deg, rgba(255,255,255,0) 74deg,
+    rgba(255,255,255,0) 90deg, rgba(255,255,255,.9) 97deg, rgba(255,255,255,0) 104deg,
+    rgba(255,255,255,0) 120deg, rgba(255,255,255,.9) 127deg, rgba(255,255,255,0) 134deg,
+    rgba(255,255,255,0) 150deg, rgba(255,255,255,.9) 157deg, rgba(255,255,255,0) 164deg,
+    rgba(255,255,255,0) 180deg, rgba(255,255,255,.9) 187deg, rgba(255,255,255,0) 194deg,
+    rgba(255,255,255,0) 210deg, rgba(255,255,255,.9) 217deg, rgba(255,255,255,0) 224deg,
+    rgba(255,255,255,0) 240deg, rgba(255,255,255,.9) 247deg, rgba(255,255,255,0) 254deg,
+    rgba(255,255,255,0) 270deg, rgba(255,255,255,.9) 277deg, rgba(255,255,255,0) 284deg,
+    rgba(255,255,255,0) 300deg, rgba(255,255,255,.9) 307deg, rgba(255,255,255,0) 314deg,
+    rgba(255,255,255,0) 330deg, rgba(255,255,255,.9) 337deg, rgba(255,255,255,0) 344deg,
+    rgba(255,255,255,0) 360deg);
+  opacity:0; transition:opacity .5s ease; filter:blur(1px);
+  animation:evoSpin 7s linear infinite;
+}
+@keyframes evoSpin{ to{ transform:translate(-50%,-50%) rotate(360deg); } }
+.evo-overlay.silhouette .evo-rays,
+.evo-overlay.reveal .evo-rays{ opacity:.6; }
+.evo-stage{ position:relative; width:min(46vw,240px); height:min(46vw,240px); }
+.evo-sprite{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:contain; image-rendering:auto;
+  transition:filter .6s ease, opacity .6s ease, transform .8s cubic-bezier(.2,.8,.3,1);
+}
+.evo-from{ opacity:1; transform:scale(1); }
+.evo-to{ opacity:0; transform:scale(.7); filter:brightness(0); }
+.evo-overlay.silhouette .evo-from{ filter:brightness(0) drop-shadow(0 0 12px rgba(255,255,255,.95)); }
+.evo-overlay.reveal .evo-to{
+  opacity:1; transform:scale(1.06);
+  filter:brightness(1) drop-shadow(0 0 16px rgba(130,205,255,.9));
+}
+.evo-overlay.reveal .evo-from{ opacity:0; }
+.evo-overlay.out .evo-to{ transform:scale(1); filter:drop-shadow(0 0 10px rgba(130,205,255,.6)); }
+.evo-flash{ position:absolute; inset:0; background:#fff; opacity:0; }
+.evo-overlay.flash .evo-flash{ animation:evoFlash .55s ease; }
+.evo-overlay.flash2 .evo-flash{ animation:evoFlash2 .5s ease; }
+@keyframes evoFlash{ 0%{opacity:0} 28%{opacity:1} 100%{opacity:0} }
+@keyframes evoFlash2{ 0%{opacity:0} 24%{opacity:.95} 100%{opacity:0} }
+.evo-text{
+  position:absolute; bottom:13%; left:0; right:0; text-align:center;
+  font-size:min(13vw,58px); font-weight:800; color:#fff; letter-spacing:.12em;
+  text-shadow:0 0 18px #6cf, 0 4px 10px rgba(0,0,0,.6);
+  opacity:0; transform:translateY(12px) scale(.8); transition:opacity .4s ease, transform .4s ease;
+}
+.evo-overlay.reveal .evo-text{ opacity:1; transform:translateY(0) scale(1); }
+.evo-overlay.out .evo-text{ opacity:0; }
 </style>
 </head>
 <body>
@@ -2364,7 +2424,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.16";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.17";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3410,6 +3470,47 @@ function tryEvolve(id){
   return { from: id, to: to };
 }
 
+/* 宝可梦进化音效（Web Audio 合成：上升音 + 收尾叮，零依赖；失败回退 sfx） */
+function playEvolveSound(){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const ac = new AC(); if (ac.state === "suspended") ac.resume();
+    const t0 = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(294, t0);
+    o.frequency.exponentialRampToValueAtTime(880, t0 + 1.1);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.12);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5);
+    o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + 1.5);
+    const o2 = ac.createOscillator(), g2 = ac.createGain();
+    o2.type = "triangle"; o2.frequency.setValueAtTime(1318, t0 + 1.45);
+    g2.gain.setValueAtTime(0.0001, t0 + 1.45);
+    g2.gain.exponentialRampToValueAtTime(0.18, t0 + 1.5);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.1);
+    o2.connect(g2); g2.connect(ac.destination); o2.start(t0 + 1.45); o2.stop(t0 + 2.1);
+  } catch(e){ try{ sfx.fanfare(); }catch(_){} }
+}
+/* 宝可梦进化动画（仿 Switch）：白屏闪光 + 剪影放射光束 + 彩色填充定格 */
+function playEvolution(fromId, toId, onDone){
+  const ov = document.createElement("div");
+  ov.className = "evo-overlay";
+  ov.innerHTML = `<div class="evo-flash"></div><div class="evo-rays"></div>` +
+    `<div class="evo-stage"><img class="evo-sprite evo-from" src="${spriteUrl(fromId)}" alt=""><img class="evo-sprite evo-to" src="${spriteUrl(toId)}" alt=""></div>` +
+    `<div class="evo-text">进化！</div>`;
+  document.body.appendChild(ov);
+  void ov.offsetWidth; // 强制 reflow，确保起始样式生效
+  ov.classList.add("go");
+  playEvolveSound();
+  setTimeout(()=>ov.classList.add("silhouette"), 600);   // 旧形态成剪影 + 光束显现
+  setTimeout(()=>ov.classList.add("flash"), 1150);      // 白屏闪光
+  setTimeout(()=>ov.classList.add("reveal"), 1250);     // 新形态彩色填充浮现 + 文字
+  setTimeout(()=>{ try{ confetti(70); }catch(e){} }, 1300);
+  setTimeout(()=>ov.classList.add("flash2"), 2500);     // 定格前再闪一下
+  setTimeout(()=>ov.classList.add("out"), 2950);        // 淡出
+  setTimeout(()=>{ ov.remove(); if (onDone) onDone(); }, 3650);
+}
+
 /* ==================== 7. 收服宝可梦与图鉴 ==================== */
 function renderDex(){
   const bk = BOOKS[state.activeBook];
@@ -3683,14 +3784,16 @@ function revealGacha(id, isNew, ballType){
     $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); checkBookComplete(); checkAchievements(); renderDex(); };
     if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
   } else if (evolved){
-    confetti(120); sfx.fanfare();
-    openDialog(`<h2 style="color:var(--poke-red)">🌟 进化！</h2>
+    playEvolution(evolved.from, evolved.to, ()=>{
+      confetti(120); sfx.fanfare();
+      openDialog(`<h2 style="color:var(--poke-red)">🌟 进化！</h2>
       <div style="font-size:30px;margin:8px 0">你的 <b>${POKEMON[evolved.from-1]}</b><br>进化成了<br><b style="color:var(--poke-blue)">${POKEMON[evolved.to-1]}</b>！</div>
       <img src="${spriteUrl(evolved.to)}" style="width:200px;height:200px;image-rendering:auto;object-fit:contain">
       <div style="font-size:24px;color:#8a6d5c;margin:6px 0">「${cryOf(evolved.to)}」</div>
       <button class="big-btn" id="gOk2">太厉害了！</button>`, {closable:false});
-    speak(`恭喜！${POKEMON[evolved.from-1]}进化成了${POKEMON[evolved.to-1]}！`);
-    $("#gOk2").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); };
+      speak(`恭喜！${POKEMON[evolved.from-1]}进化成了${POKEMON[evolved.to-1]}！`);
+      $("#gOk2").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); };
+    });
   } else {
     sfx.reward(); starBurst(window.innerWidth/2, window.innerHeight/2, 14);
     const dupMsg = ballType==="normal"
