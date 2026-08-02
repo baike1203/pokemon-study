@@ -7,5 +7,9 @@
 _gen2_names.txt
 scripts/_gen2_names_cache.json
 
+# 宝可梦信息抓取脚本产出的中间文件（缓存/导出 JSON，非发布内容；数据已注入 index.html）
+scripts/pokedata_extra_cache.json
+scripts/pokedata_extra.json
+
 # Python 缓存
 scripts/__pycache__/
