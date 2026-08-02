@@ -2081,7 +2081,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.6";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.7";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3482,21 +3482,12 @@ function openAchBookshelf(){
     const isActive = gen === state.activeAchBook;
     const unlocked = isAchBookUnlocked(gen);
     let badge, act;
-    if (total === 0){
-      badge = `📭 待布置`;
-      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="view">📖 看看这本</button>`;
-    } else if (done){
-      badge = `✅ 已全部解锁（${got}/${total}）`;
-      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="view">📖 回看这本</button>`;
-    } else if (isActive){
-      badge = `🔥 进行中（${got}/${total}）`;
-      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="continue">继续这本</button>`;
-    } else if (unlocked){
-      badge = `🆕 可开启（${got}/${total}）`;
-      act = `<button class="big-btn blue shelf-pick" data-book="${gen}" data-act="open">🌟 开启新成就书</button>`;
-    } else {
+    if (!unlocked){
       badge = `🔒 未解锁（先集齐第一世代 151 只）`;
       act = `<button class="big-btn" disabled style="opacity:.5;cursor:not-allowed">未解锁</button>`;
+    } else {
+      badge = total === 0 ? `📭 待布置` : (done ? `✅ 已全部解锁（${got}/${total}）` : (isActive ? `🔥 进行中（${got}/${total}）` : `🆕 可开启（${got}/${total}）`));
+      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="view">📖 查看</button>`;
     }
     return `<div class="shelf-book ${done?'done':''} ${isActive?'active':''}">
       <div class="sb-spine">${b.region}</div>
@@ -3511,9 +3502,8 @@ function openAchBookshelf(){
     <button class="big-btn yellow" onclick="closeDialog()">关闭</button>`, { dialogClass:"shelf-dialog" });
   document.querySelectorAll(".shelf-pick").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      const gen = btn.dataset.book, act = btn.dataset.act; sfx.click();
+      const gen = btn.dataset.book; sfx.click();
       state.activeAchBook = gen; saveState(); closeDialog(); renderAchievements();
-      if (act === "open") toast("🌟 开启了《"+ACH_BOOKS[gen].title+"》成就书！");
     });
   });
 }
@@ -4092,7 +4082,7 @@ $("#superBtn").addEventListener("click", ()=>{
   openGacha("super");                                              // 有球：直接收服宝可梦（必定抽到未收集）
 });
 $("#adventureBtn").addEventListener("click", ()=>{ sfx.click(); startAdventure(); });
-$("#achBtn").addEventListener("click", ()=>{ sfx.click(); renderAchievements(); });
+$("#achBtn").addEventListener("click", ()=>{ sfx.click(); state.activeAchBook = state.activeBook; saveState(); renderAchievements(); });
 $("#shelfBtn").addEventListener("click", ()=>{ sfx.click(); openBookshelf(); });
 /* 备份按钮已移入设置面板（备份 / 导入进度），图鉴页不再保留 */
 
