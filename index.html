@@ -487,6 +487,27 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   .dialog h2 { font-size: 30px; }
 }
 
+/* 手机竖屏：标题与时间分两行（左上方），球计数浮右上，避免长名字与时间重叠 */
+@media (max-width: 820px) and (orientation: portrait) {
+  header {
+    height: auto; min-height: 84px;
+    flex-direction: column; align-items: flex-start; justify-content: center;
+    padding: 6px 14px; gap: 0;
+  }
+  #appTitle { font-size: 20px; min-height: 0; line-height: 1.2; }
+  #hdrClock {
+    position: static; transform: none;
+    font-size: 18px; letter-spacing: 2px; margin-top: 1px;
+  }
+  .hdr-right {
+    position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
+  }
+  #ballCounter { min-height: 0; padding: 4px 14px 4px 10px; gap: 6px; }
+  #ballCounter .num { font-size: 22px; }
+  .pokeball { width: 30px; height: 30px; }
+  main { top: 84px; }
+}
+
 /* 平板矮屏适配（希沃 V2 Pro 等 1280×800 横屏）：全局缩小字号/间距/按钮，一屏装下不滚动 */
 @media (max-height: 860px) {
   body { font-size: 18px; }
@@ -1028,6 +1049,9 @@ function chainOf(id){ for (const c of EVO_CHAINS) if (c[0] === id) return c; ret
 function chainOfId(id){ for (const c of EVO_CHAINS){ if (c.flat().includes(id)) return c; } return null; }
 function chainPos(id){ const c=chainOfId(id); if(!c) return -1; for(let i=0;i<c.length;i++){ if(c[i]===id) return i; if(Array.isArray(c[i])&&c[i].includes(id)) return i; } return -1; }
 function nextForms(id){ const c=chainOfId(id); const p=chainPos(id); if(!c||p<0||p>=c.length-1) return null; const nx=c[p+1]; return Array.isArray(nx)?nx.slice():[nx]; }
+/* 指定链内的位置/下一形态查询（tryEvolve 多链聚合用） */
+function chainPosIn(id, c){ for(let i=0;i<c.length;i++){ if(c[i]===id) return i; if(Array.isArray(c[i])&&c[i].includes(id)) return i; } return -1; }
+function nextFormsIn(id, c){ const p=chainPosIn(id,c); if(p<0||p>=c.length-1) return null; const nx=c[p+1]; return Array.isArray(nx)?nx.slice():[nx]; }
 
 /* ---------- 基础形态判断：用于收服宝可梦抽取时优先给出未进化的宝可梦 ----------
    基础形态 = 每条进化链的第一个编号 + 不在任何进化链里的独立宝可梦。
@@ -2081,7 +2105,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.13";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.14";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3099,25 +3123,32 @@ window.__closeAndReward = function(key){
 /* 显示用：现在每种形态都是独立图鉴条目，直接返回自身编号即可 */
 function displayId(id){ return id; }
 /* 尝试进化：累计“该形态自身”被抽到的次数达标则进阶，返回 {from,to} 或 null。
-   进化时把下一形态加入图鉴（保持常亮，符合“捕捉过就一直点亮”的设定）。 */
+   进化时把下一形态加入图鉴（保持常亮，符合“捕捉过就一直点亮”的设定）。
+   多链聚合：同一基础形态可能在多条链中出现（如 Wurmple 拆成两条共享 base 的链），
+   这里遍历所有包含该 id 的链，向“当前尚未拥有”的下一形态进化，确保多级分支都能触发。 */
 function tryEvolve(id){
-  const c = chainOfId(id); if (!c) return null;
-  const pos = chainPos(id); if (pos < 0 || pos >= c.length - 1) return null;
-  const req = EVO_REQ[c.length]; if (!req) return null;
-  const need = req[pos];
-  const have = state.copyCount[id] || 0;
-  if (have >= need){
-    const nxt = nextForms(id);
-    // 优先进化到“尚未拥有的”形态；若下一形态已全部拥有，视为已进化完成，不再触发
-    const candidates = nxt.filter(n=>!state.dex.includes(n));
-    if (candidates.length === 0) return null;
-    const to = candidates[rnd(0, candidates.length-1)]; // 伊布分支随机
-    if (!state.dex.includes(to)) state.dex.push(to);
-    if (Array.isArray(c[pos+1])) state.evoForm[c[0]] = to; // 记录伊布分支选择
-    saveState();
-    return { from: id, to: to };
+  const chains = EVO_CHAINS.filter(c => c.flat().includes(id));
+  if (chains.length === 0) return null;
+  const candidates = [];
+  for (const c of chains){
+    const p = chainPosIn(id, c);
+    if (p < 0 || p >= c.length - 1) continue;
+    const req = EVO_REQ[c.length]; if (!req) continue;
+    const need = req[p];
+    const have = state.copyCount[id] || 0;
+    if (have < need) continue;
+    const nxt = nextFormsIn(id, c); if (!nxt) continue;
+    candidates.push(...nxt);
   }
-  return null;
+  if (candidates.length === 0) return null;
+  const unowned = candidates.filter(n => !state.dex.includes(n));
+  if (unowned.length === 0) return null;
+  const to = unowned[rnd(0, unowned.length - 1)]; // 分支时随机选一个未拥有的
+  if (!state.dex.includes(to)) state.dex.push(to);
+  const chosen = chains.find(c => (nextFormsIn(id, c) || []).includes(to));
+  if (chosen && Array.isArray(chosen[chainPosIn(id, chosen) + 1])) state.evoForm[chosen[0]] = to; // 记录分支选择
+  saveState();
+  return { from: id, to: to };
 }
 
 /* ==================== 7. 收服宝可梦与图鉴 ==================== */
