@@ -2040,7 +2040,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.2";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.5";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2678,7 +2678,7 @@ function pinyinStart(){
     } else {
       const h = pick(HANZI,1)[0];                            // [zi, py, word]
       const wrongs = pick(HANZI.filter(x=>x[1]!==h[1]),3).map(x=>x[1]);
-      return { id:"ph"+i, prompt:h[0], sub:`（${h[2]}）这个字的拼音是？`, speakText:`${h[0]}，${h[2]}的${h[0]}`, speakOnShow:false, options:shuffle([h[1],...wrongs]), answer:h[1] };
+      return { id:"ph"+i, prompt:h[0], sub:`（${h[2]}）这个字的拼音是？`, speakText:h[0], speakOnShow:true, options:shuffle([h[1],...wrongs]), answer:h[1] };
     }
   });
   runQuiz({ title:"🔤 拼音乐园", color:"#F45E85", questions, moduleKey:"pinyin",
@@ -2940,10 +2940,6 @@ function buildHanziQ(type, bank, lv, i){
     const wrongs = randomDistractors(c, bank, 3);
     return { id:"h"+i, prompt:(em? em+" ":"") + "这个字是？", sub:`（${word}）`, speakText:`${c}，${word}`, speakOnShow:true, options:shuffle([c,...wrongs]), answer:c };
   }
-  if (type==="char2py"){
-    const ws = [...new Set(pick(bank.filter(x=>x[1]!==py).map(x=>x[1]), 6))].slice(0,3);
-    return { id:"h"+i, prompt:c, sub:`（${word}）它的拼音是？`, speakText:`${c}，${word}的${c}`, speakOnShow:lv<=1, options:shuffle([py,...ws]), answer:py };
-  }
   if (type==="pinyin"){
     const wrongs = confuseDistractors(c,3,bank);
     return { id:"h"+i, prompt:py, promptClass:"small", sub:`（${word}）选正确的汉字`, speakText:`${c}，${word}`, speakOnShow:false, options:shuffle([c,...wrongs]), answer:c };
@@ -2979,7 +2975,7 @@ function hanziTask(){
   const lv = String(state.hanziDiff||"0");
   const bank = hanziBank(lv);
   const lvNum = +lv;
-  const typePlan = { 0:["emoji"], 1:["emoji","char2py"], 2:["emoji","pinyin"], 3:["pinyin","word"], 4:["confuse"], 5:["fill","judge"] }[lvNum] || ["emoji"];
+  const typePlan = { 0:["emoji"], 1:["emoji","pinyin"], 2:["emoji","pinyin"], 3:["pinyin","word"], 4:["confuse"], 5:["fill","judge"] }[lvNum] || ["emoji"];
   const questions = [];
   for (let i=0;i<10;i++){ questions.push(buildHanziQ(typePlan[i % typePlan.length], bank, lvNum, i)); }
   shuffle(questions);
