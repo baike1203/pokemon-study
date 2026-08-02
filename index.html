@@ -2081,7 +2081,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.9";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.10";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3441,7 +3441,7 @@ function openBookshelf(){
       act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="view">📖 回看这本</button>`;
     } else if (isActive || cnt > 0){
       badge = isActive ? `🔥 收集中（${cnt}/${cap}）` : `📖 已开启（${cnt}/${cap}）`;
-      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="continue">继续这本</button>`;
+      act = `<button class="big-btn shelf-pick" data-book="${gen}" data-act="continue">${isActive ? '正在收集' : '继续这本'}</button>`;
     } else if (unlocked){
       badge = `🆕 可开启（${cnt}/${cap}）`;
       act = `<button class="big-btn blue shelf-pick" data-book="${gen}" data-act="open">🌟 开启新图鉴</button>`;
