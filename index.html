@@ -431,11 +431,11 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   margin: -28px -26px 0;            /* 顶到弹窗内边距，做成通栏条 */
   padding: 26px 26px 12px;
   background: #FFFDF8;
-  display: flex; align-items: center; gap: 12px;
-  text-align: left;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
   border-bottom: 2px dashed #e3d8c2;
 }
-.ach-wall-titles { flex: 1 1 auto; min-width: 0; }
+/* 标题+世代真正居中于整条，按钮分居左右两端 */
+.ach-wall-titles { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; pointer-events: none; }
 .ach-wall-close {
   flex: 0 0 auto;
   width: 56px; height: 56px; border-radius: 50%;
@@ -523,6 +523,8 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   .ach-wall-head { margin: -16px -16px 0; padding: 16px 16px 10px; }
   .ach-wall-head h2 { font-size: 24px; }
   .ach-wall-close { width: 44px; height: 44px; font-size: 22px; }
+  /* 窄屏：标题回到流内居中（避免与左侧成就书架按钮重叠） */
+  .ach-wall-titles { position: static; transform: none; flex: 1 1 auto; min-width: 0; text-align: center; }
   /* 大按钮缩小 */
   .big-btn { min-height: 50px; min-width: 130px; padding: 9px 24px; font-size: 21px; margin: 5px; box-shadow: 0 4px 0 #C0403F, 0 5px 10px rgba(0,0,0,.14); }
   .big-btn:active { transform: translateY(3px); }
@@ -2038,7 +2040,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.1";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
