@@ -2081,7 +2081,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.12";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.13";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3234,7 +3234,7 @@ function doCaptureWithMaster(id){
   sfx.fanfare(); confetti(60); starBurst(window.innerWidth/2, window.innerHeight/2, 18);
   exitMasterPick();
   renderHeader(); renderBalls();
-  checkAll151(); checkAchievements();
+  checkBookComplete(); checkAchievements();
   openDialog(`<div id="gachaResult"><div class="new-tag">✨ 大师球收服！✨</div>
     <div class="poke-detail"><div class="pd-left"><img src="${spriteUrl(id)}" style="width:220px;height:220px;image-rendering:auto;object-fit:contain"><div class="poke-name">${name}</div></div>
     <div class="pd-right">${pokeInfoHTML(id)}</div></div>
