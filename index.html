@@ -434,11 +434,11 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
   border-bottom: 2px dashed #e3d8c2;
 }
-/* 左按钮靠最左、右按钮靠最右、标题永远正居中 */
-.ach-wall-head > :first-child { justify-self: start; }
-.ach-wall-head > :last-child { justify-self: end; }
-.ach-wall-titles { text-align: center; }
+/* 三列固定定位：左按钮(1)/标题(2,永远居中)/关闭(3,最右)；左按钮为空时列仍保留，标题居中、关闭贴右 */
+.ach-wall-left { grid-column: 1; justify-self: start; }
+.ach-wall-titles { grid-column: 2; text-align: center; }
 .ach-wall-close {
+  grid-column: 3; justify-self: end;
   flex: 0 0 auto;
   width: 56px; height: 56px; border-radius: 50%;
   border: none; background: #FFE3E3; color: var(--poke-red);
@@ -3893,7 +3893,7 @@ function renderAchievements(){
   const gen = state.activeAchBook, bk = ACH_BOOKS[gen];
   const defs = achDefsForGen(gen);
   const shelfBtn = state.completedBooks.gen1
-    ? `<button class="big-btn" id="achShelfPick" style="background:#fff7e6;color:#b8860b;border-color:#e0c068">📚 成就书架</button>`
+    ? `<button class="big-btn ach-wall-left" id="achShelfPick" style="background:#fff7e6;color:#b8860b;border-color:#e0c068">📚 成就书架</button>`
     : "";
   let body;
   if (defs.length === 0){
