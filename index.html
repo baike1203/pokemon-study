@@ -434,9 +434,9 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
   border-bottom: 2px dashed #e3d8c2;
 }
-/* 左按钮靠左列尾、右按钮靠右列头、标题永远正居中 */
-.ach-wall-head > :first-child { justify-self: end; }
-.ach-wall-head > :last-child { justify-self: start; }
+/* 左按钮靠最左、右按钮靠最右、标题永远正居中 */
+.ach-wall-head > :first-child { justify-self: start; }
+.ach-wall-head > :last-child { justify-self: end; }
 .ach-wall-titles { text-align: center; }
 .ach-wall-close {
   flex: 0 0 auto;
