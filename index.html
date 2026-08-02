@@ -2081,7 +2081,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.7";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.8";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3413,10 +3413,12 @@ function checkBookComplete(){
     state.completedBooks[gen] = true; saveState(); renderDex();
     confetti(200); sfx.fanfare(); play8bitMelody();
     const b = BOOKS[gen];
-    setTimeout(()=>openDialog(`<h2 style="color:var(--poke-red)">🏆 图鉴大师！🏆</h2><div style="font-size:80px">🎉👑🎉</div>
+    setTimeout(()=>{
+      openDialog(`<h2 style="color:var(--poke-red)">🏆 图鉴大师！🏆</h2><div style="font-size:80px">🎉👑🎉</div>
       <div style="font-size:28px;line-height:1.6;margin:12px 0">不得了！${state.name} 集齐了《<b style="color:var(--poke-blue)">${b.title}</b>》全部 <b style="color:var(--poke-blue)">${bookCapacity(gen)}</b> 只宝可梦！<br>这本图鉴合上归档啦，<br>去<b style="color:var(--poke-red)">新的地区</b>继续冒险吧！🌏</div>
-      <button class="big-btn" id="toShelf2">📚 打开图鉴书架</button>`),600);
-    const tb = document.getElementById("toShelf2"); if (tb) tb.onclick = ()=>{ sfx.click(); openBookshelf(); };
+      <button class="big-btn" id="toShelf2">📚 打开图鉴书架</button>`);
+      const tb = document.getElementById("toShelf2"); if (tb) tb.onclick = ()=>{ sfx.click(); openBookshelf(); };
+    },600);
     speak(`恭喜${state.name}！集齐了${b.title}的全部${bookCapacity(gen)}只宝可梦，你是宝可梦图鉴大师！`);
   }
 }
