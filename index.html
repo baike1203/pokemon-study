@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>宝可梦学习工作台</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -203,7 +206,7 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 }
 
 /* ---------- 图鉴页 ---------- */
-#dexHeader { text-align: center; margin-bottom: 14px; }
+#dexHeader { position: relative; z-index: 5; background: #FFFDF8; text-align: center; margin-bottom: 14px; }
 #dexCount { font-size: 30px; font-weight: bold; color: var(--poke-blue); background: #FFFDF8; border: 2px solid #E2E8F4; border-radius: 999px; display: inline-block; padding: 8px 24px; box-shadow: 0 4px 12px rgba(120,140,190,.18); margin-bottom: 8px; }
 #dexTitle { font-size:18px; color:#9b8676; }
 /* 图鉴书架 */
@@ -2424,7 +2427,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.19";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.20";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -4579,7 +4582,12 @@ $("#superBtn").addEventListener("click", ()=>{
   if (state.superBalls<=0){ ballInfoToast("super"); return; }      // 灰色：自动消失提示获取方法
   openGacha("super");                                              // 有球：直接收服宝可梦（必定抽到未收集）
 });
-$("#adventureBtn").addEventListener("click", ()=>{ sfx.click(); startAdventure(); });
+$("#adventureBtn").addEventListener("click", (e)=>{ e.stopPropagation(); sfx.click();
+  // 防御：若页面上已有残留弹窗（如旧版/页面恢复遗留在屏上的图鉴卡），先关掉，避免首击被其截获导致“点去冒险却打开图鉴卡、需双击才进入”
+  const ov = document.getElementById("overlay");
+  if (ov && getComputedStyle(ov).display !== "none") closeDialog();
+  startAdventure();
+});
 $("#achBtn").addEventListener("click", ()=>{ sfx.click(); state.activeAchBook = state.activeBook; saveState(); renderAchievements(); });
 $("#shelfBtn").addEventListener("click", ()=>{ sfx.click(); openBookshelf(); });
 /* 备份按钮已移入设置面板（备份 / 导入进度），图鉴页不再保留 */
