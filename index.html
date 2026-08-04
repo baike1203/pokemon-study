@@ -2539,12 +2539,40 @@ async function cloudLoad(){
     return j.progress || null;
   } catch(e){ return null; }
 }
+/* 把云端存档合并进当前 state：云端为基础，但本地更“新”的字段按需保留/并集，避免多设备互相覆盖丢失。
+   关键：daily 取日期较新者（同日则合并 done），拉取后强制 checkDailyReset 跨天校准。 */
+function mergeCloudIntoState(cloud){
+  const base = Object.assign(defaultState(), cloud);
+  // dex：并集（收集进度只增不减），保持升序
+  if (Array.isArray(state.dex) && Array.isArray(cloud.dex)){
+    base.dex = Array.from(new Set([...state.dex, ...cloud.dex])).sort((a,b)=>a-b);
+  }
+  // daily：取日期较新者；同日合并 done（任一处完成都算）
+  if (state.daily && cloud.daily){
+    const dL = state.daily.date || "", dC = cloud.daily.date || "";
+    if (dL > dC) base.daily = state.daily;
+    else if (dL === dC){
+      base.daily = Object.assign({}, cloud.daily, { done: Object.assign({}, cloud.daily.done||{}, state.daily.done||{}) });
+    } else base.daily = cloud.daily;
+  }
+  // checkinLog：按日期 key 取较大值（不丢日历记录）
+  if (state.checkinLog && cloud.checkinLog){
+    const ck = Object.assign({}, cloud.checkinLog);
+    for (const k in state.checkinLog) ck[k] = Math.max(ck[k]||0, state.checkinLog[k]||0);
+    base.checkinLog = ck;
+  }
+  // 成就 / 已集齐世代：并集（已领取/已达成不回退）
+  if (state.achievements && cloud.achievements) base.achievements = Object.assign({}, cloud.achievements, state.achievements);
+  if (state.completedBooks && cloud.completedBooks) base.completedBooks = Object.assign({}, cloud.completedBooks, state.completedBooks);
+  state = base;
+  rebuildCheckinLog(state);
+  normalizeState(state);
+  checkDailyReset();   // 拉取后强制跨天校准（修复：登录后误显示“昨天已完成”）
+}
 async function restoreFromCloud(){
   const data = await cloudLoad();
   if (!data || typeof data !== "object") return false;
-  state = Object.assign(defaultState(), data);
-  rebuildCheckinLog(state);
-  normalizeState(state);                         // 兼容老用户：云端存档若是书架功能上线前保存的，补记已完成世代
+  mergeCloudIntoState(data);
   saveState();                                   // 写回本地，保证本地也有一份
   renderHeader(); renderTasks(); renderDex(); applyTestMode();
   welcomeIfNeeded();
@@ -3177,7 +3205,14 @@ function openSettings(sub){
     const acctLogin = document.getElementById("acctLogin");
     if (acctLogin) acctLogin.addEventListener("click", ()=>{ sfx.click(); showLoginDialog(()=>openSettings()); });
     const acctLogout = document.getElementById("acctLogout");
-    if (acctLogout) acctLogout.addEventListener("click", ()=>{ sfx.click(); clearStoredToken(); toast("已退出登录"); openSettings(); });
+    if (acctLogout) acctLogout.addEventListener("click", ()=>{
+      sfx.click();
+      // 退出前立即把待推送的云端写入发出（清掉防抖定时器，避免窗口内丢失）
+      if (_cloudTimer){ clearTimeout(_cloudTimer); _cloudTimer = null; }
+      const _t = getStoredToken(); if (_t) doCloudSave(_t);
+      clearStoredToken();
+      toast("已退出登录"); openSettings();
+    });
     return;
   }
   if (sub==="math"){ renderMathSettings(); return; }
@@ -4677,6 +4712,7 @@ function welcomeIfNeeded(){
 setInterval(()=>{ const before=state.daily.date; checkDailyReset(); if(state.daily.date!==before){ renderTasks(); renderHeader(); } }, 60000);
 
 checkDailyReset();
+closeDialog();            // 启动即关闭任何残留弹窗：防止 WebView 页面恢复(bfcache)把上次开着的图鉴/弹窗带回来，导致“杀后台重启仍卡住”
 renderHeader();
 renderTasks();
 renderDex();
@@ -4692,8 +4728,12 @@ if (loadedEmpty){
     showLoginDialog();
   }
 } else {
-  welcomeIfNeeded();
-  if (cloudLoggedIn()) cloudSave();   // 已登录：把当前本地进度同步到云端
+  if (cloudLoggedIn()){
+    // 已登录：拉取云端并合并，保证多设备进度互通（修复：已登录设备只推不拉，互相看不到更新）
+    restoreFromCloud();
+  } else {
+    welcomeIfNeeded();
+  }
 }
 tickClock();              // 顶部时钟立即显示一次
 setInterval(tickClock, 1000);
@@ -4705,6 +4745,13 @@ if (!storageWorks()){
   const w = document.getElementById("storageWarn");
   if (w) w.style.display = "block";
 }
+// 关闭/刷新页面前，把待推送的云端写入尽力发出（best-effort；显式登出由登出按钮 flush）
+window.addEventListener("beforeunload", ()=>{
+  if (_cloudTimer){ clearTimeout(_cloudTimer); _cloudTimer = null; }
+  const _t = getStoredToken(); if (_t) doCloudSave(_t);
+});
+// 防页面恢复(bfcache)：从缓存还原的页面会带着上次开着的弹窗，这里强制整页刷新，杜绝“杀后台重启仍卡住旧弹窗”
+window.addEventListener("pageshow", (e)=>{ if (e.persisted){ window.location.reload(); } });
 </script>
 </body>
 </html>
