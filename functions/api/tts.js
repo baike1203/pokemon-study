@@ -104,6 +104,28 @@ async function getAudioChunk(text, voiceName, rate, pitch, request) {
   return res.blob();
 }
 
+// SSML 直传：调用方已传合法 SSML 片段（如 <phoneme ...>），不转义、不按句切片，直接塞进 <prosody> 转发 Edge
+async function getAudioChunkRaw(content, voiceName, rate, pitch, request) {
+  var endpoint = await getEndpoint(request);
+  var url = "https://" + endpoint.r + ".tts.speech.microsoft.com/cognitiveservices/v1";
+  var ssml =
+    '<speak xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" version="1.0" xml:lang="zh-CN"><voice name="' +
+    voiceName +
+    '"><prosody rate="' + rate + '%" pitch="' + pitch + '%">' + content + "</prosody></voice></speak>";
+  var res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: endpoint.t,
+      "Content-Type": "application/ssml+xml",
+      "User-Agent": "okhttp/4.5.0",
+      "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+    },
+    body: ssml,
+  });
+  if (!res.ok) throw new Error("Edge TTS API error: " + res.status);
+  return res.blob();
+}
+
 function splitTextIntoChunks(text, maxChunkSize) {
   var chunks = [];
   var sentenceBreaks = ["。", "！", "？", "；", "…", ".", "!", "?", "\n"];
@@ -151,10 +173,18 @@ export async function onRequest({ request }) {
   try {
     var body = await request.json();
     var input = body.input || "你好";
+    var ssmlInput = body.ssml || null;
     var voice = body.voice || "zh-CN-XiaoxiaoNeural";
     var speed = body.speed !== undefined ? body.speed : 1.0;
     var rate = ((speed - 1) * 100).toFixed(0);
     var pitch = "0";
+    if (ssmlInput) {
+      // SSML 直传：不转义、不切片，直接转发 Edge（用于拼音声母的 <phoneme> 轻声呼读音）
+      var ssmlBlob = await getAudioChunkRaw(ssmlInput, voice, rate, pitch, request);
+      return new Response(ssmlBlob, {
+        headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*" },
+      });
+    }
     var chunks = splitTextIntoChunks(cleanText(input), 2000);
     var audioChunks = [];
     for (var i = 0; i < chunks.length; i++) {
