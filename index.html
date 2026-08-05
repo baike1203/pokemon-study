@@ -2427,7 +2427,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.21";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.22";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3768,8 +3768,15 @@ function drawableIds(){
 }
 function drawPokemon({ guaranteedUncollected = false } = {}){
   let pool = drawableIds();
-  if (guaranteedUncollected) pool = pool.filter(id=>!state.dex.includes(id));
-  if (pool.length === 0) return null;
+  if (guaranteedUncollected){
+    pool = pool.filter(id=>!state.dex.includes(id));
+    if (pool.length === 0 && !isBookComplete(state.activeBook)){
+      // 所有「基础形态」都已收进 dex，但还有进化形态没收集（屏幕会显示 < 151/151）：
+      // 退回抽任意 drawable（多为重复，可用于进化凑数），不再弹假"已集齐"弹窗
+      pool = drawableIds();
+    }
+  }
+  if (pool.length === 0) return null;   // 真正集齐（图鉴 151/151）才让上层弹"已集齐"弹窗去开书架
   // 普通精灵球：若池中还有未收集宝可梦，65% 优先给未收集的；否则从可抽池随机（多为重复，用于进化）
   const uncollected = pool.filter(id=>!state.dex.includes(id));
   if (!guaranteedUncollected && uncollected.length > 0 && Math.random() < 0.65){
