@@ -2427,7 +2427,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.24";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.25";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3862,7 +3862,11 @@ function beginDraw(ballType){
 }
 function noBallDialog(name){ openDialog(`<h2 style="color:var(--poke-red)">${name}不够啦！</h2><div style="font-size:64px;margin:10px 0">💪</div><div style="font-size:28px">${name==="精灵球"?"完成今日学习任务就能获得精灵球哦！":"去连续完成学习或完成成就来获取吧！"}</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`); }
 function revealGacha(id, isNew, ballType){
-  if (ballType==="normal"){ if (isNew) state.balls--; /* 重复不消耗精灵球，也不再额外加球 */ }
+  let evolved = null;
+  if (isNew){ state.dex.push(id); state.copyCount[id]=1; state.evoStage[id]=0; }
+  else { state.copyCount[id]=(state.copyCount[id]||0)+1; evolved = tryEvolve(id); }
+  // 消耗球：普通球在「新收服」或「促成进化」时扣 1；纯浪费重复（不新、不进化）不消耗也不加
+  if (ballType==="normal"){ if (isNew || evolved) state.balls--; }
   else if (ballType==="master") state.masterBalls--;
   else if (ballType==="super") state.superBalls--;
   // 剩余球数文案 + 是否还能“再收服一只”：按“本次使用的球类型”判断，而非普通精灵球
@@ -3872,9 +3876,6 @@ function revealGacha(id, isNew, ballType){
   const canAgain = ballType==="master" ? state.masterBalls>0
                 : ballType==="super"  ? state.superBalls>0
                 : state.balls>0;
-  let evolved = null;
-  if (isNew){ state.dex.push(id); state.copyCount[id]=1; state.evoStage[id]=0; }
-  else { state.copyCount[id]=(state.copyCount[id]||0)+1; evolved = tryEvolve(id); }
   saveState(); renderHeader();
   if (isNew){
     sfx.fanfare(); confetti(60); starBurst(window.innerWidth/2, window.innerHeight/2, 18);
