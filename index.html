@@ -2427,7 +2427,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.23";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.24";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3775,6 +3775,22 @@ function drawableIds(){
   }
   return res;
 }
+function needsMoreCopies(id){
+  // 该宝可梦是否已集齐、还需重复副本来进化出未拥有的下一形态（用于区分「有用重复」与「纯浪费重复」）
+  const chains = EVO_CHAINS.filter(c => c.flat().includes(id));
+  for (const c of chains){
+    const p = chainPosIn(id, c);
+    if (p < 0 || p >= c.length - 1) continue;
+    const req = EVO_REQ[c.length]; if (!req) continue;
+    const need = req[p];
+    const have = state.copyCount[id] || 0;
+    if (have < need){
+      const nxt = nextFormsIn(id, c);
+      if (nxt && nxt.some(n => !state.dex.includes(n))) return true;
+    }
+  }
+  return false;
+}
 function drawPokemon({ guaranteedUncollected = false } = {}){
   let pool = drawableIds();
   if (guaranteedUncollected){
@@ -3786,12 +3802,20 @@ function drawPokemon({ guaranteedUncollected = false } = {}){
     }
   }
   if (pool.length === 0) return null;   // 真正集齐（图鉴 151/151）才让上层弹"已集齐"弹窗去开书架
-  // 普通精灵球：若池中还有未收集宝可梦，65% 优先给未收集的；否则从可抽池随机（多为重复，用于进化）
-  const uncollected = pool.filter(id=>!state.dex.includes(id));
-  if (!guaranteedUncollected && uncollected.length > 0 && Math.random() < 0.65){
-    return uncollected[rnd(0, uncollected.length-1)];
+  if (guaranteedUncollected){
+    // 超级球/大师球/野怪：只给未收集的（保持原逻辑）
+    return pool[rnd(0, pool.length-1)];
   }
-  return pool[rnd(0, pool.length-1)];
+  // 普通精灵球：优先给「新的」或「还需重复来进化的」，纯重复（已集齐且无需进化）控制在 ~10%
+  const uncollected = pool.filter(id=>!state.dex.includes(id));
+  const evoNeeded   = pool.filter(id=> state.dex.includes(id) && needsMoreCopies(id));
+  if ((uncollected.length > 0 || evoNeeded.length > 0) && Math.random() < 0.9){
+    // 90% 概率给「有用」的：先挑未收集的，未收集为空再给进化需要的重复
+    return uncollected.length > 0
+      ? uncollected[rnd(0, uncollected.length-1)]
+      : evoNeeded[rnd(0, evoNeeded.length-1)];
+  }
+  return pool[rnd(0, pool.length-1)];   // 其余情况（含约10%概率）才可能抽到纯重复
 }
 /* 收服宝可梦：ballType = normal|master|super */
 function openGacha(ballType){
@@ -3838,7 +3862,7 @@ function beginDraw(ballType){
 }
 function noBallDialog(name){ openDialog(`<h2 style="color:var(--poke-red)">${name}不够啦！</h2><div style="font-size:64px;margin:10px 0">💪</div><div style="font-size:28px">${name==="精灵球"?"完成今日学习任务就能获得精灵球哦！":"去连续完成学习或完成成就来获取吧！"}</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`); }
 function revealGacha(id, isNew, ballType){
-  if (ballType==="normal"){ if (isNew) state.balls--; else state.balls++; /* 重复退款 */ }
+  if (ballType==="normal"){ if (isNew) state.balls--; /* 重复不消耗精灵球，也不再额外加球 */ }
   else if (ballType==="master") state.masterBalls--;
   else if (ballType==="super") state.superBalls--;
   // 剩余球数文案 + 是否还能“再收服一只”：按“本次使用的球类型”判断，而非普通精灵球
@@ -3881,13 +3905,13 @@ function revealGacha(id, isNew, ballType){
   } else {
     sfx.reward(); starBurst(window.innerWidth/2, window.innerHeight/2, 14);
     const dupMsg = ballType==="normal"
-      ? "这只宝可梦你已经有了！<br>再送你一个精灵球～ 🎁"
+      ? "这只宝可梦你已经有了～<br>这次不消耗精灵球！"
       : `这只宝可梦你已经有了！<br>用${ballType==="master"?"大师球":"超级球"}再试一次吧～`;
     openDialog(`<div id="gachaResult"><div><img src="${spriteUrl(displayId(id))}" style="filter:saturate(.7)"></div>
       <div class="poke-name">${POKEMON[displayId(id)-1]}</div>
       <div style="font-size:26px;margin:8px 0">${dupMsg}</div>
       ${canAgain?'<button class="big-btn yellow" id="gOk">好耶，再收服一次！（'+remText+'）</button>':''}</div>`, {closable:false});
-    speak(ballType==="normal" ? "这只宝可梦你已经有了，再送你一个精灵球！" : "这只宝可梦你已经有了，再试一次吧！");
+    speak(ballType==="normal" ? "这只宝可梦你已经有了，这次不消耗精灵球！" : "这只宝可梦你已经有了，再试一次吧！");
     if ($("#gOk")) $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
   }
 }

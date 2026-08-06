@@ -20,3 +20,11 @@
 - 用 basename 差集法核验发现 **1 个真实缺口**：根目录 `./index.html`（353594 字节）未成功（末尾网络中断掉的那条无 fileName 的失败行）；`android/.../index.html`(241741) 已成功。其余 1092 个文件名全部匹配、无缺失。
 - 补传：单独重跑 `upload` 仅根 `index.html`，真实上传成功（`fileSize:353594, instantUpload:false, successCount:1, code:0`），本次末尾汇总未被中断。
 - 结论：**1093/1093 全部已在云端，备份完整**。日志：`run_2026-08-05.log`、`run_2026-08-05_retry1.log`。
+
+## 2026-08-06 09:22 (GMT+8) 执行
+- 待备份 **1093 个文件**（与 08-05 同规模；assets 占 1043，另有 scripts 14 项等），排除 `.git`/`.workbuddy`/4 个临时文件（`_dl.log`、`_gen2_names.txt`、`_syntax_check.txt`、`index.html.bak.inject`），12 个顶层项全量上传。
+- 全量跑 ~15 分钟，1092 个文件 `code:0 / instantUpload:true`，末尾汇总状态上报再次 `ECONNABORTED (code:1007)` 退出（EXIT_CODE=1），无 successCount。
+- basename 差集 + 同名碰撞(3 个：`index.html`/`build.gradle`/`ic_launcher.png`)逐实例计数核验，发现 **1 个真实缺口**：根 `./index.html`(355072) 未成功（android 版 241741 已成功，与 08-05 同一坑——根 index.html 总在末尾被中断吞掉）。
+- 补传：单独 `upload index.html`，真实上传成功（`fileSize:355072, instantUpload:false, successCount:1, code:0, EXIT_CODE=0`），落在 `夸克网盘/来自：WorkBuddy/宝可梦学习平台备份`。
+- 结论：**1093/1093 全部已在云端，备份完整**。日志：`run_2026-08-06.log`、`run_2026-08-06_retry1.log`。
+- 复用经验：根 `index.html` 是全量跑末段网络中断的高频落点，下次若再遇末尾 ECONNABORTED，优先单独补传根 index.html。
