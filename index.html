@@ -259,6 +259,10 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .dex-cell .dex-no { font-size: 15px; color: #c2b2a2; display: block; }
 .evo-bar { height: 12px; background: #eee; border-radius: 999px; margin: 5px 6px 2px; overflow: hidden; }
 .evo-fill { height: 100%; background: linear-gradient(90deg, #FFB300, #FF6E9C); border-radius: 999px; transition: .4s; }
+/* 进度条 + 数字同一行并排：数字粗体橙色药丸，免疫纵向裁切、远处也清晰可见 */
+.evo-row { display: flex; align-items: center; gap: 6px; margin: 5px 6px 1px; }
+.evo-row .evo-bar { flex: 1; margin: 0; }
+.evo-num { font-size: 17px; font-weight: 800; color: #E65100; white-space: nowrap; line-height: 1; }
 .evo-text { font-size: 15px; color: #8C4A0E; margin-bottom: 2px; font-weight: 600; }
 .evo-text.done { color: #2E7D32; font-weight: bold; }
 
@@ -575,7 +579,9 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   .dex-cell img { width: 56px; height: 56px; }
   .dex-cell .dex-name { font-size: 15px; }
   .dex-cell .dex-no { font-size: 12px; }
-  .evo-text { font-size: 11px; }
+  .evo-text { font-size: 13px; }
+  .evo-num { font-size: 14px; }
+  .evo-row .evo-bar { height: 14px; }
   /* 拼音格子 */
   .py-cell { padding: 6px 10px; font-size: 18px; }
   .py-cell small { font-size: 13px; }
@@ -2427,7 +2433,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.28";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.29";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3611,7 +3617,7 @@ function renderDex(){
         const need = req ? req[chainPos(id)] : 0;
         const have = state.copyCount[id]||0;
         if (nxt.some(n=>state.dex.includes(n))) prog = `<div class="evo-text done">★ 已进化完成</div>`;
-        else prog = `<div class="evo-bar"><div class="evo-fill" style="width:${Math.min(100, have/need*100)}%"></div></div><div class="evo-text">${have}/${need} 即将进化</div>`;
+        else prog = `<div class="evo-row"><div class="evo-bar"><div class="evo-fill" style="width:${Math.min(100, have/need*100)}%"></div></div><span class="evo-num">${have}/${need}</span></div><div class="evo-text">即将进化 ⏳</div>`;
       } else if (chainPos(id) > 0){
         // 已是进化终态（如 皮卡丘→雷丘 的雷丘、妙蛙花 等）：给完成标记，避免进化到最终形态后下方突然空白
         prog = `<div class="evo-text done">★ 进化完成</div>`;
