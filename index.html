@@ -2433,7 +2433,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.29";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.30";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3782,6 +3782,14 @@ function drawableIds(){
     if (bases.has(i)) res.push(i);
     else if (state.dex.includes(i)) res.push(i); // 只有已进化获得的形态才能再次抽到
   }
+  // 分支进化（如伊布→[水/雷/火伊布]）：基础形态已在图鉴里时，其分支形态也加入可抽池，
+  // 否则分支的最终形态（如 134/136 水/火伊布）永远无法抽到，导致图鉴卡死 149/151。
+  for (const c of EVO_CHAINS.concat(EVO_CHAINS_EXTRA)){
+    if (!c.flat().some(id => id>=lo && id<=hi)) continue;
+    if (Array.isArray(c[1]) && state.dex.includes(c[0])){
+      c[1].forEach(b => { if (!res.includes(b)) res.push(b); });
+    }
+  }
   return res;
 }
 function needsMoreCopies(id){
@@ -3890,6 +3898,7 @@ function beginDraw(ballType){
   }, 1500);
 }
 function noBallDialog(name){ openDialog(`<h2 style="color:var(--poke-red)">${name}不够啦！</h2><div style="font-size:64px;margin:10px 0">💪</div><div style="font-size:28px">${name==="精灵球"?"完成今日学习任务就能获得精灵球哦！":"去连续完成学习或完成成就来获取吧！"}</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`); }
+function afterGacha(){ checkBookComplete(); checkAchievements(); renderDex(); }
 function revealGacha(id, isNew, ballType){
   let evolved = null;
   if (isNew){ state.dex.push(id); state.copyCount[id]=1; state.evoStage[id]=0; }
@@ -3921,7 +3930,7 @@ function revealGacha(id, isNew, ballType){
       <button class="big-btn" id="gOk">收入图鉴 📕</button>
       ${canAgain?'<button class="big-btn yellow" id="gAgain">再收服一只！（'+remText+'）</button>':''}</div>`, {closable:false});
     speak(`哇！收服了${POKEMON[displayId(id)-1]}！`);
-    $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); checkBookComplete(); checkAchievements(); renderDex(); };
+    $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); afterGacha(); };
     if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
   } else if (evolved){
     playEvolution(evolved.from, evolved.to, ()=>{
@@ -3932,13 +3941,13 @@ function revealGacha(id, isNew, ballType){
       <div style="font-size:24px;color:#8a6d5c;margin:6px 0">「${cryOf(evolved.to)}」</div>
       <button class="big-btn" id="gOk2">太厉害了！</button>`, {closable:false});
       speak(`恭喜！${POKEMON[evolved.from-1]}进化成了${POKEMON[evolved.to-1]}！`);
-      $("#gOk2").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); };
+      $("#gOk2").onclick = ()=>{ sfx.click(); closeDialog(); afterGacha(); };
     });
   } else if (usefulDup){
     // 对进化有促进的有效抽卡：copyCount 已 +1，进度推进但未凑够阈值，本次未触发进化
     sfx.reward(); starBurst(window.innerWidth/2, window.innerHeight/2, 14);
     const info = evoProgressInfo(id);
-    const prog = info ? `进化进度 <b>${info.have}/${info.need}</b>` : "进化进度 +1";
+    const prog = "进化进度 +1";
     const tip = info ? `再抽到 <b style="color:var(--poke-red)">${info.remain}</b> 只就能进化成<br><b style="color:var(--poke-blue)">${info.nextName}</b> 啦！` : "继续收集就能进化！";
     openDialog(`<div id="gachaResult"><div class="new-tag" style="background:var(--poke-yellow);color:#5a3e1b">🎯 进化进度 +1！</div>
       <div class="poke-detail">
@@ -3953,8 +3962,8 @@ function revealGacha(id, isNew, ballType){
       </div>
       <button class="big-btn" id="gOk">加油！💪</button>
       ${canAgain?'<button class="big-btn yellow" id="gAgain">再收服一只！（'+remText+'）</button>':''}</div>`, {closable:false});
-    speak(`抽到${POKEMON[displayId(id)-1]}！${info?('进化进度'+info.have+'分之'+info.need+'，再抽到'+info.remain+'只就能进化成'+info.nextName+'啦'):'继续收集就能进化'}！`);
-    $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); };
+    speak(`抽到${POKEMON[displayId(id)-1]}！进化进度提升，${info?('再抽到'+info.remain+'只就能进化成'+info.nextName+'啦'):'继续收集就能进化'}！`);
+    $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); afterGacha(); };
     if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
   } else {
     sfx.reward(); starBurst(window.innerWidth/2, window.innerHeight/2, 14);
@@ -3968,7 +3977,7 @@ function revealGacha(id, isNew, ballType){
       <button class="big-btn" id="gClose">${canAgain?'下次吧～':'好的'}</button></div>`, {closable:false});
     speak(ballType==="normal" ? "这只宝可梦你已经有了，这次不消耗精灵球！" : "这只宝可梦你已经有了，再试一次吧！");
     if ($("#gOk")) $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
-    $("#gClose").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); };
+    $("#gClose").onclick = ()=>{ sfx.click(); closeDialog(); afterGacha(); };
   }
 }
 
