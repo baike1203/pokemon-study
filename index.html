@@ -257,10 +257,10 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .dex-cell .dex-name { font-size: 18px; display: block; }
 .dex-cell.locked .dex-name { color: #bbb; }
 .dex-cell .dex-no { font-size: 15px; color: #c2b2a2; display: block; }
-.evo-bar { height: 10px; background: #eee; border-radius: 999px; margin: 5px 6px 2px; overflow: hidden; }
-.evo-fill { height: 100%; background: linear-gradient(90deg, #FFD54F, #FF8FB1); border-radius: 999px; transition: .4s; }
-.evo-text { font-size: 13px; color: #B5762E; margin-bottom: 2px; }
-.evo-text.done { color: #3F9D3F; font-weight: bold; }
+.evo-bar { height: 12px; background: #eee; border-radius: 999px; margin: 5px 6px 2px; overflow: hidden; }
+.evo-fill { height: 100%; background: linear-gradient(90deg, #FFB300, #FF6E9C); border-radius: 999px; transition: .4s; }
+.evo-text { font-size: 15px; color: #8C4A0E; margin-bottom: 2px; font-weight: 600; }
+.evo-text.done { color: #2E7D32; font-weight: bold; }
 
 /* ---------- 底部导航（v3.29：胶囊选中态 + 卡通 SVG 图标 + 齿轮并入导航） ----------
    尺寸经过核算，保证选中放大后图标+文字仍完整落在浅红胶囊内：
@@ -588,7 +588,7 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   .ach-card .ach-name { font-size: 15px; }
   .ach-card .ach-ico { font-size: 28px; }
   /* 进化链 */
-  .evo-bar { height: 20px; }
+  .evo-bar { height: 16px; }
   .evo-dot { width: 32px; height: 32px; }
   .evo-dot img { width: 28px; height: 28px; }
   /* 设置弹窗内按钮 */
@@ -2427,7 +2427,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.25";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.28";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3612,6 +3612,9 @@ function renderDex(){
         const have = state.copyCount[id]||0;
         if (nxt.some(n=>state.dex.includes(n))) prog = `<div class="evo-text done">★ 已进化完成</div>`;
         else prog = `<div class="evo-bar"><div class="evo-fill" style="width:${Math.min(100, have/need*100)}%"></div></div><div class="evo-text">${have}/${need} 即将进化</div>`;
+      } else if (chainPos(id) > 0){
+        // 已是进化终态（如 皮卡丘→雷丘 的雷丘、妙蛙花 等）：给完成标记，避免进化到最终形态后下方突然空白
+        prog = `<div class="evo-text done">★ 进化完成</div>`;
       }
       cell.innerHTML = `<img src="${spriteUrl(id)}" loading="lazy"><span class="dex-name">${POKEMON[id-1]}</span><span class="dex-no">No.${String(id).padStart(3,"0")}</span>${prog}`;
       cell.addEventListener("click", ()=>openPokeDetail(id));
@@ -3791,19 +3794,39 @@ function needsMoreCopies(id){
   }
   return false;
 }
+function evoProgressInfo(id){
+  // 返回 id 下一次进化所需的进度信息（用于「有用重复」弹窗提示）；无进度可推进则返回 null
+  const chains = EVO_CHAINS.filter(c => c.flat().includes(id));
+  for (const c of chains){
+    const p = chainPosIn(id, c);
+    if (p < 0 || p >= c.length - 1) continue;
+    const req = EVO_REQ[c.length]; if (!req) continue;
+    const need = req[p];
+    const have = state.copyCount[id] || 0;
+    if (have < need){
+      const nxt = nextFormsIn(id, c);
+      if (nxt && nxt.some(n => !state.dex.includes(n)))
+        return { have, need, remain: need - have, nextName: POKEMON[nxt[0]-1] };
+    }
+  }
+  return null;
+}
 function drawPokemon({ guaranteedUncollected = false } = {}){
   let pool = drawableIds();
   if (guaranteedUncollected){
-    pool = pool.filter(id=>!state.dex.includes(id));
-    if (pool.length === 0 && !isBookComplete(state.activeBook)){
-      // 所有「基础形态」都已收进 dex，但还有进化形态没收集（屏幕会显示 < 151/151）：
-      // 退回抽任意 drawable（多为重复，可用于进化凑数），不再弹假"已集齐"弹窗
-      pool = drawableIds();
+    const uncollected = pool.filter(id=>!state.dex.includes(id));
+    if (uncollected.length > 0) pool = uncollected;
+    else if (!isBookComplete(state.activeBook)){
+      // 100+ 进度时未收集池早已空（基础形态全在 dex、未拥有的二/三阶段也不在 drawableIds 里）：
+      // 优先给「还需重复来进化」的副本（不算纯浪费），没有再退回全池随机
+      const evoNeeded = pool.filter(id=>state.dex.includes(id) && needsMoreCopies(id));
+      if (evoNeeded.length > 0) pool = evoNeeded;
+      // else pool 保持 drawableIds() 全池，极小概率（所有形态都不需进化时）会抽到纯重复
     }
   }
   if (pool.length === 0) return null;   // 真正集齐（图鉴 151/151）才让上层弹"已集齐"弹窗去开书架
   if (guaranteedUncollected){
-    // 超级球/大师球/野怪：只给未收集的（保持原逻辑）
+    // 超级球/大师球/野怪：上述分支已保证 pool 里都是"有价值的"（未收集 或 进化所需），直接随机
     return pool[rnd(0, pool.length-1)];
   }
   // 普通精灵球：优先给「新的」或「还需重复来进化的」，纯重复（已集齐且无需进化）控制在 ~10%
@@ -3865,8 +3888,10 @@ function revealGacha(id, isNew, ballType){
   let evolved = null;
   if (isNew){ state.dex.push(id); state.copyCount[id]=1; state.evoStage[id]=0; }
   else { state.copyCount[id]=(state.copyCount[id]||0)+1; evolved = tryEvolve(id); }
-  // 消耗球：普通球在「新收服」或「促成进化」时扣 1；纯浪费重复（不新、不进化）不消耗也不加
-  if (ballType==="normal"){ if (isNew || evolved) state.balls--; }
+  // 有用但本次未进化的重复（仅推进进化进度，例如 Wartortle 还差副本凑够 3 只）：仍算有效抽卡
+  const usefulDup = !isNew && !evolved && needsMoreCopies(id);
+  // 消耗球：普通球在「新收服 / 促成进化 / 推进进化进度」时扣 1；纯浪费重复（不新、不进化、无进度）不消耗也不加
+  if (ballType==="normal"){ if (isNew || evolved || usefulDup) state.balls--; }
   else if (ballType==="master") state.masterBalls--;
   else if (ballType==="super") state.superBalls--;
   // 剩余球数文案 + 是否还能“再收服一只”：按“本次使用的球类型”判断，而非普通精灵球
@@ -3903,6 +3928,28 @@ function revealGacha(id, isNew, ballType){
       speak(`恭喜！${POKEMON[evolved.from-1]}进化成了${POKEMON[evolved.to-1]}！`);
       $("#gOk2").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); };
     });
+  } else if (usefulDup){
+    // 对进化有促进的有效抽卡：copyCount 已 +1，进度推进但未凑够阈值，本次未触发进化
+    sfx.reward(); starBurst(window.innerWidth/2, window.innerHeight/2, 14);
+    const info = evoProgressInfo(id);
+    const prog = info ? `进化进度 <b>${info.have}/${info.need}</b>` : "进化进度 +1";
+    const tip = info ? `再抽到 <b style="color:var(--poke-red)">${info.remain}</b> 只就能进化成<br><b style="color:var(--poke-blue)">${info.nextName}</b> 啦！` : "继续收集就能进化！";
+    openDialog(`<div id="gachaResult"><div class="new-tag" style="background:var(--poke-yellow);color:#5a3e1b">🎯 进化进度 +1！</div>
+      <div class="poke-detail">
+        <div class="pd-left">
+          <img src="${spriteUrl(displayId(id))}" style="width:220px;height:220px;image-rendering:auto;object-fit:contain">
+          <div class="poke-name">${POKEMON[displayId(id)-1]}</div>
+        </div>
+        <div class="pd-right">
+          <div style="font-size:26px;margin:8px 0;color:#8a6d5c">${prog}</div>
+          <div style="font-size:24px;line-height:1.6">${tip}</div>
+        </div>
+      </div>
+      <button class="big-btn" id="gOk">加油！💪</button>
+      ${canAgain?'<button class="big-btn yellow" id="gAgain">再收服一只！（'+remText+'）</button>':''}</div>`, {closable:false});
+    speak(`抽到${POKEMON[displayId(id)-1]}！${info?('进化进度'+info.have+'分之'+info.need+'，再抽到'+info.remain+'只就能进化成'+info.nextName+'啦'):'继续收集就能进化'}！`);
+    $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); };
+    if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
   } else {
     sfx.reward(); starBurst(window.innerWidth/2, window.innerHeight/2, 14);
     const dupMsg = ballType==="normal"
@@ -3911,9 +3958,11 @@ function revealGacha(id, isNew, ballType){
     openDialog(`<div id="gachaResult"><div><img src="${spriteUrl(displayId(id))}" style="filter:saturate(.7)"></div>
       <div class="poke-name">${POKEMON[displayId(id)-1]}</div>
       <div style="font-size:26px;margin:8px 0">${dupMsg}</div>
-      ${canAgain?'<button class="big-btn yellow" id="gOk">好耶，再收服一次！（'+remText+'）</button>':''}</div>`, {closable:false});
+      ${canAgain?'<button class="big-btn yellow" id="gOk">好耶，再收服一次！（'+remText+'）</button>':''}
+      <button class="big-btn" id="gClose">${canAgain?'下次吧～':'好的'}</button></div>`, {closable:false});
     speak(ballType==="normal" ? "这只宝可梦你已经有了，这次不消耗精灵球！" : "这只宝可梦你已经有了，再试一次吧！");
     if ($("#gOk")) $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
+    $("#gClose").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); };
   }
 }
 
