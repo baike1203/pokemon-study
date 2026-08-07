@@ -2435,7 +2435,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.32";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.33";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2762,12 +2762,17 @@ function speakLocal(text, rate = 0.9){
     speechSynthesis.speak(u);
   }catch(e){}
 }
-function speak(text, rate = 0.9){
-  if (!text) return;
+function speak(text, rate = 0.9, fallback){
+  if (!text){ if (fallback) speak(fallback, rate); return; }
   stopSpeak();
   // SSML 直传（如拼音声母的 <phoneme> 轻声呼读音）：浏览器 speechSynthesis 不支持 SSML，仅走云端 Edge-TTS
   if (typeof text === "string" && (text.trim().indexOf("<phoneme") === 0 || text.trim().indexOf("<speak") === 0)){
-    if (cloudTTSAvailable()) speakWorker("", rate, null, null, null, text);
+    if (cloudTTSAvailable()){
+      // 云端 SSML 失败时降级：声母用「呼读音汉字」(如「玻」→bō)、听音题用示例字，至少让孩子听到正确读音而非静音
+      speakWorker("", rate, ()=>{ if (fallback) speak(fallback, rate); else speakLocal(text, rate); }, null, null, text);
+    } else if (fallback) {
+      speak(fallback, rate);
+    }
     return;
   }
   if (cloudTTSAvailable()){
@@ -3091,7 +3096,7 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
       ${q.speakText?`<button class="big-btn blue" id="btnSpeak" style="min-width:220px">🔊 再听一遍</button>`:""}
       <div class="opt-grid" id="optGrid"></div><div class="feedback-line" id="fbLine"></div>`);
     const auto = (q.speakOnShow !== undefined) ? q.speakOnShow : speakOnShow;  // 允许每题单独控制是否自动朗读
-    if (q.speakText){ $("#btnSpeak").addEventListener("click", ()=>{ sfx.click(); if(myToken===quizToken) speak(q.speakText); }); if (auto) setTimeout(()=>{ if(myToken===quizToken) speak(q.speakText); },350); }
+    if (q.speakText){ $("#btnSpeak").addEventListener("click", ()=>{ sfx.click(); if(myToken===quizToken) speak(q.speakText, undefined, q.speakFallback); }); if (auto) setTimeout(()=>{ if(myToken===quizToken) speak(q.speakText, undefined, q.speakFallback); },350); }
     const grid = $("#optGrid");
     q.options.forEach(opt => { const b=document.createElement("button"); b.className="opt-btn"; b.textContent=opt; b.addEventListener("click", ()=>choose(b,opt,q)); grid.appendChild(b); });
   }
@@ -3126,7 +3131,7 @@ function pinyinHome(){
     </div>
     <div style="font-size:19px;color:#b09a8a;margin-top:8px">10 道题会随机 mix「👂 听音辨音」和「📝 看字选拼音」哦</div>`);
   const cats = { sm:SHENGMU, ym:YUNMU, zt:ZHENGTI };
-  function renderGrid(cat){ const grid=$("#pyGrid"); grid.innerHTML=""; cats[cat].forEach(([py,chr,hy])=>{ const c=document.createElement("button"); c.className="py-cell"; c.innerHTML=`${py}<small>像「${chr}」</small>`; c.addEventListener("click",()=>{ sfx.click(); if (cat==="sm") speak(`<phoneme alphabet="py" ph="${hy}5">${py}</phoneme>`,0.7); else speak(chr,0.7); }); grid.appendChild(c); }); }
+  function renderGrid(cat){ const grid=$("#pyGrid"); grid.innerHTML=""; cats[cat].forEach(([py,chr,hy])=>{ const c=document.createElement("button"); c.className="py-cell"; c.innerHTML=`${py}<small>像「${chr}」</small>`; c.addEventListener("click",()=>{ sfx.click(); if (cat==="sm") speak(`<phoneme alphabet="py" ph="${hy}5">${py}</phoneme>`,0.7, chr); else speak(chr,0.7); }); grid.appendChild(c); }); }
   renderGrid("sm");
   document.querySelectorAll(".py-tab").forEach(t=>t.addEventListener("click",()=>{ sfx.click(); document.querySelectorAll(".py-tab").forEach(x=>x.classList.remove("active")); t.classList.add("active"); renderGrid(t.dataset.cat); }));
   if (!done) $("#pyStart").addEventListener("click", ()=>{ sfx.click(); pinyinStart(); });
@@ -3140,7 +3145,7 @@ function pinyinStart(){
       const p = pick(ALL_PINYIN,1)[0];                       // [py, chr]
       const wrongs = pick(ALL_PINYIN.filter(x=>x[0]!==p[0]),3).map(x=>x[0]);
       const ssml = p[2] ? `<phoneme alphabet="py" ph="${p[2]}5">${p[0]}</phoneme>` : p[1];
-      return { id:"py"+i, prompt:"👂 听一听，是哪个拼音？", promptClass:"small", speakText:ssml, speakOnShow:true, options:shuffle([p[0],...wrongs]), answer:p[0] };
+      return { id:"py"+i, prompt:"👂 听一听，是哪个拼音？", promptClass:"small", speakText:ssml, speakFallback:p[1], speakOnShow:true, options:shuffle([p[0],...wrongs]), answer:p[0] };
     } else {
       const h = pick(HANZI,1)[0];                            // [zi, py, word]
       const wrongs = pick(HANZI.filter(x=>x[1]!==h[1]),3).map(x=>x[1]);
