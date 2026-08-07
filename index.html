@@ -2435,7 +2435,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.31";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.32";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -4836,8 +4836,8 @@ function welcomeIfNeeded(){
     state.lastVisit = t; saveState();
     const doneCount = TASKS.filter(x => state.daily.done[x.key]).length;
     openDialog(`<h2 style="color:var(--poke-red)">你好呀，${state.name}！👋</h2>
-      <div style="font-size:64px;margin:6px 0">⚡<img src="${spriteUrl(25)}" alt="皮卡丘" style="width:92px;height:92px;image-rendering:auto;object-fit:contain;vertical-align:middle">⚡</div>
-      <div style="font-size:28px;line-height:1.6">新的一天开始啦！<br>今天有 <b style="color:var(--poke-red)">${5-doneCount} 个</b>学习任务等着你，<br>完成任务就能得到精灵球，<br>去收服新的宝可梦吧！</div>
+      <div style="font-size:64px;margin:6px 0">🌿<img src="${spriteUrl(906)}" alt="新叶喵" style="width:92px;height:92px;image-rendering:auto;object-fit:contain;vertical-align:middle">🌿</div>
+      <div style="font-size:28px;line-height:1.6">新的一天开始啦！<br>今天有 <b style="color:var(--poke-red)">${TASKS.length-doneCount} 个</b>学习任务等着你，<br>完成任务就能得到精灵球，<br>去收服新的宝可梦吧！</div>
       <button class="big-btn" id="welcomeGo">出发！🚀</button>`, {closable:false});
     $("#welcomeGo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); speak(`${state.name}，${timeHello()}！新的宝可梦冒险开始啦！`); if (state.partnerId) setTimeout(()=>partnerSay(timeGreetingLine()), 600); });
   }
