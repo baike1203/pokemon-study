@@ -28,3 +28,10 @@
 - 补传：单独 `upload index.html`，真实上传成功（`fileSize:355072, instantUpload:false, successCount:1, code:0, EXIT_CODE=0`），落在 `夸克网盘/来自：WorkBuddy/宝可梦学习平台备份`。
 - 结论：**1093/1093 全部已在云端，备份完整**。日志：`run_2026-08-06.log`、`run_2026-08-06_retry1.log`。
 - 复用经验：根 `index.html` 是全量跑末段网络中断的高频落点，下次若再遇末尾 ECONNABORTED，优先单独补传根 index.html。
+
+## 2026-08-07 08:50 (GMT+8) 执行
+- 待备份 **1093 个文件**（同 08-06 规模：assets 1043 + scripts 14 项等），排除 `.git`/`.workbuddy`/4 个临时文件，12 个顶层项全量上传。
+- 全量跑 ~19 分钟，结束末段状态上报再次 `ECONNABORTED (code:1007)` 退出（EXIT_CODE=1），无 successCount；但逐文件 `code:0` 记录有 1092 条。
+- basename 多集合差集核验发现 **1 个真实缺口**：`index.html` 本地 2 份（根 + android）、日志仅 1 份（同 08-05/08-06 根 index.html 末段被吞的老坑）。
+- 补传：单独 `upload` 根 index.html + android 的 index.html；结果 `EXIT_CODE=0 / successCount:2 / instantUploadCount:1`（android 版秒传命中，根版 `instantUpload:false, fileSize:363193` 真实补传）。
+- 最终含补传日志重算 basename 差集 = 空，**1093/1093 全部已在云端，备份完整**。日志：`run_2026-08-07.log`、`run_2026-08-07_retry1.log`。

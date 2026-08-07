@@ -31,6 +31,7 @@
   --card-blue-a:#BCDBFF; --card-blue-b:#9FC6F2;
   --card-green-a:#C4EBC2; --card-green-b:#A4DBA4;
   --card-purple-a:#Dcccf7; --card-purple-b:#C0A8EE;
+  --card-brown-a:#EAD2AE; --card-brown-b:#D7A674;
 }
 
 html, body { height: 100%; }
@@ -195,6 +196,7 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .task-card.english { background: linear-gradient(160deg, var(--card-blue-a),   var(--card-blue-b)); }
 .task-card.hanzi   { background: linear-gradient(160deg, var(--card-green-a),  var(--card-green-b)); }
 .task-card.poem    { background: linear-gradient(160deg, var(--card-purple-a), var(--card-purple-b)); }
+.task-card.writing { background: linear-gradient(160deg, var(--card-brown-a),  var(--card-brown-b)); }
 .task-card.done { box-shadow: inset 0 0 0 4px rgba(255,255,255,.45), 0 12px 26px rgba(120,90,70,.18); cursor: default; }
 .task-card.done:active { transform: none; }
 .task-card.done::after {
@@ -2433,7 +2435,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.30";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.31";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2445,8 +2447,8 @@ function defaultState(){
     activeBook: "gen1",     // 当前正在收集的图鉴（书架中的“进行中”那本）
     completedBooks: {},     // 已集齐并归档的世代 key -> true（如 {gen1:true}）
     activeAchBook: "gen1",  // 当前正在查看的成就书（成就书架中的“进行中”那本）
-    daily: { date: todayStr(), done: { pinyin:false, math:false, english:false, hanzi:false, poem:false }, celebrated:false },
-    razStreak: 0, razLastDate: "", lastVisit: "", congratulated151: false,
+    daily: { date: todayStr(), done: { pinyin:false, math:false, english:false, hanzi:false, poem:false, writing:false }, celebrated:false },
+    razStreak: 0, razLastDate: "", writingStreak: 0, writingLastDate: "", lastVisit: "", congratulated151: false,
     /* ---- 新增字段 ---- */
     copyCount: {},          // 各基础编号抽中次数（用于进化）
     evoStage: {},           // 各基础编号当前进化阶段（0=基础）
@@ -2469,9 +2471,9 @@ function defaultState(){
     checkinLog: {},         // 打卡记录：{ "YYYY-MM-DD": 当天完成任务数 }，用于日历展示打卡情况
     /* 学习报告统计：各模块完成次数 + 答题正确率累计（用于「设置→学习报告」） */
     stat: {
-      modDone:  { pinyin:0, math:0, english:0, hanzi:0, poem:0 },  // 各模块累计完成（打卡）次数
-      modRight: { pinyin:0, math:0, english:0, hanzi:0, poem:0 },  // 累计一次答对题数（runQuiz 记录）
-      modTotal: { pinyin:0, math:0, english:0, hanzi:0, poem:0 }   // 累计总题数
+      modDone:  { pinyin:0, math:0, english:0, hanzi:0, poem:0, writing:0 },  // 各模块累计完成（打卡）次数
+      modRight: { pinyin:0, math:0, english:0, hanzi:0, poem:0, writing:0 },  // 累计一次答对题数（runQuiz 记录）
+      modTotal: { pinyin:0, math:0, english:0, hanzi:0, poem:0, writing:0 }   // 累计总题数
     }
   };
 }
@@ -2660,13 +2662,19 @@ function storageWorks(){
 function checkDailyReset(){
   const t = todayStr();
   if (state.daily.date !== t){
-    state.daily = { date: t, done: { pinyin:false, math:false, english:false, hanzi:false, poem:false }, celebrated:false };
+    state.daily = { date: t, done: { pinyin:false, math:false, english:false, hanzi:false, poem:false, writing:false }, celebrated:false };
     state.adventureDate = ""; state.adventureCount = 0; // 冒险次数随日期重置
     if (state.razLastDate){
       const last = new Date(state.razLastDate + "T00:00:00");
       const now = new Date(t + "T00:00:00");
       const gap = Math.round((now - last) / 86400000);
       if (gap > 1) state.razStreak = 0;
+    }
+    if (state.writingLastDate){
+      const last = new Date(state.writingLastDate + "T00:00:00");
+      const now = new Date(t + "T00:00:00");
+      const gap = Math.round((now - last) / 86400000);
+      if (gap > 1) state.writingStreak = 0;
     }
     saveState();
   }
@@ -3003,13 +3011,14 @@ const TASKS = [
   { key:"math",    cls:"math",    icon:"🔢", name:"数学闯关", desc:"加减乘除 · 10 题" },
   { key:"english", cls:"english", icon:"📖", name:"英语 RAZ", desc:"今日阅读打卡" },
   { key:"hanzi",   cls:"hanzi",   icon:"✍️", name:"识字达人", desc:"认一认 10 个汉字" },
-  { key:"poem",    cls:"poem",    icon:"📜", name:"古诗小舟", desc:"背一背填一填" }
+  { key:"poem",    cls:"poem",    icon:"📜", name:"古诗小舟", desc:"背一背填一填" },
+  { key:"writing", cls:"writing", icon:"✏️", name:"写字练习", desc:"今日练字打卡" }
 ];
 function renderTasks(){
   const g = $("#taskGrid"); g.innerHTML = "";
   const doneCount = TASKS.filter(t => state.daily.done[t.key]).length;
   $("#dateLine").innerHTML = `<span class="ico">📅</span><span>${new Date().toLocaleDateString("zh-CN",{year:"numeric",month:"long",day:"numeric",weekday:"long"})}</span>`;
-  $("#progressLine").textContent = doneCount === 5 ? "🎉 今日任务全部完成！你真棒！" : `今日进度 ${doneCount}/5，完成任务获得精灵球 ⚡`;
+  $("#progressLine").textContent = doneCount === TASKS.length ? "🎉 今日任务全部完成！你真棒！" : `今日进度 ${doneCount}/${TASKS.length}，完成任务获得精灵球 ⚡`;
   TASKS.forEach(t => {
     const done = state.daily.done[t.key];
     const card = document.createElement("div");
@@ -3062,6 +3071,7 @@ function openModule(key){
   if (key==="pinyin") return pinyinHome();
   if (key==="math") return mathTask();
   if (key==="english") return razTask();
+  if (key==="writing") return writingTask();
   if (key==="hanzi") return hanziTask();
   if (key==="poem") return poemHome();
 }
@@ -3348,6 +3358,16 @@ function razTask(){
   if (!done){ $("#razBigBtn").addEventListener("click", ()=>{ sfx.click(); openDialog(`<h2 style="color:#3D8EE8">确认打卡</h2><div style="font-size:28px;margin:14px 0">今天真的读完 RAZ 了吗？📖</div><button class="big-btn blue" id="razYes">读完啦！✔</button><button class="big-btn yellow" id="razNo">还没有，先去读</button>`);
     $("#razYes").addEventListener("click", ()=>{ state.razStreak+=1; state.razLastDate=todayStr(); saveState(); closeDialog(); completeTask("english"); setTimeout(()=>openDialog(`<h2 style="color:#3D8EE8">🎉 打卡成功！</h2><div style="font-size:64px">📚</div><div style="font-size:28px;margin:10px 0">已连续打卡 <b style="color:#F58A1F">${state.razStreak}</b> 天，奖励 1 个精灵球！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好耶！</button>`),1000); });
     $("#razNo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); }); }); }
+}
+/* 写字练习：与英语 RAZ 完全相同的「纯打卡 + 连续打卡」逻辑，仅文案/配色不同 */
+function writingTask(){
+  const done = state.daily.done.writing;
+  openDialog(`<h2 style="color:#E08A2B">✏️ 写字练习</h2><div style="font-size:24px;color:#8a6d5c">先在练字本上写一写今天的字，<br>再回来按下这个大按钮打卡！</div>
+    <button id="wBigBtn" class="${done?'done-btn':''}" ${done?'disabled':''}>${done?"✔<br>今日已打卡":"今日已练<br>写字！"}</button>
+    <div style="font-size:26px;">🔥 已连续打卡 <b style="color:#F58A1F;font-size:34px">${state.writingStreak}</b> 天</div>`);
+  if (!done){ $("#wBigBtn").addEventListener("click", ()=>{ sfx.click(); openDialog(`<h2 style="color:#E08A2B">确认打卡</h2><div style="font-size:28px;margin:14px 0">今天真的练过字了吗？✏️</div><button class="big-btn blue" id="wYes">练过啦！✔</button><button class="big-btn yellow" id="wNo">还没有，先去写</button>`);
+    $("#wYes").addEventListener("click", ()=>{ state.writingStreak+=1; state.writingLastDate=todayStr(); saveState(); closeDialog(); completeTask("writing"); setTimeout(()=>openDialog(`<h2 style="color:#E08A2B">🎉 打卡成功！</h2><div style="font-size:64px">✏️</div><div style="font-size:28px;margin:10px 0">已连续打卡 <b style="color:#F58A1F">${state.writingStreak}</b> 天，奖励 1 个精灵球！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好耶！</button>`),1000); });
+    $("#wNo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); }); }); }
 }
 /* ============ 识字分级系统（部编思路 · 代表性字库） ============
    难度 0~5：预备班 / 一上 / 一下 / 二上 / 二下 / 三及以上。
@@ -3647,7 +3667,7 @@ function renderBalls(){
 function ballInfoToast(type){
   const isMaster = type==="master";
   const msg = isMaster
-    ? "🟣 <b>大师球获取方法</b>：连续 7 天每天完成全部 5 个学习任务（连续打卡）即可获得。<br>大师球可点击图鉴中任意 <b>未点亮</b> 的宝可梦并直接收服它！"
+    ? "🟣 <b>大师球获取方法</b>：连续 7 天每天完成全部 " + TASKS.length + " 个学习任务（连续打卡）即可获得。<br>大师球可点击图鉴中任意 <b>未点亮</b> 的宝可梦并直接收服它！"
     : "🔵 <b>超级球获取方法</b>：解锁成就时奖励（如初次邂逅、集齐 50/100/151 只、各系大师等）。<br>超级球可<b>必定收服到一只从未收集过</b>的宝可梦！";
   let t = document.getElementById("ballToast");
   if (!t){ t = document.createElement("div"); t.id = "ballToast"; t.className = "ball-toast"; document.body.appendChild(t); }
@@ -4608,8 +4628,8 @@ function openReport(){
   const keys = Object.keys(state.checkinLog||{}).filter(k=> (state.checkinLog[k]||0) > 0);
   const since = d => { const c = new Date(); c.setDate(c.getDate()-d); return keys.filter(k => new Date(k+"T00:00:00") >= c).length; };
   const totalDays = keys.length, weekDays = since(7), monthDays = since(30);
-  const MODS = [["pinyin","🔤 拼音乐园"],["math","🔢 数学闯关"],["english","📖 英语 RAZ"],["hanzi","✍️ 识字达人"],["poem","📜 古诗小舟"]];
-  const NM = { pinyin:"拼音乐园", math:"数学闯关", english:"英语 RAZ", hanzi:"识字达人", poem:"古诗小舟" };
+  const MODS = [["pinyin","🔤 拼音乐园"],["math","🔢 数学闯关"],["english","📖 英语 RAZ"],["hanzi","✍️ 识字达人"],["poem","📜 古诗小舟"],["writing","✏️ 写字练习"]];
+  const NM = { pinyin:"拼音乐园", math:"数学闯关", english:"英语 RAZ", hanzi:"识字达人", poem:"古诗小舟", writing:"写字练习" };
   const doneRows = MODS.map(([k,nm])=>`<div class="report-row"><span>${nm}</span><b>${state.stat.modDone[k]||0} 次</b></div>`).join("");
   const accRows = MODS.map(([k,nm])=>{
     const t = state.stat.modTotal[k]||0, r = state.stat.modRight[k]||0;
@@ -4724,10 +4744,10 @@ $("#testReset").addEventListener("click", ()=>{
 $("#testAddSuper").addEventListener("click", ()=>{ sfx.click(); state.superBalls++; saveState(); renderBalls(); toast("已 +1 超级球 🔵（共 "+state.superBalls+"）"); });
 $("#testAddMaster").addEventListener("click", ()=>{ sfx.click(); state.masterBalls++; saveState(); renderBalls(); toast("已 +1 大师球 🟣（共 "+state.masterBalls+"）"); });
 $("#testResetDay").addEventListener("click", ()=>{
-  if (!confirm("确定要重置本日任务吗？\n今日的 5 个学习任务与「去冒险」次数将清空，\n但精灵球 / 图鉴 / 进化 / 成就 会保留。")) return;
+  if (!confirm("确定要重置本日任务吗？\n今日的 " + TASKS.length + " 个学习任务与「去冒险」次数将清空，\n但精灵球 / 图鉴 / 进化 / 成就 会保留。")) return;
   sfx.click();
   const t = todayStr();
-  state.daily = { date: t, done: { pinyin:false, math:false, english:false, hanzi:false, poem:false }, celebrated:false };
+  state.daily = { date: t, done: { pinyin:false, math:false, english:false, hanzi:false, poem:false, writing:false }, celebrated:false };
   state.adventureDate = t; state.adventureCount = 0;   // 重置「去冒险」次数
   delete state.checkinLog[t];                          // 同步清掉今日打卡记录
   saveState();
@@ -4779,7 +4799,7 @@ function renderCalendar(){
     let cls = "cal-cell"; let mark = ""; let title = "当天未完成任务";
     if (isToday) cls += " today";
     if (typeof log === "number"){
-      if (log >= 5){ cls += " done"; mark = "✓"; title = "当天 5 个任务全部完成 🎉"; }
+      if (log >= TASKS.length){ cls += " done"; mark = "✓"; title = "当天 " + TASKS.length + " 个任务全部完成 🎉"; }
       else if (log > 0){ cls += " part"; mark = String(log); title = `当天完成 ${log} 个任务`; }
     }
     if (isFuture) cls += " future";
@@ -4793,7 +4813,7 @@ function renderCalendar(){
       <button class="big-btn blue" id="calNext" style="min-width:44px">›</button>
     </div>
     <div class="cal-grid">${head}${cells}</div>
-    <div style="font-size:13px;color:#9b8676;margin-top:6px;text-align:center">🟢 完成全部 5 个任务　🟠 完成部分（数字=完成个数）　未来日期不可打卡</div>
+    <div style="font-size:13px;color:#9b8676;margin-top:6px;text-align:center">🟢 完成全部 ${TASKS.length} 个任务　🟠 完成部分（数字=完成个数）　未来日期不可打卡</div>
     <button class="big-btn" id="calClose" style="margin-top:8px">关闭</button>`);
   $("#calPrev").addEventListener("click", ()=>{ sfx.click(); calView.m--; if (calView.m<0){ calView.m=11; calView.y--; } renderCalendar(); });
   $("#calNext").addEventListener("click", ()=>{ sfx.click(); calView.m++; if (calView.m>11){ calView.m=0; calView.y++; } renderCalendar(); });
