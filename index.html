@@ -2438,7 +2438,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.36";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.37";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3017,9 +3017,9 @@ function toast(msg){ const t=document.createElement("div"); t.className="toast";
 const TASKS = [
   { key:"pinyin",  cls:"pinyin",  icon:"🔤", name:"拼音乐园", desc:"听音+看字选拼音 10 题" },
   { key:"math",    cls:"math",    icon:"🔢", name:"数学闯关", desc:"加减乘除 · 10 题" },
-  { key:"english", cls:"english", icon:"📖", name:"英语 RAZ", desc:"今日阅读打卡" },
   { key:"hanzi",   cls:"hanzi",   icon:"✍️", name:"识字达人", desc:"认一认 10 个汉字" },
   { key:"poem",    cls:"poem",    icon:"📜", name:"古诗小舟", desc:"背一背填一填" },
+  { key:"english", cls:"english", icon:"📖", name:"英语 RAZ", desc:"今日阅读打卡" },
   { key:"writing", cls:"writing", icon:"✏️", name:"写字练习", desc:"今日练字打卡" }
 ];
 function renderTasks(){
