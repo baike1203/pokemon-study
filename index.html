@@ -345,10 +345,13 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .poem-blank { display: inline-block; min-width: 46px; border-bottom: 5px solid var(--card-purple-b); color: #8E6CF0; font-weight: bold; margin: 0 2px; }
 .poem-blank.filled { color: #3F9D3F; border-color: #4FB14E; }
 
-/* RAZ */
-#razBigBtn { width: 280px; height: 280px; border-radius: 50%; border: 10px solid #fff; cursor: pointer; background: radial-gradient(circle at 35% 30%, #9ed0ff, #4F8FDD); color: #fff; font-size: 40px; font-weight: bold; font-family: inherit; box-shadow: inset 0 6px 12px rgba(255,255,255,.35), 0 10px 0 #2f6cb0, 0 16px 30px rgba(0,0,0,.22); margin: 16px auto; display: block; line-height: 1.3; }
-#razBigBtn:active { transform: translateY(6px); box-shadow: inset 0 6px 12px rgba(255,255,255,.35), 0 4px 0 #2f6cb0; }
-#razBigBtn.done-btn { background: radial-gradient(circle at 35% 30%, #dcdcdc, #a6a6a6); box-shadow: inset 0 6px 12px rgba(255,255,255,.3), 0 10px 0 #8a8a8a; cursor: default; }
+/* 通用大圆打卡按钮（RAZ / 写字练习 等共用，仅主题色不同） */
+.big-round-btn { width: 280px; height: 280px; border-radius: 50%; border: 10px solid #fff; cursor: pointer; color: #fff; font-size: 40px; font-weight: bold; font-family: inherit; margin: 16px auto; display: block; line-height: 1.3; }
+.big-round-btn.theme-blue { background: radial-gradient(circle at 35% 30%, #9ed0ff, #4F8FDD); box-shadow: inset 0 6px 12px rgba(255,255,255,.35), 0 10px 0 #2f6cb0, 0 16px 30px rgba(0,0,0,.22); }
+.big-round-btn.theme-blue:active:not(.done-btn) { transform: translateY(6px); box-shadow: inset 0 6px 12px rgba(255,255,255,.35), 0 4px 0 #2f6cb0; }
+.big-round-btn.theme-orange { background: radial-gradient(circle at 35% 30%, #f6c878, #E08A2B); box-shadow: inset 0 6px 12px rgba(255,255,255,.35), 0 10px 0 #b56a14, 0 16px 30px rgba(0,0,0,.22); }
+.big-round-btn.theme-orange:active:not(.done-btn) { transform: translateY(6px); box-shadow: inset 0 6px 12px rgba(255,255,255,.35), 0 4px 0 #b56a14; }
+.big-round-btn.done-btn { background: radial-gradient(circle at 35% 30%, #dcdcdc, #a6a6a6); box-shadow: inset 0 6px 12px rgba(255,255,255,.3), 0 10px 0 #8a8a8a; cursor: default; }
 
 /* 收服宝可梦动画 */
 #gachaStage { min-height: 340px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
@@ -2435,7 +2438,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.33";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.36";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3358,7 +3361,7 @@ function mathQuiz(diff){
 function razTask(){
   const done = state.daily.done.english;
   openDialog(`<h2 style="color:#3D8EE8">📖 英语 RAZ 阅读</h2><div style="font-size:24px;color:#8a6d5c">先去 RAZ 里读完今天的绘本，<br>再回来按下这个大按钮打卡！</div>
-    <button id="razBigBtn" class="${done?'done-btn':''}" ${done?'disabled':''}>${done?"✔<br>今日已打卡":"今日已读<br>RAZ！"}</button>
+    <button id="razBigBtn" class="big-round-btn theme-blue ${done?'done-btn':''}" ${done?'disabled':''}>${done?"✔<br>今日已打卡":"今日已读<br>RAZ！"}</button>
     <div style="font-size:26px;">🔥 已连续打卡 <b style="color:#F58A1F;font-size:34px">${state.razStreak}</b> 天</div>`);
   if (!done){ $("#razBigBtn").addEventListener("click", ()=>{ sfx.click(); openDialog(`<h2 style="color:#3D8EE8">确认打卡</h2><div style="font-size:28px;margin:14px 0">今天真的读完 RAZ 了吗？📖</div><button class="big-btn blue" id="razYes">读完啦！✔</button><button class="big-btn yellow" id="razNo">还没有，先去读</button>`);
     $("#razYes").addEventListener("click", ()=>{ state.razStreak+=1; state.razLastDate=todayStr(); saveState(); closeDialog(); completeTask("english"); setTimeout(()=>openDialog(`<h2 style="color:#3D8EE8">🎉 打卡成功！</h2><div style="font-size:64px">📚</div><div style="font-size:28px;margin:10px 0">已连续打卡 <b style="color:#F58A1F">${state.razStreak}</b> 天，奖励 1 个精灵球！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好耶！</button>`),1000); });
@@ -3368,7 +3371,7 @@ function razTask(){
 function writingTask(){
   const done = state.daily.done.writing;
   openDialog(`<h2 style="color:#E08A2B">✏️ 写字练习</h2><div style="font-size:24px;color:#8a6d5c">先在练字本上写一写今天的字，<br>再回来按下这个大按钮打卡！</div>
-    <button id="wBigBtn" class="${done?'done-btn':''}" ${done?'disabled':''}>${done?"✔<br>今日已打卡":"今日已练<br>写字！"}</button>
+    <button id="wBigBtn" class="big-round-btn theme-orange ${done?'done-btn':''}" ${done?'disabled':''}>${done?"✔<br>今日已打卡":"今日已练<br>写字！"}</button>
     <div style="font-size:26px;">🔥 已连续打卡 <b style="color:#F58A1F;font-size:34px">${state.writingStreak}</b> 天</div>`);
   if (!done){ $("#wBigBtn").addEventListener("click", ()=>{ sfx.click(); openDialog(`<h2 style="color:#E08A2B">确认打卡</h2><div style="font-size:28px;margin:14px 0">今天真的练过字了吗？✏️</div><button class="big-btn blue" id="wYes">练过啦！✔</button><button class="big-btn yellow" id="wNo">还没有，先去写</button>`);
     $("#wYes").addEventListener("click", ()=>{ state.writingStreak+=1; state.writingLastDate=todayStr(); saveState(); closeDialog(); completeTask("writing"); setTimeout(()=>openDialog(`<h2 style="color:#E08A2B">🎉 打卡成功！</h2><div style="font-size:64px">✏️</div><div style="font-size:28px;margin:10px 0">已连续打卡 <b style="color:#F58A1F">${state.writingStreak}</b> 天，奖励 1 个精灵球！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好耶！</button>`),1000); });
@@ -4159,18 +4162,20 @@ function startAdventure(){
   document.querySelectorAll("#advPick .py-cell").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); beginBattle(+b.dataset.id); }));
 }
 function beginBattle(myId){
-  state.adventureCount++; saveState(); // 占用一次冒险机会
   let wildId = drawPokemon({ guaranteedUncollected:true }); if (!wildId){ const [lo,hi] = activeRange(); wildId = rnd(lo,hi); }
-  let myHP=3, wildHP=3, endured=false; const myName = POKEMON[displayId(myId)-1];
+  let myHP=3, wildHP=3, endured=false, committed=false; const myName = POKEMON[displayId(myId)-1];
   function render(){
-    openDialog(`<h2 style="color:var(--poke-red)">⚔️ 宝可梦大冒险</h2>
+    openDialog(`<div style="position:relative">
+      <button id="advExit" title="选错了？点这里退出（不消耗次数）" style="position:absolute;top:-8px;right:-8px;width:48px;height:48px;border-radius:50%;background:var(--poke-yellow);border:none;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:5;line-height:1">✕</button>
+      <h2 style="color:var(--poke-red)">⚔️ 宝可梦大冒险</h2>
       <div style="display:flex;justify-content:space-around;align-items:center;margin:10px 0">
         <div><img src="${spriteUrl(displayId(myId))}" style="width:110px;height:110px;image-rendering:auto;object-fit:contain"><div>${POKEMON[displayId(myId)-1]}</div><div class="hearts" style="color:#E0524C">${"❤️".repeat(myHP)}${"🖤".repeat(3-myHP)}</div></div>
         <div style="font-size:40px">VS</div>
         <div><img src="${spriteUrl(wildId)}" style="width:110px;height:110px;image-rendering:auto;object-fit:contain"><div>野生的${POKEMON[wildId-1]}</div><div class="hearts" style="color:#E0524C">${"❤️".repeat(wildHP)}${"🖤".repeat(3-wildHP)}</div></div>
       </div>
-      <div id="battleArea"><button class="big-btn" id="atkBtn">⚔️ 攻击！</button></div>`, {closable:false});
-    $("#atkBtn").addEventListener("click", ()=>{ sfx.click(); askQ(); });
+      <div id="battleArea"><button class="big-btn" id="atkBtn">⚔️ 攻击！</button></div></div>`, {closable:false});
+    $("#atkBtn").addEventListener("click", ()=>{ sfx.click(); if(!committed){ committed = true; state.adventureCount++; saveState(); } askQ(); });
+    $("#advExit").addEventListener("click", ()=>{ sfx.click(); closeDialog(); if(!committed) setTimeout(startAdventure, 60); });
   }
   function askQ(){ busyStudying = true;
     const q = randomQuestion();
