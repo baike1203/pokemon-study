@@ -795,7 +795,7 @@ window.addEventListener("unhandledrejection", e => { showBugBanner("Promise 异�
 /* ==================== 1. 数据区 ==================== */
 
 /* 拼音数据 [拼音, 朗读示例字] */
-const SHENGMU = [["b","玻","bo"],["p","坡","po"],["m","摸","mo"],["f","佛","fo"],["d","得","de"],["t","特","te"],["n","讷","ne"],["l","勒","le"],["g","哥","ge"],["k","科","ke"],["h","喝","he"],["j","基","ji"],["q","欺","qi"],["x","希","xi"],["zh","知","zhi"],["ch","吃","chi"],["sh","诗","shi"],["r","日","ri"],["z","资","zi"],["c","雌","ci"],["s","思","si"],["y","衣","yi"],["w","乌","wu"]];
+const SHENGMU = [["b","玻","bo","p"],["p","坡","po","pʰ"],["m","摸","mo","m"],["f","佛","fo","f"],["d","得","de","t"],["t","特","te","tʰ"],["n","讷","ne","n"],["l","勒","le","l"],["g","哥","ge","k"],["k","科","ke","kʰ"],["h","喝","he","x"],["j","基","ji","tɕ"],["q","欺","qi","tɕʰ"],["x","希","xi","ɕ"],["zh","知","zhi","ʈʂ"],["ch","吃","chi","ʈʂʰ"],["sh","诗","shi","ʂ"],["r","日","ri","ɻ"],["z","资","zi","ts"],["c","雌","ci","tsʰ"],["s","思","si","s"],["y","衣","yi","i"],["w","乌","wu","u"]];
 const YUNMU = [["a","啊"],["o","喔"],["e","鹅"],["i","衣"],["u","乌"],["ü","迂"],["ai","爱"],["ei","诶"],["ui","威"],["ao","袄"],["ou","欧"],["iu","优"],["ie","耶"],["üe","约"],["er","耳"],["an","安"],["en","恩"],["in","因"],["un","温"],["ün","晕"],["ang","昂"],["eng","灯"],["ing","鹰"],["ong","轰"]];
 const ZHENGTI = [["zhi","织"],["chi","吃"],["shi","狮"],["ri","日"],["zi","字"],["ci","刺"],["si","丝"],["yi","衣"],["wu","屋"],["yu","鱼"],["ye","夜"],["yue","月"],["yuan","圆"],["yin","音"],["yun","云"],["ying","鹰"]];
 const ALL_PINYIN = [...SHENGMU, ...YUNMU, ...ZHENGTI];
@@ -2438,7 +2438,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.38";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.39";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2768,7 +2768,7 @@ function speakLocal(text, rate = 0.9){
 function speak(text, rate = 0.9, fallback){
   if (!text){ if (fallback) speak(fallback, rate); return; }
   stopSpeak();
-  // SSML 直传（如拼音声母的 <phoneme> 轻声呼读音）：浏览器 speechSynthesis 不支持 SSML，仅走云端 Edge-TTS
+  // SSML 直传（如拼音声母的 <phoneme> IPA 辅音演示）：浏览器 speechSynthesis 不支持 SSML，仅走云端 Edge-TTS
   if (typeof text === "string" && (text.trim().indexOf("<phoneme") === 0 || text.trim().indexOf("<speak") === 0)){
     if (cloudTTSAvailable()){
       // 云端 SSML 失败时降级：声母用「呼读音汉字」(如「玻」→bō)、听音题用示例字，至少让孩子听到正确读音而非静音
@@ -3134,7 +3134,7 @@ function pinyinHome(){
     </div>
     <div style="font-size:19px;color:#b09a8a;margin-top:8px">10 道题会随机 mix「👂 听音辨音」和「📝 看字选拼音」哦</div>`);
   const cats = { sm:SHENGMU, ym:YUNMU, zt:ZHENGTI };
-  function renderGrid(cat){ const grid=$("#pyGrid"); grid.innerHTML=""; cats[cat].forEach(([py,chr,hy])=>{ const c=document.createElement("button"); c.className="py-cell"; c.innerHTML=`${py}<small>像「${chr}」</small>`; c.addEventListener("click",()=>{ sfx.click(); if (cat==="sm") speak(`<phoneme alphabet="py" ph="${hy}5">${py}</phoneme>`,0.7, chr); else speak(chr,0.7); }); grid.appendChild(c); }); }
+  function renderGrid(cat){ const grid=$("#pyGrid"); grid.innerHTML=""; cats[cat].forEach(([py,chr,hy,ipa])=>{ const c=document.createElement("button"); c.className="py-cell"; c.innerHTML=`${py}<small>像「${chr}」</small>`; c.addEventListener("click",()=>{ sfx.click(); if (cat==="sm" && ipa) speak(`<phoneme alphabet="ipa" ph="${ipa}">${py}</phoneme>`,0.7, chr); else speak(chr,0.7); }); grid.appendChild(c); }); }
   renderGrid("sm");
   document.querySelectorAll(".py-tab").forEach(t=>t.addEventListener("click",()=>{ sfx.click(); document.querySelectorAll(".py-tab").forEach(x=>x.classList.remove("active")); t.classList.add("active"); renderGrid(t.dataset.cat); }));
   if (!done) $("#pyStart").addEventListener("click", ()=>{ sfx.click(); pinyinStart(); });
@@ -3147,7 +3147,7 @@ function pinyinStart(){
     if (type === "listen"){
       const p = pick(ALL_PINYIN,1)[0];                       // [py, chr]
       const wrongs = pick(ALL_PINYIN.filter(x=>x[0]!==p[0]),3).map(x=>x[0]);
-      const ssml = p[2] ? `<phoneme alphabet="py" ph="${p[2]}5">${p[0]}</phoneme>` : p[1];
+      const ssml = p[3] ? `<phoneme alphabet="ipa" ph="${p[3]}">${p[0]}</phoneme>` : p[1];
       return { id:"py"+i, prompt:"👂 听一听，是哪个拼音？", promptClass:"small", speakText:ssml, speakFallback:p[1], speakOnShow:true, options:shuffle([p[0],...wrongs]), answer:p[0] };
     } else {
       const h = pick(HANZI,1)[0];                            // [zi, py, word]
@@ -4117,7 +4117,7 @@ function play8bitMelody(){ const notes=[523,659,784,659,523,659,784,1047,880,784
 
 /* ==================== 8. 学习对战模式 ==================== */
 /* 随机出一道学习题（拼音/数学/识字） */
-function makePinyinQ(){ const [py,chr,hy]=pick(ALL_PINYIN,1)[0]; const wrongs=pick(ALL_PINYIN.filter(p=>p[0]!==py),3).map(p=>p[0]); const speakText = hy ? `<phoneme alphabet="py" ph="${hy}5">${py}</phoneme>` : chr; return { prompt:"👂 听一听，是哪个拼音？", promptClass:"small", speakText, speakFallback:chr, options:shuffle([py,...wrongs]), answer:py }; }
+function makePinyinQ(){ const [py,chr,hy,ipa]=pick(ALL_PINYIN,1)[0]; const wrongs=pick(ALL_PINYIN.filter(p=>p[0]!==py),3).map(p=>p[0]); const speakText = ipa ? `<phoneme alphabet="ipa" ph="${ipa}">${py}</phoneme>` : chr; return { prompt:"👂 听一听，是哪个拼音？", promptClass:"small", speakText, speakFallback:chr, options:shuffle([py,...wrongs]), answer:py }; }
 function makeMathQ(){ let a,b,op,ans; if(Math.random()<0.5){a=rnd(1,19);b=rnd(1,20-a);op="+";ans=a+b;} else {a=rnd(2,20);b=rnd(1,a-1);op="−";ans=a-b;} const w=new Set(); while(w.size<3){let x=ans+rnd(-4,4); if(x!==ans&&x>=0&&x<=20)w.add(x);} return { prompt:`${a} ${op} ${b} = ?`, options:shuffle([ans,...w]), answer:ans }; }
 function makeHanziQ(){ const [zi,py,word]=pick(HANZI,1)[0]; if(Math.random()<0.5){ const w=pick(HANZI.filter(h=>h[1]!==py),3).map(h=>h[1]); return { prompt:zi, sub:`组词：${word}｜它的拼音是哪个？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([py,...w]), answer:py }; } const w=pick(HANZI.filter(h=>h[0]!==zi),3).map(h=>h[0]); return { prompt:py, promptClass:"small", sub:`提示组词：${word}｜是哪个汉字？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...w]), answer:zi }; }
 /* 冒险可出的模块 + 出题函数；并按学习报告正确率计算薄弱模块（正确率最低者优先） */
