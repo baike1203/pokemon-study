@@ -35,3 +35,11 @@
 - basename 多集合差集核验发现 **1 个真实缺口**：`index.html` 本地 2 份（根 + android）、日志仅 1 份（同 08-05/08-06 根 index.html 末段被吞的老坑）。
 - 补传：单独 `upload` 根 index.html + android 的 index.html；结果 `EXIT_CODE=0 / successCount:2 / instantUploadCount:1`（android 版秒传命中，根版 `instantUpload:false, fileSize:363193` 真实补传）。
 - 最终含补传日志重算 basename 差集 = 空，**1093/1093 全部已在云端，备份完整**。日志：`run_2026-08-07.log`、`run_2026-08-07_retry1.log`。
+
+## 2026-08-10 09:25 (GMT+8) 执行
+- 待备份 **1093 个文件**（同前规模：assets 1043 + scripts 14 项等），排除 `.git`/`.workbuddy`/5 个临时文件（`_dl.log`、`_gen2_names.txt`、`_syntax_check.txt`、`index.html.bak.inject`、`run_2026-08-09.log`），12 个顶层项全量上传。
+- 全量跑 ~22 分钟，1092 个文件 `code:0`（几乎全 `instantUpload:true`），末段状态上报 `write ECONNABORTED (code:1007)` 退出（EXIT_CODE=1）。**本次根 index.html(364508) 成功真实上传**（`instantUpload:false`，出现在中断前最后一条成功记录），打破「根 index.html 总被吞」的老坑。
+- 用「唯一 basename 差集」法核验发现 **1 个真实缺口**：`.github/workflows/build-apk.yml`(1993) 被末段中断吞掉（非重名项，是本轮唯一缺失）。
+- 补传：单独 `upload .github/workflows/build-apk.yml`，`EXIT_CODE=0 / successCount:1 / instantUpload:true`，落在 `夸克网盘/来自：WorkBuddy/宝可梦学习平台备份`。重名项（build.gradle 2/2、ic_launcher.png 5/5、index.html 2/2）本地与日志计数一致。
+- 结论：**1093/1093 全部已在云端，备份完整**。日志：`run_2026-08-10.log`。
+- 经验更新：缺口位置不固定（本轮是 workflow yml 而非根 index.html），仍以「唯一 basename 差集」逐次定位为准，命中后单独补传即可。

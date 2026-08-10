@@ -713,6 +713,7 @@ nav button.active .ic-fill { fill: #FFC9C2; }
       <button class="big-btn" id="testAddMaster" style="background:linear-gradient(180deg,#C792FF,#9B5DE5);border-color:#7B3FC4;color:#fff">➕ 加 1 大师球</button>
       <button class="big-btn red" id="testReset">🗑 重置所有进度</button>
       <button class="big-btn orange" id="testResetDay">🔄 重置本日任务</button>
+      <button class="big-btn yellow" id="testResetAdv">⚔️ 重置今日冒险次数</button>
       <button class="big-btn" id="testGetAll" style="background:linear-gradient(180deg,#FFE066,#FFC93C);border-color:#E0A800;color:#5a4500">🌟 获取当前图鉴所有宝可梦</button>
     </div>
     <!-- ======================================================= -->
@@ -2438,7 +2439,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.40";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.42";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3924,7 +3925,19 @@ function beginDraw(ballType){
     setTimeout(()=>revealGacha(id, isNew, ballType), 620);
   }, 1500);
 }
-function noBallDialog(name){ openDialog(`<h2 style="color:var(--poke-red)">${name}不够啦！</h2><div style="font-size:64px;margin:10px 0">💪</div><div style="font-size:28px">${name==="精灵球"?"完成今日学习任务就能获得精灵球哦！":"去连续完成学习或完成成就来获取吧！"}</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`); }
+function noBallDialog(name){
+  let tip = "去连续完成学习或完成成就来获取吧！";
+  if (name==="精灵球") tip = "完成今日学习任务就能获得精灵球哦！";
+  else if (name==="大师球"){
+    const done = TASKS.filter(t=>state.daily.done[t.key]).length;
+    const streak = Math.min(state.allCompleteStreak||0, 7);
+    tip = `大师球需要<b>连续 7 天全勤</b>才能获得哦！<br>
+🔥 已连续打卡 <b style="color:#F58A1F">${streak} / 7</b> 天<br>
+📚 今天已完成 <b>${done} / ${TASKS.length}</b> 个任务<br>
+<span style="font-size:21px;color:#9b8676">每天完成全部任务，连续 7 天就能拿大师球！</span>`;
+  }
+  openDialog(`<h2 style="color:var(--poke-red)">${name}不够啦！</h2><div style="font-size:64px;margin:10px 0">💪</div><div style="font-size:25px;line-height:1.85;text-align:left">${tip}</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`);
+}
 function afterGacha(){ checkBookComplete(); checkAchievements(); renderDex(); }
 function revealGacha(id, isNew, ballType){
   let evolved = null;
@@ -4199,10 +4212,32 @@ function beginBattle(myId){
     }); grid.appendChild(b); });
   }
   function win(){
-    openDialog(`<h2>野生${POKEMON[wildId-1]}被打倒啦！</h2><div style="font-size:60px">🎯</div><button class="big-btn" id="catchBtn">� poké 捕捉它！</button>`, {closable:false});
-    $("#catchBtn").addEventListener("click", ()=>{ sfx.click(); if(!state.dex.includes(wildId)){ state.dex.push(wildId); state.copyCount[wildId]=1; state.evoStage[wildId]=0; saveState(); } confetti(40); sfx.fanfare(); checkAchievements();
+    // 自己带的宝可梦通过冒险历练：进化进度 +1（仅在仍需进化时），可能触发进化
+    let grew = false, evolved = null, growHtml = "";
+    if (needsMoreCopies(myId)){
+      state.copyCount[myId] = (state.copyCount[myId]||0) + 1;
+      grew = true;
+      evolved = tryEvolve(myId);
+    }
+    renderDex();
+    if (evolved){
+      growHtml = `<div style="font-size:60px;margin:6px 0">⚡</div>
+        <h2 style="color:var(--poke-blue)">🎉 ${myName} 进化成了 ${POKEMON[evolved.to-1]}！</h2>
+        <img src="${spriteUrl(evolved.to)}" style="width:150px;height:150px;image-rendering:auto;object-fit:contain">`;
+    } else if (grew){
+      const info = evoProgressInfo(myId);
+      growHtml = `<div style="font-size:60px;margin:6px 0">💪</div>
+        <h2>${myName} 在冒险中成长啦！</h2>
+        <div style="font-size:26px;line-height:1.6">进化进度 +1${info?('（'+info.have+'/'+info.need+'）'):''}<br>继续冒险就能进化哦！</div>`;
+    } else {
+      growHtml = `<div style="font-size:60px;margin:6px 0">🎯</div>
+        <h2>${myName} 赢得了战斗！</h2>`;
+    }
+    openDialog(`${growHtml}
+      <div style="font-size:24px;color:#8a6d5c;margin:10px 0">野生的${POKEMON[wildId-1]}也被打倒了！</div>
+      <button class="big-btn" id="catchBtn"> Poké 捕捉它！</button>`, {closable:false});
+    $("#catchBtn").addEventListener("click", ()=>{ sfx.click(); if(!state.dex.includes(wildId)){ state.dex.push(wildId); state.copyCount[wildId]=1; state.evoStage[wildId]=0; saveState(); } confetti(40); sfx.fanfare(); checkAchievements(); renderDex();
       openDialog(`<h2 style="color:var(--poke-blue)">🎉 收服成功！</h2><img src="${spriteUrl(wildId)}" style="width:160px;height:160px;image-rendering:auto;object-fit:contain"><div style="font-size:26px">野生${POKEMON[wildId-1]}加入图鉴啦！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">太棒了！</button>`, {closable:false});
-      renderDex();
     });
   }
   function lose(){ openDialog(`<h2>这次败给了野生宝可梦…</h2><div style="font-size:60px">😢</div><div style="font-size:26px">没关系，多练习就能赢！</div><button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">再接再厉！</button>`, {closable:false}); }
@@ -4763,6 +4798,13 @@ $("#testResetDay").addEventListener("click", ()=>{
   renderTasks(); renderHeader(); renderDex(); renderBalls();
   closeDialog();
   toast("已重置本日任务 🔄 重新开始吧！");
+});
+$("#testResetAdv").addEventListener("click", ()=>{
+  sfx.click();
+  state.adventureDate = todayStr(); state.adventureCount = 0;   // 仅重置「去冒险」次数，保留今日任务 / 图鉴 / 进化 / 成就
+  saveState();
+  renderHeader(); renderDex();
+  toast("已重置今日冒险次数 ⚔️（今天还能冒险 3 次）");
 });
 $("#testGetAll").addEventListener("click", ()=>{
   if (!confirm("测试：把【当前图鉴】全部宝可梦加入图鉴？\n（其它图鉴进度保留，精灵球 / 进化进度不变，仅用于测试）")) return;
