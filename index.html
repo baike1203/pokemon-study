@@ -2439,7 +2439,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.43";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.44";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -4169,6 +4169,17 @@ function randomQuestion(preferWeak = true){
   return q;
 }
 
+/* 冒险对手抽取：优先未收集宝可梦补全图鉴；也允许已拥有但仍需副本进化的宝可梦，
+   这样“战胜对面并获得它”才能推进其进化进度（如小锯鳄 1/2 再战一次得第 2 只即进化） */
+function pickWild(){
+  const pool = drawableIds();
+  const uncollected = pool.filter(id=>!state.dex.includes(id));
+  const needy = pool.filter(id=> state.dex.includes(id) && needsMoreCopies(id));
+  if (uncollected.length && needy.length) return Math.random()<0.5 ? uncollected[rnd(0,uncollected.length-1)] : needy[rnd(0,needy.length-1)];
+  if (needy.length) return needy[rnd(0,needy.length-1)];
+  if (uncollected.length) return uncollected[rnd(0,uncollected.length-1)];
+  const [lo,hi] = activeRange(); return rnd(lo,hi);
+}
 /* 进入冒险：先选一只已收集宝可梦当伙伴 */
 function startAdventure(){
   if (state.adventureDate !== todayStr()){ state.adventureDate = todayStr(); state.adventureCount = 0; saveState(); }
@@ -4182,7 +4193,7 @@ function startAdventure(){
   document.querySelectorAll("#advPick .py-cell").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); beginBattle(+b.dataset.id); }));
 }
 function beginBattle(myId){
-  let wildId = drawPokemon({ guaranteedUncollected:true }); if (!wildId){ const [lo,hi] = activeRange(); wildId = rnd(lo,hi); }
+  let wildId = pickWild();   // 对手：含已拥有但仍需副本进化的宝可梦，使“战胜对面获得它”能推进其进化
   let myHP=3, wildHP=3, endured=false, committed=false; const myName = POKEMON[displayId(myId)-1];
   function render(){
     openDialog(`<div style="position:relative">
@@ -4220,33 +4231,37 @@ function beginBattle(myId){
     }); grid.appendChild(b); });
   }
   function win(){
-    // 自己带的宝可梦通过冒险历练：进化进度 +1（仅在仍需进化时），可能触发进化
-    let grew = false, evolved = null, growHtml = "";
-    if (needsMoreCopies(myId)){
-      state.copyCount[myId] = (state.copyCount[myId]||0) + 1;
-      grew = true;
-      evolved = tryEvolve(myId);   // 进化成功时内部已 saveState；未进化时需要下方统一保存
-    }
-    saveState();                   // 关键：必须落盘，否则平板重载后进度回退（此前 bug 根因）
-    renderDex();
-    if (evolved){
-      growHtml = `<div style="font-size:60px;margin:6px 0">⚡</div>
-        <h2 style="color:var(--poke-blue)">🎉 ${myName} 进化成了 ${POKEMON[evolved.to-1]}！</h2>
-        <img src="${spriteUrl(evolved.to)}" style="width:150px;height:150px;image-rendering:auto;object-fit:contain">`;
-    } else if (grew){
-      const info = evoProgressInfo(myId);
-      growHtml = `<div style="font-size:60px;margin:6px 0">💪</div>
-        <h2>${myName} 在冒险中成长啦！</h2>
-        <div style="font-size:26px;line-height:1.6">进化进度 +1${info?('（'+info.have+'/'+info.need+'）'):''}<br>继续冒险就能进化哦！</div>`;
-    } else {
-      growHtml = `<div style="font-size:60px;margin:6px 0">🎯</div>
-        <h2>${myName} 赢得了战斗！</h2>`;
-    }
-    openDialog(`${growHtml}
-      <div style="font-size:24px;color:#8a6d5c;margin:10px 0">野生的${POKEMON[wildId-1]}也被打倒了！</div>
-      <button class="big-btn" id="catchBtn"> Poké 捕捉它！</button>`, {closable:false});
-    $("#catchBtn").addEventListener("click", ()=>{ sfx.click(); if(!state.dex.includes(wildId)){ state.dex.push(wildId); state.copyCount[wildId]=1; state.evoStage[wildId]=0; saveState(); } confetti(40); sfx.fanfare(); checkAchievements(); renderDex();
-      openDialog(`<h2 style="color:var(--poke-blue)">🎉 收服成功！</h2><img src="${spriteUrl(wildId)}" style="width:160px;height:160px;image-rendering:auto;object-fit:contain"><div style="font-size:26px">野生${POKEMON[wildId-1]}加入图鉴啦！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">太棒了！</button>`, {closable:false});
+    // 冒险的目标是对面的野生宝可梦：战胜它即可收服“获得”它；
+    // 获得时，是“对面这只宝可梦自己”的进化进度 +1（带去出战的伙伴 myId 不涨进度）
+    openDialog(`<div style="font-size:60px;margin:6px 0">🏆</div>
+      <h2 style="color:var(--poke-blue)">战胜了野生的${POKEMON[wildId-1]}！</h2>
+      <div style="font-size:26px;color:#8a6d5c;margin:10px 0">快把它收服进图鉴吧～</div>
+      <button class="big-btn" id="catchBtn"> Poké 收服 ${POKEMON[wildId-1]}！</button>`, {closable:false});
+    $("#catchBtn").addEventListener("click", ()=>{
+      sfx.click();
+      // 获得对面宝可梦：新收服则入图鉴(copyCount=1)，已拥有则 +1
+      const isNew = !state.dex.includes(wildId);
+      if (isNew){ state.dex.push(wildId); state.copyCount[wildId]=1; state.evoStage[wildId]=0; }
+      else { state.copyCount[wildId] = (state.copyCount[wildId]||0)+1; }
+      // 获得这一只后，对面宝可梦自己的进化进度推进 / 可能进化（用户要求：不是伙伴，是对面）
+      const evolved = tryEvolve(wildId);
+      saveState(); renderDex(); checkAchievements();
+      confetti(40); sfx.fanfare();
+      if (evolved){
+        openDialog(`<h2 style="color:var(--poke-blue)">🎉 ${POKEMON[wildId-1]} 进化成了 ${POKEMON[evolved.to-1]}！</h2>
+          <img src="${spriteUrl(evolved.to)}" style="width:160px;height:160px;image-rendering:auto;object-fit:contain">
+          <div style="font-size:24px;line-height:1.6">太厉害啦，收服的同时完成了进化！</div>
+          <button class="big-btn" onclick="document.querySelector('#dialogClose').click()">太棒了！</button>`, {closable:false});
+      } else {
+        const info = evoProgressInfo(wildId);
+        const progLine = info
+          ? `进化进度 <b>${info.have}/${info.need}</b>，再收集 <b>${info.remain}</b> 只就能进化！`
+          : `已经是最终形态啦！`;
+        openDialog(`<h2 style="color:var(--poke-blue)">🎉 收服成功！</h2>
+          <img src="${spriteUrl(wildId)}" style="width:160px;height:160px;image-rendering:auto;object-fit:contain">
+          <div style="font-size:24px;line-height:1.6">野生${POKEMON[wildId-1]}加入图鉴啦！<br>${progLine}</div>
+          <button class="big-btn" onclick="document.querySelector('#dialogClose').click()">太棒了！</button>`, {closable:false});
+      }
     });
   }
   function lose(){ openDialog(`<h2>这次败给了野生宝可梦…</h2><div style="font-size:60px">😢</div><div style="font-size:26px">没关系，多练习就能赢！</div><button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">再接再厉！</button>`, {closable:false}); }
