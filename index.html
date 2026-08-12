@@ -2439,7 +2439,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.42";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.43";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3674,16 +3674,24 @@ function renderBalls(){
 /* 球获取方法提示（自动消失，仅在没有球、点击灰色球时触发） */
 function ballInfoToast(type){
   const isMaster = type==="master";
-  const msg = isMaster
-    ? "🟣 <b>大师球获取方法</b>：连续 7 天每天完成全部 " + TASKS.length + " 个学习任务（连续打卡）即可获得。<br>大师球可点击图鉴中任意 <b>未点亮</b> 的宝可梦并直接收服它！"
-    : "🔵 <b>超级球获取方法</b>：解锁成就时奖励（如初次邂逅、集齐 50/100/151 只、各系大师等）。<br>超级球可<b>必定收服到一只从未收集过</b>的宝可梦！";
+  let msg;
+  if (isMaster){
+    const done = TASKS.filter(t=>state.daily.done[t.key]).length;
+    const streak = Math.min(state.allCompleteStreak||0, 7);
+    msg = `🟣 <b>大师球还不够哦！</b><br>
+🔥 已连续打卡 <b style="color:#F58A1F">${streak} / 7</b> 天<br>
+📚 今天已完成 <b>${done} / ${TASKS.length}</b> 个任务<br>
+<span style="font-size:21px;color:#e9d9c9">连续 7 天每天完成全部任务，就能获得大师球！</span>`;
+  } else {
+    msg = "🔵 <b>超级球获取方法</b>：解锁成就时奖励（如初次邂逅、集齐 50/100/151 只、各系大师等）。<br>超级球可<b>必定收服到一只从未收集过</b>的宝可梦！";
+  }
   let t = document.getElementById("ballToast");
   if (!t){ t = document.createElement("div"); t.id = "ballToast"; t.className = "ball-toast"; document.body.appendChild(t); }
   t.innerHTML = msg;
   void t.offsetWidth; // 强制重排，确保动画生效
   t.classList.add("show");
   clearTimeout(t._timer);
-  t._timer = setTimeout(()=>t.classList.remove("show"), 3000);
+  t._timer = setTimeout(()=>t.classList.remove("show"), isMaster ? 4500 : 3000);
 }
 /* ---------- 大师球：点选图鉴中任意未点亮宝可梦直接收服 ---------- */
 let masterPick = false;
@@ -4217,8 +4225,9 @@ function beginBattle(myId){
     if (needsMoreCopies(myId)){
       state.copyCount[myId] = (state.copyCount[myId]||0) + 1;
       grew = true;
-      evolved = tryEvolve(myId);
+      evolved = tryEvolve(myId);   // 进化成功时内部已 saveState；未进化时需要下方统一保存
     }
+    saveState();                   // 关键：必须落盘，否则平板重载后进度回退（此前 bug 根因）
     renderDex();
     if (evolved){
       growHtml = `<div style="font-size:60px;margin:6px 0">⚡</div>
