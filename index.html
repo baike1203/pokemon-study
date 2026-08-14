@@ -417,6 +417,15 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 /* 对战血量 */
 .hearts { font-size: 26px; letter-spacing: 2px; }
 
+/* 对战：宝可梦冲撞 / 受击动画（v3.40.48） */
+.btl-sprite { display:inline-block; transform-origin:center bottom; will-change:transform,filter; }
+@keyframes atkLungeR { 0%{transform:translateX(0) scale(1)} 30%{transform:translateX(48px) scale(1.08)} 55%{transform:translateX(48px) scale(1.08)} 100%{transform:translateX(0) scale(1)} }
+@keyframes atkLungeL { 0%{transform:translateX(0) scale(1)} 30%{transform:translateX(-48px) scale(1.08)} 55%{transform:translateX(-48px) scale(1.08)} 100%{transform:translateX(0) scale(1)} }
+@keyframes hitShake { 0%,100%{transform:translateX(0);filter:none} 12%{transform:translateX(-9px) rotate(-4deg);filter:brightness(1.9) sepia(1) hue-rotate(-22deg) saturate(7)} 28%{transform:translateX(9px) rotate(4deg)} 44%{transform:translateX(-6px) rotate(-2deg)} 60%{transform:translateX(6px)} 78%{transform:translateX(-3px)} }
+.btl-sprite.atk-right { animation: atkLungeR .55s ease-out; z-index:3; }
+.btl-sprite.atk-left  { animation: atkLungeL .55s ease-out; z-index:3; }
+.btl-sprite.hit       { animation: hitShake .55s ease-out; }
+
 /* 成就墙 */
 .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
 .ach-card { background: #FFFDF8; border: 3px solid #EFE3D2; border-radius: 18px; padding: 12px; text-align: center; box-shadow: 0 4px 10px rgba(120,90,70,.12); }
@@ -2439,7 +2448,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.44";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.40.48";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2462,7 +2471,6 @@ function defaultState(){
     masterBalls: 0,         // 大师球数量
     allCompleteStreak: 0,   // 连续“当日5任务全完成”天数
     lastAllCompleteDate: "",// 上次全勤日期
-    congratulatedMaster: false, // 避免连续全勤时重复发大师球
     adventureDate: "",      // 当日冒险日期
     adventureCount: 0,      // 当日冒险次数（上限3）
     partnerId: null,        // 今日伙伴基础编号
@@ -2523,6 +2531,10 @@ function normalizeState(s){
   let c1 = 0; for (const id of (s.dex||[])){ if (id>=1 && id<=151) c1++; }
   const gen1Done = (s.allComplete===true) || c1 >= 151;
   if (gen1Done && !s.completedBooks.gen1) s.completedBooks.gen1 = true;
+  // 兼容：早期版本进化生成的中间形态未写入 copyCount，导致图鉴显示 0/need（如月桂叶 0/3）。
+  // 任何已拥有的宝可梦至少算 1 只，因此缺失项补 1；同时保证 copyCount 对象存在。
+  if (!s.copyCount || typeof s.copyCount !== "object") s.copyCount = {};
+  for (const id of (s.dex||[])){ if (s.copyCount[id] == null) s.copyCount[id] = 1; }
   return s;
 }
 function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); loadedEmpty = !raw; if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s); return normalizeState(s); } catch(e){ loadedEmpty = true; return defaultState(); } }
@@ -3065,12 +3077,12 @@ function onAllTasksDone(){
   if (state.lastAllCompleteDate === t) return;
   const y = yesterdayStr();
   if (state.lastAllCompleteDate === y) state.allCompleteStreak += 1;
-  else { state.allCompleteStreak = 1; state.congratulatedMaster = false; }
+  else { state.allCompleteStreak = 1; }
   state.lastAllCompleteDate = t; saveState();
-  if (state.allCompleteStreak >= 7 && !state.congratulatedMaster){
-    state.congratulatedMaster = true; state.masterBalls += 1;
+  if (state.allCompleteStreak > 0 && state.allCompleteStreak % 7 === 0){
+    state.masterBalls += 1;
     renderBalls();   // 即时刷新顶部大师球数量，无需刷新整页
-    toast("🟣 连续 7 天全勤！获得大师球！");
+    toast("🟣 连续 " + state.allCompleteStreak + " 天全勤！获得大师球！");
   }
   checkAchievements();
 }
@@ -3574,7 +3586,7 @@ function tryEvolve(id){
   const unowned = candidates.filter(n => !state.dex.includes(n));
   if (unowned.length === 0) return null;
   const to = unowned[rnd(0, unowned.length - 1)]; // 分支时随机选一个未拥有的
-  if (!state.dex.includes(to)) state.dex.push(to);
+  if (!state.dex.includes(to)){ state.dex.push(to); state.copyCount[to] = 1; state.evoStage[to] = 0; } // 进化出的新形态自身计为 1 只，进度从 1/need 起算
   const chosen = chains.find(c => (nextFormsIn(id, c) || []).includes(to));
   if (chosen && Array.isArray(chosen[chainPosIn(id, chosen) + 1])) state.evoForm[chosen[0]] = to; // 记录分支选择
   saveState();
@@ -4195,14 +4207,16 @@ function startAdventure(){
 function beginBattle(myId){
   let wildId = pickWild();   // 对手：含已拥有但仍需副本进化的宝可梦，使“战胜对面获得它”能推进其进化
   let myHP=3, wildHP=3, endured=false, committed=false; const myName = POKEMON[displayId(myId)-1];
-  function render(){
+  function render(side){
+    const pCls = "btl-sprite" + (side==="player" ? " atk-right" : side==="enemy" ? " hit" : "");
+    const eCls = "btl-sprite" + (side==="enemy" ? " atk-left" : side==="player" ? " hit" : "");
     openDialog(`<div style="position:relative">
       <button id="advExit" title="选错了？点这里退出（不消耗次数）" style="position:absolute;top:-8px;right:-8px;width:48px;height:48px;border-radius:50%;background:var(--poke-yellow);border:none;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:5;line-height:1">✕</button>
       <h2 style="color:var(--poke-red)">⚔️ 宝可梦大冒险</h2>
       <div style="display:flex;justify-content:space-around;align-items:center;margin:10px 0">
-        <div><img src="${spriteUrl(displayId(myId))}" style="width:110px;height:110px;image-rendering:auto;object-fit:contain"><div>${POKEMON[displayId(myId)-1]}</div><div class="hearts" style="color:#E0524C">${"❤️".repeat(myHP)}${"🖤".repeat(3-myHP)}</div></div>
+        <div><img class="${pCls}" src="${spriteUrl(displayId(myId))}" style="width:110px;height:110px;image-rendering:auto;object-fit:contain"><div>${POKEMON[displayId(myId)-1]}</div><div class="hearts" style="color:#E0524C">${"❤️".repeat(myHP)}${"🖤".repeat(3-myHP)}</div></div>
         <div style="font-size:40px">VS</div>
-        <div><img src="${spriteUrl(wildId)}" style="width:110px;height:110px;image-rendering:auto;object-fit:contain"><div>野生的${POKEMON[wildId-1]}</div><div class="hearts" style="color:#E0524C">${"❤️".repeat(wildHP)}${"🖤".repeat(3-wildHP)}</div></div>
+        <div><img class="${eCls}" src="${spriteUrl(wildId)}" style="width:110px;height:110px;image-rendering:auto;object-fit:contain"><div>野生的${POKEMON[wildId-1]}</div><div class="hearts" style="color:#E0524C">${"❤️".repeat(wildHP)}${"🖤".repeat(3-wildHP)}</div></div>
       </div>
       <div id="battleArea"><button class="big-btn" id="atkBtn">⚔️ 攻击！</button></div></div>`, {closable:false});
     $("#atkBtn").addEventListener("click", ()=>{ sfx.click(); if(!committed){ committed = true; state.adventureCount++; saveState(); } askQ(); });
@@ -4219,15 +4233,25 @@ function beginBattle(myId){
     const grid=$("#bOpt");
     q.options.forEach(opt=>{ const b=document.createElement("button"); b.className="opt-btn"; b.textContent=opt; b.addEventListener("click",()=>{ const fb=$("#bFb");
       if (q.module) recordAccuracy(q.module, opt===q.answer?1:0, 1);   // 冒险答题回写正确率，闭环薄弱点统计
-      if (opt===q.answer){ sfx.correct(); b.classList.add("right"); fb.textContent="答对啦！攻击命中！⚔️"; fb.className="feedback-line good"; grid.querySelectorAll(".opt-btn").forEach(x=>x.disabled=true); wildHP--; setTimeout(()=>{ if(wildHP<=0) win(); else render(); },900); }
-      else { sfx.wrong(); b.classList.add("wrong"); fb.textContent="答错啦，野生宝可梦反击！💥"; fb.className="feedback-line bad"; grid.querySelectorAll(".opt-btn").forEach(x=>x.disabled=true); myHP--; setTimeout(()=>{
-        if (myHP<=0){
-          if (!endured){ endured=true; myHP=1;   // 仿宝可梦"撑住"：最后一滴血时咬牙撑住，给小朋友一次机会
-            openDialog(`<h2 style="color:var(--poke-blue)">💪 ${myName} 撑住了！</h2><div style="font-size:60px">🛡️</div><div style="font-size:26px;line-height:1.6">在最后一刻，${myName} 咬牙撑住了！<br>别灰心，再试一次你一定行！</div><button class="big-btn yellow" id="endureGo">继续战斗！🔥</button>`, {closable:false});
-            $("#endureGo").addEventListener("click", ()=>{ sfx.click(); speak(`${myName}在最后一刻撑住了！别灰心，再试一次你一定行！`); askQ(); });
-          } else { lose(); }
-        } else { render(); }
-      },1200); }
+      if (opt===q.answer){
+        sfx.correct(); b.classList.add("right"); fb.textContent="答对啦！攻击命中！⚔️"; fb.className="feedback-line good";
+        grid.querySelectorAll(".opt-btn").forEach(x=>x.disabled=true);
+        wildHP--; render("player");   // 答对：我方宝可梦冲撞对方宝可梦，对方扣血（含撞击动画）
+        setTimeout(()=>{ if (wildHP<=0) win(); }, 700);
+      } else {
+        sfx.wrong(); b.classList.add("wrong"); fb.textContent="答错啦，野生宝可梦反击！💥"; fb.className="feedback-line bad";
+        grid.querySelectorAll(".opt-btn").forEach(x=>x.disabled=true);
+        myHP--; render("enemy");      // 答错：对方宝可梦冲撞我方宝可梦，我方扣血（含撞击动画）
+        setTimeout(()=>{
+          if (myHP<=0){
+            if (!endured){ endured=true; myHP=1;   // 仿宝可梦"撑住"：最后一滴血时咬牙撑住，给小朋友一次机会
+              openDialog(`<h2 style="color:var(--poke-blue)">💪 ${myName} 撑住了！</h2><div style="font-size:60px">🛡️</div><div style="font-size:26px;line-height:1.6">在最后一刻，${myName} 咬牙撑住了！<br>别灰心，再试一次你一定行！</div><button class="big-btn yellow" id="endureGo">继续战斗！🔥</button>`, {closable:false});
+              $("#endureGo").addEventListener("click", ()=>{ sfx.click(); speak(`${myName}在最后一刻撑住了！别灰心，再试一次你一定行！`); askQ(); });
+            } else { lose(); }
+          }
+          // myHP>0：战斗场景已渲染（含受击动画与最新血量），等待再次点击攻击
+        }, 700);
+      }
     }); grid.appendChild(b); });
   }
   function win(){
@@ -4245,7 +4269,7 @@ function beginBattle(myId){
       else { state.copyCount[wildId] = (state.copyCount[wildId]||0)+1; }
       // 获得这一只后，对面宝可梦自己的进化进度推进 / 可能进化（用户要求：不是伙伴，是对面）
       const evolved = tryEvolve(wildId);
-      saveState(); renderDex(); checkAchievements();
+      saveState(); renderDex(); checkAchievements(); checkBookComplete();
       confetti(40); sfx.fanfare();
       if (evolved){
         openDialog(`<h2 style="color:var(--poke-blue)">🎉 ${POKEMON[wildId-1]} 进化成了 ${POKEMON[evolved.to-1]}！</h2>
