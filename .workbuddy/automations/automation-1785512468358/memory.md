@@ -43,3 +43,12 @@
 - 补传：单独 `upload .github/workflows/build-apk.yml`，`EXIT_CODE=0 / successCount:1 / instantUpload:true`，落在 `夸克网盘/来自：WorkBuddy/宝可梦学习平台备份`。重名项（build.gradle 2/2、ic_launcher.png 5/5、index.html 2/2）本地与日志计数一致。
 - 结论：**1093/1093 全部已在云端，备份完整**。日志：`run_2026-08-10.log`。
 - 经验更新：缺口位置不固定（本轮是 workflow yml 而非根 index.html），仍以「唯一 basename 差集」逐次定位为准，命中后单独补传即可。
+
+## 2026-08-20 09:36 (GMT+8) 执行
+- 工程规模微增：待备份 **1094 个文件**（assets 1043 / android 18 / scripts 15 / functions 7 / .github 2 / icons 2 / tools 2 + 5 个根文件），12 个顶层项。排除 `.git`/`.workbuddy` 及 11 个临时/日志文件（`_dl.log`、`_gen2_names.txt`、`_syntax_check.txt`、`_upload_manifest_2026-08-14.txt`、`index.html.bak.inject`、`run_2026-08-{09,10,11,12,14,19}.log`）。
+- 本轮 node 已在 PATH（v22.22.2），无需再用托管绝对路径。
+- 全量跑 **33m49s**（比往轮更慢），1092 条 `code:0`（几乎全 `instantUpload:true`），EXIT_CODE=1：1 条中途 `ECONNABORTED` + 末尾汇总上报 `ECONNABORTED`，无 successCount。
+- basename 多重集差集定位 **2 个真实缺口**：`assets/sprites/home/779.png`（中途那条失败）+ 根 `index.html`(370311，android 版 241741 已成功——根 index.html 老坑复现)。
+- 补传：单次 `upload` 两文件同时传，`EXIT_CODE=0 / successCount:2 / instantUploadCount:2`，落在 `夸克网盘/来自：WorkBuddy/宝可梦学习平台备份`。
+- 合并日志重算差集 = 空，**1094/1094 全部已在云端，备份完整**。日志：`run_2026-08-20.log`、`run_2026-08-20_retry1.log`；清单 `_upload_manifest_2026-08-20.txt`。
+- 经验：本轮出现 **2 个缺口**（往轮多为 1 个），且可一条命令合并补传，无需逐个跑。差集脚本（本地 basename 计数 vs 日志 fileName 计数 join 比对）已稳定复用，建议固化。
