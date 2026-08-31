@@ -810,6 +810,59 @@ const YUNMU = [["a","啊"],["o","喔"],["e","鹅"],["i","衣"],["u","乌"],["ü"
 const ZHENGTI = [["zhi","织"],["chi","吃"],["shi","狮"],["ri","日"],["zi","字"],["ci","刺"],["si","丝"],["yi","衣"],["wu","屋"],["yu","鱼"],["ye","夜"],["yue","月"],["yuan","圆"],["yin","音"],["yun","云"],["ying","鹰"]];
 const ALL_PINYIN = [...SHENGMU, ...YUNMU, ...ZHENGTI];
 
+/* ===== 一年级拼读专项题库（v3.41）=====
+   设计要点：TTS 一律朗读「示范汉字」而不是拼音串（读汉字最准，此前已验证拼音音素方案不可靠）。
+   SYLLABLES：两拼音节。{ 声母: [[韵母带调, 示范字], ...] }，仅收录部编一年级常见音节。
+   TRI_SYLLABLES：三拼音节。[声母, 介母, 韵母带调, 音节, 示范字]
+   TONE_QUADS：四声辨析组。每组同一音节的四个声调各配一个常用字。 */
+const SYLLABLES = {
+  b:[["ā","八"],["á","拔"],["ǎ","把"],["à","爸"],["ó","伯"],["ǐ","笔"],["ù","不"],["ái","白"],["ěi","北"],["āo","包"],["ān","班"],["āng","帮"],["īng","冰"]],
+  p:[["á","爬"],["ó","婆"],["í","皮"],["ǔ","普"],["ài","派"],["áo","跑"],["én","盆"],["éng","朋"],["īn","拼"],["íng","平"]],
+  m:[["ā","妈"],["á","麻"],["ǎ","马"],["à","骂"],["ō","摸"],["ǐ","米"],["ù","木"],["ài","卖"],["āo","猫"],["àn","慢"],["ǎn","满"],["én","门"],["áng","忙"],["íng","明"]],
+  f:[["ā","发"],["ó","佛"],["ǔ","斧"],["ù","父"],["ēi","飞"],["ú","扶"],["án","凡"],["àn","饭"],["ēng","风"]],
+  d:[["ā","搭"],["á","答"],["ǎ","打"],["à","大"],["é","得"],["ì","弟"],["ū","都"],["ài","带"],["āo","刀"],["ān","丹"],["āng","当"],["ēng","灯"],["ōng","东"]],
+  t:[["ā","他"],["ǎ","塔"],["à","踏"],["í","提"],["ǔ","土"],["ài","太"],["áo","桃"],["án","谈"],["áng","糖"],["éng","疼"],["ōng","通"],["īng","听"]],
+  n:[["á","拿"],["ǐ","你"],["ù","怒"],["ǚ","女"],["ǎi","奶"],["án","南"],["éng","能"],["ín","您"],["íng","宁"],["ào","闹"]],
+  l:[["ā","拉"],["ǐ","里"],["ì","力"],["ù","路"],["ǜ","绿"],["ài","来"],["ǎo","老"],["è","乐"],["án","蓝"],["áng","狼"],["ěng","冷"],["íng","铃"],["ín","林"]],
+  g:[["ē","哥"],["é","格"],["ǔ","古"],["ù","故"],["āi","该"],["ěi","给"],["āo","高"],["ǎn","赶"],["ān","干"],["āng","刚"],["ēng","更"],["ōng","工"]],
+  k:[["ē","科"],["é","咳"],["ǔ","苦"],["ù","库"],["àn","看"],["ào","靠"],["ǎn","砍"],["āng","康"],["ēng","坑"],["ěn","肯"],["ōng","空"]],
+  h:[["ē","喝"],["é","河"],["ǔ","虎"],["ù","户"],["ēi","黑"],["ái","还"],["ǎo","好"],["ān","寒"],["ào","号"],["ěn","很"],["éng","横"],["ōng","红"]],
+  j:[["ī","机"],["í","急"],["ǐ","几"],["ì","记"],["ū","居"],["ú","局"],["ǔ","举"],["ù","句"],["iē","接"],["ié","结"],["iě","姐"],["iǔ","九"],["iù","旧"],["īn","今"],["īng","京"]],
+  q:[["ī","七"],["í","旗"],["ǐ","起"],["ì","气"],["ū","区"],["ǔ","取"],["ù","去"],["iē","切"],["ié","茄"],["iū","秋"],["ián","钱"],["īn","亲"],["īng","青"],["iáo","桥"]],
+  x:[["ī","西"],["í","习"],["ǐ","洗"],["ì","细"],["ū","需"],["ǔ","许"],["iē","些"],["ié","鞋"],["iě","写"],["iū","修"],["iān","先"],["īn","新"],["īng","星"],["iǎo","小"]],
+  zh:[["ā","扎"],["á","炸"],["ǎ","眨"],["ī","知"],["í","直"],["ǐ","纸"],["ì","志"],["ū","猪"],["ú","竹"],["ǔ","主"],["ù","住"],["āi","摘"],["āo","招"],["ǎn","展"],["āng","张"],["ēn","真"],["ēng","正"],["ōng","中"]],
+  ch:[["ā","叉"],["á","茶"],["ī","吃"],["í","池"],["ǐ","尺"],["ū","出"],["ú","除"],["ǔ","处"],["āo","超"],["ǎn","产"],["áng","长"],["én","晨"],["éng","成"],["ōng","冲"]],
+  sh:[["ā","沙"],["ǎ","傻"],["ī","狮"],["í","十"],["ǐ","史"],["ì","是"],["ū","书"],["ú","熟"],["ǔ","鼠"],["ù","树"],["āo","烧"],["ān","山"],["āng","商"],["ēn","身"],["àn","善"],["ēng","生"]],
+  r:[["è","热"],["ì","日"],["ù","入"],["ú","如"],["ǔ","乳"],["ào","绕"],["án","然"],["àng","让"],["én","人"],["ēng","扔"],["óng","容"],["òu","肉"]],
+  z:[["á","杂"],["é","则"],["ǐ","子"],["ì","字"],["ū","租"],["ú","足"],["ǔ","组"],["ài","在"],["ǎo","早"],["āng","脏"],["ēng","增"],["ěn","怎"],["ōng","宗"],["ǒu","走"]],
+  c:[["ā","擦"],["è","册"],["í","词"],["ì","次"],["ū","粗"],["ù","醋"],["ái","才"],["ài","菜"],["ǎo","草"],["āng","藏"],["éng","层"],["ōng","聪"]],
+  s:[["ā","撒"],["è","色"],["ī","丝"],["ǐ","死"],["ì","四"],["ū","苏"],["ù","素"],["ài","赛"],["ǎo","扫"],["āng","桑"],["ēn","森"],["ōng","松"]]
+};
+const TRI_SYLLABLES = [
+  ["g","u","ā","guā","瓜"],["g","u","à","guà","挂"],["h","u","ā","huā","花"],["h","u","á","huá","滑"],
+  ["k","u","ā","kuā","夸"],["g","u","ǒ","guǒ","果"],["h","u","ǒ","huǒ","火"],["z","u","ò","zuò","坐"],
+  ["c","u","ò","cuò","错"],["s","u","ǒ","suǒ","锁"],["zh","u","ō","zhuō","桌"],["sh","u","ō","shuō","说"],
+  ["j","i","ā","jiā","家"],["j","i","à","jià","架"],["x","i","ā","xiā","虾"],["x","i","à","xià","下"],
+  ["x","i","ǎo","xiǎo","小"],["j","i","ào","jiào","叫"],["q","i","áo","qiáo","桥"],["x","i","ào","xiào","笑"],
+  ["g","u","ān","guān","关"],["h","u","ān","huān","欢"],["k","u","ān","kuān","宽"],["g","u","āng","guāng","光"],
+  ["h","u","áng","huáng","黄"],["j","i","ān","jiān","尖"],["q","i","án","qián","钱"],["x","i","ān","xiān","先"],
+  ["n","i","án","nián","年"],["l","i","án","lián","连"],["j","i","ǎng","jiǎng","讲"],["x","i","ǎng","xiǎng","想"],
+  ["q","u","ān","quān","圈"],["d","u","ō","duō","多"],["t","u","ō","tuō","拖"],["g","u","ó","guó","国"],["k","u","ài","kuài","快"]
+];
+const TONE_QUADS = [
+  [["mā","妈"],["má","麻"],["mǎ","马"],["mà","骂"]],
+  [["bā","八"],["bá","拔"],["bǎ","把"],["bà","爸"]],
+  [["dā","搭"],["dá","答"],["dǎ","打"],["dà","大"]],
+  [["yī","衣"],["yí","姨"],["yǐ","椅"],["yì","意"]],
+  [["wū","乌"],["wú","无"],["wǔ","五"],["wù","雾"]],
+  [["shī","狮"],["shí","十"],["shǐ","史"],["shì","是"]],
+  [["jī","机"],["jí","急"],["jǐ","几"],["jì","记"]],
+  [["qī","七"],["qí","旗"],["qǐ","起"],["qì","气"]],
+  [["xī","西"],["xí","习"],["xǐ","洗"],["xì","细"]],
+  [["fū","夫"],["fú","福"],["fǔ","斧"],["fù","父"]],
+  [["tī","梯"],["tí","提"],["tǐ","体"],["tì","替"]]
+];
+
 /* 识字数据 [汉字, 拼音, 组词] */
 const HANZI = [
   ["天","tiān","天空"],["地","dì","大地"],["人","rén","人们"],["你","nǐ","你好"],["我","wǒ","我们"],["他","tā","他们"],
@@ -1061,7 +1114,7 @@ const spriteUrl = id => `assets/sprites/home/${id}.png`;
 
 /* ---------- 进化链（第一世代） ----------
    每条链首元素为“基础形态”编号；进化时该基础编号的图鉴卡片会升级显示下一个形态。
-   伊布为分支进化 [133, [134,135,136]]，进化时随机抽取一只。 */
+   伊布为分支进化 [133, [134,135,136]]，进化时随机进化成一只。 */
 /* ---------- 第一世代进化链（数据来源：PokeAPI pokemon-species evolves_from_species 字段） ----------
    每个数组是一条进化链，第一个编号是基础形态。
    共 51 条链 + 16 只独立不进化的宝可梦 = 151 只。
@@ -1396,7 +1449,7 @@ function nextForms(id){ const c=chainOfId(id); const p=chainPos(id); if(!c||p<0|
 function chainPosIn(id, c){ for(let i=0;i<c.length;i++){ if(c[i]===id) return i; if(Array.isArray(c[i])&&c[i].includes(id)) return i; } return -1; }
 function nextFormsIn(id, c){ const p=chainPosIn(id,c); if(p<0||p>=c.length-1) return null; const nx=c[p+1]; return Array.isArray(nx)?nx.slice():[nx]; }
 
-/* ---------- 基础形态判断：用于收服宝可梦抽取时优先给出未进化的宝可梦 ----------
+/* ---------- 基础形态判断：用于收服宝可梦时优先给出未进化的宝可梦 ----------
    基础形态 = 每条进化链的第一个编号 + 不在任何进化链里的独立宝可梦。
    例如：蛋蛋(#102)是基础形态，椰蛋树(#103)不是。 */
 const BASE_FORMS = (function(){
@@ -1468,7 +1521,7 @@ function achDefsForGen(gen){
   if (gen === "gen1") return achievementDefsGen1();
   const byGen = TYPES_BY_GEN[gen] || {};
   const defs = [
-    {key: gen+"_first",   icon:"🌟", name:"初次邂逅",   desc:"抽到本世代第一只宝可梦", reward:1},
+    {key: gen+"_first",   icon:"🌟", name:"初次邂逅",   desc:"收服本世代第一只宝可梦", reward:1},
     {key: gen+"_starters",icon: startersIconFor(gen), name:"御三家", desc:"集齐本世代御三家（草/火/水）", reward:3},
     {key: gen+"_streak7", icon:"🔥", name:"坚持不懈",   desc:"连续 7 天完成全部学习任务", reward:2},
     {key: gen+"_mid",     icon:"🥈", name:"中级训练家", desc:"集齐本世代一半的宝可梦", reward:2},
@@ -1485,7 +1538,7 @@ function achDefsForGen(gen){
 function allAchDefs(){ let a=[]; for (const g of ACH_BOOK_ORDER) a = a.concat(achDefsForGen(g)); return a; }
 function nextBookKey(){ const idx = BOOK_ORDER.indexOf(state.activeBook); return BOOK_ORDER[idx+1] || null; }
 /* 某世代的“基础形态”集合：不属于本世代任何进化链“进化位”的编号。
-   有进化链时按链计算；未录入 EVO_CHAINS 的世代（如 gen2 暂未补链）则全部视为可抽基础形态，
+   有进化链时按链计算；未录入 EVO_CHAINS 的世代（如 gen2 暂未补链）则全部视为可收服基础形态，
    保证该世代始终可被集齐。 */
 function baseFormsForBook(gen){
   const b = BOOKS[gen]; const set = new Set();
@@ -2448,7 +2501,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.40.49";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.41.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2463,7 +2516,7 @@ function defaultState(){
     daily: { date: todayStr(), done: { pinyin:false, math:false, english:false, hanzi:false, poem:false, writing:false }, celebrated:false },
     razStreak: 0, razLastDate: "", writingStreak: 0, writingLastDate: "", lastVisit: "", congratulated151: false,
     /* ---- 新增字段 ---- */
-    copyCount: {},          // 各基础编号抽中次数（用于进化）
+    copyCount: {},          // 各基础编号收服次数（用于进化）
     evoStage: {},           // 各基础编号当前进化阶段（0=基础）
     evoForm: {},            // 分支进化（伊布）已选定形态编号
     achievements: {},       // 已解锁成就 key -> true
@@ -2950,7 +3003,7 @@ function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){ const j=
 function pick(arr, n){ return shuffle(arr).slice(0, n); }
 function rnd(min, max){ return Math.floor(Math.random()*(max-min+1)) + min; }
 
-/* 星光粒子（完成任务 / 抽取宝可梦时触发） */
+/* 星光粒子（完成任务 / 收服宝可梦时触发） */
 function starBurst(cx, cy, n = 18){
   const colors = ["#FFD54F","#FFB74D","#FFF176","#FFE0B2","#FFFFFF","#FFB3C6","#B4D8FF"];
   for (let i=0;i<n;i++){
@@ -3145,18 +3198,63 @@ function pinyinHome(){
     <div style="margin-top:20px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
       <button class="big-btn ${done?'gray':''}" id="pyStart" ${done?'disabled':''}>${done?"✔ 今日任务已完成":"🔤 开始拼音乐园（10 题）"}</button>
     </div>
-    <div style="font-size:19px;color:#b09a8a;margin-top:8px">10 道题会随机 mix「👂 听音辨音」和「📝 看字选拼音」哦</div>`);
+    <div style="font-size:19px;color:#b09a8a;margin-top:8px">10 道题随机 mix：👂 听音辨音 ・ 📝 看字选拼音 ・ 🔡 拼一拼（两拼/三拼）・ 🎵 四声辨析</div>`);
   const cats = { sm:SHENGMU, ym:YUNMU, zt:ZHENGTI };
   function renderGrid(cat){ const grid=$("#pyGrid"); grid.innerHTML=""; cats[cat].forEach(([py,chr])=>{ const c=document.createElement("button"); c.className="py-cell"; c.innerHTML=`${py}<small>像「${chr}」</small>`; c.addEventListener("click",()=>{ sfx.click(); speak(chr,0.7); }); grid.appendChild(c); }); }
   renderGrid("sm");
   document.querySelectorAll(".py-tab").forEach(t=>t.addEventListener("click",()=>{ sfx.click(); document.querySelectorAll(".py-tab").forEach(x=>x.classList.remove("active")); t.classList.add("active"); renderGrid(t.dataset.cat); }));
   if (!done) $("#pyStart").addEventListener("click", ()=>{ sfx.click(); pinyinStart(); });
 }
-/* 拼音乐园：10 题随机混合「听音辨拼音」与「看字选拼音」，保证两种都出现 */
+/* ===== 拼读三种新题型（v3.41）=====
+   共同点：speakText 一律用「示范汉字」而非拼音串——TTS 读汉字最准（拼音音素方案此前已验证不可靠）。 */
+/* 取「同韵母不同声母」的音节作为干扰项（bā / pā / mā / fā），辨析度最高 */
+function syllablesWithYunmu(ym, excludeSm){
+  const out = [];
+  Object.keys(SYLLABLES).forEach(s=>{
+    if (s === excludeSm) return;
+    (SYLLABLES[s]||[]).forEach(p=>{ if (p[0] === ym) out.push(s + p[0]); });
+  });
+  return out;
+}
+/* 题型①：拼一拼（两拼音节）—— 给出声母与韵母，听示范字的音，选出拼出来的音节 */
+function makeSpellQ(i){
+  const sms = Object.keys(SYLLABLES);
+  const sm = pick(sms,1)[0];
+  const [ym, chr] = pick(SYLLABLES[sm],1)[0];
+  const ans = sm + ym;
+  const wrongs = [];
+  shuffle(syllablesWithYunmu(ym, sm)).forEach(w=>{ if (wrongs.length<3 && w!==ans) wrongs.push(w); });
+  if (wrongs.length<3){ shuffle(SYLLABLES[sm]).forEach(p=>{ if (wrongs.length<3 && p[0]!==ym) wrongs.push(sm+p[0]); }); }
+  if (wrongs.length<3){ let g=0; while(wrongs.length<3 && g++<300){ const s2=pick(sms,1)[0]; const p2=pick(SYLLABLES[s2],1)[0]; const w=s2+p2[0]; if (w!==ans && !wrongs.includes(w)) wrongs.push(w); } }
+  return { id:"ps"+i, prompt:`${sm}  —  ${ym}  ➜  ?`, promptClass:"small", sub:"拼一拼，选出正确的音节",
+    speakText:chr, speakOnShow:true, options:shuffle([ans,...wrongs]), answer:ans };
+}
+/* 题型②：三拼音节 —— 声母 + 介母 + 韵母，如 g—u—ā ➜ guā */
+function makeTriQ(i){
+  const [sm, med, ym, syl, chr] = pick(TRI_SYLLABLES,1)[0];
+  const wrongs = [];
+  shuffle(TRI_SYLLABLES).forEach(t=>{ if (wrongs.length<3 && t[1]===med && t[2]===ym && t[3]!==syl) wrongs.push(t[3]); });
+  if (wrongs.length<3){ shuffle(TRI_SYLLABLES).forEach(t=>{ if (wrongs.length<3 && t[0]===sm && t[1]===med && t[3]!==syl) wrongs.push(t[3]); }); }
+  if (wrongs.length<3){ let g=0; while(wrongs.length<3 && g++<300){ const t=pick(TRI_SYLLABLES,1)[0]; if (t[3]!==syl && !wrongs.includes(t[3])) wrongs.push(t[3]); } }
+  return { id:"pt"+i, prompt:`${sm}  —  ${med}  —  ${ym}  ➜  ?`, promptClass:"small", sub:"三拼音节，拼一拼",
+    speakText:chr, speakOnShow:true, options:shuffle([syl,...wrongs]), answer:syl };
+}
+/* 题型③：四声辨析 —— 同一音节四个声调，听音选调（选项固定按一声到四声排列，便于孩子找规律） */
+function makeToneQ(i){
+  const quad = pick(TONE_QUADS,1)[0];
+  const [syl, chr] = pick(quad,1)[0];
+  return { id:"pd"+i, prompt:chr, sub:"听一听，这个字是第几声？", speakText:chr, speakOnShow:true,
+    options:quad.map(q=>q[0]), answer:syl };
+}
+
+/* 拼音乐园：10 题混合 5 种题型（单音听辨 / 看字选拼音 / 两拼 / 三拼 / 四声） */
 function pinyinStart(){
-  const nListen = rnd(4,6);                                  // 听音题 4~6 道，其余为看字题
-  const order = shuffle([...Array(10)].map((_,i)=> i < nListen ? "listen" : "hanzi"));
+  /* 一年级重点在拼读：拼读类占 6 成（两拼 3 + 三拼 2 + 四声 1），保留原单音听辨 2 与看字选拼音 2 */
+  const order = shuffle(["listen","listen","hanzi","hanzi","spell","spell","spell","tri","tri","tone"]);
   const questions = order.map((type,i)=>{
+    if (type === "spell")  return makeSpellQ(i);
+    if (type === "tri")    return makeTriQ(i);
+    if (type === "tone")   return makeToneQ(i);
     if (type === "listen"){
       const p = pick(ALL_PINYIN,1)[0];                       // [py, chr]
       const wrongs = pick(ALL_PINYIN.filter(x=>x[0]!==p[0]),3).map(x=>x[0]);
@@ -3206,7 +3304,7 @@ function openSettings(sub){
       <div style="font-size:20px;color:#9b8676;margin:6px 0 12px">点开下面的模块，分别设置难度</div>
       ${accountBlockHTML()}
       <div class="set-modules">
-        <button class="big-btn set-mod" data-m="math">🔢 数学闯关<small>加减乘除 · 6 档难度</small></button>
+        <button class="big-btn set-mod" data-m="math">🔢 数学闯关<small>一年级专项 + 加减乘除 7 档</small></button>
         <button class="big-btn set-mod" data-m="hanzi">✍️ 识字达人<small>6 级字库分级</small></button>
         <button class="big-btn set-mod" data-m="poem">📜 古诗小舟<small>12 学期分级</small></button>
       </div>
@@ -3299,10 +3397,11 @@ function bindSettingsTest(){
 }
 function renderMathSettings(){
   const cur = state.mathDiff||"10";
-  const names = {10:"10 以内加减法",20:"20 以内加减法",50:"50 以内加减法",100:"100 以内加减法",mul:"99 乘法口诀",div:"表内除法"};
+  const names = {10:"10 以内加减法",20:"20 以内加减法",50:"50 以内加减法",100:"100 以内加减法",mul:"99 乘法口诀",div:"表内除法",g1:"一年级专项"};
   openDialog(`<h2 style="color:#F58A1F">🔢 数学闯关 · 难度</h2>
     <button class="big-btn yellow" id="setBack" style="min-width:120px;margin-bottom:8px">← 返回</button>
     <div class="py-tabs" style="flex-direction:column;align-items:stretch;gap:14px">
+      <button class="big-btn set-diff ${cur==="g1"?"active":""}" data-d="g1">🎒 一年级专项<small>进位加 ・ 退位减 ・ 凑十法 ・ 比多少</small></button>
       <button class="big-btn set-diff ${cur==="10"?"active":""}" data-d="10">➕➖ 10 以内加减法</button>
       <button class="big-btn set-diff ${cur==="20"?"active":""}" data-d="20">➕➖ 20 以内加减法</button>
       <button class="big-btn set-diff ${cur==="50"?"active":""}" data-d="50">➕➖ 50 以内加减法</button>
@@ -3345,8 +3444,49 @@ function applyTestMode(){
   const bar = document.getElementById("testBar");
   if (bar) bar.style.display = state.testMode ? "flex" : "none";
 }
+/* 一年级专项（v3.41）：按部编一年级上/下的核心知识点出题，而非单纯放大数值范围。
+   覆盖：10 以内数的分解与组成、20 以内进位加、20 以内退位减、凑十法、比多少。 */
+function mathQuizG1(){
+  const questions = [];
+  const opts = (ans, lo, hi)=>{                 // 4 个选项：正确答案 + 3 个相近干扰项（避免一眼看出）
+    const s = new Set(); let g = 0;
+    while (s.size < 3 && g++ < 300){ const w = ans + rnd(-4,4); if (w !== ans && w >= lo && w <= hi) s.add(w); }
+    return shuffle([ans, ...s]);
+  };
+  // ① 10 以内数的分解与组成（2 题）：（  ）和 4 组成 9
+  for (let k=0;k<2;k++){
+    const total = rnd(6,10), part = rnd(1,total-1), ans = total - part;
+    questions.push({ id:"g1a"+k, prompt:`（  ）和 ${part} 组成 ${total}`, sub:"数的组成", options:opts(ans,0,10), answer:ans });
+  }
+  // ② 20 以内进位加法（3 题）：个位相加满十，如 9 + 6（和恒在 11~18，必有进位）
+  for (let k=0;k<3;k++){
+    const a = rnd(5,9), b = rnd(11-a,9), ans = a + b;
+    questions.push({ id:"g1b"+k, prompt:`${a} + ${b} = ?`, sub:"进位加法", options:opts(ans,10,20), answer:ans });
+  }
+  // ③ 20 以内退位减法（3 题）：个位不够减，如 13 − 8（被减数个位恒小于减数，必退位）
+  for (let k=0;k<3;k++){
+    const a = rnd(11,18), ones = a % 10, b = rnd(ones+1,9), ans = a - b;
+    questions.push({ id:"g1c"+k, prompt:`${a} − ${b} = ?`, sub:"退位减法", options:opts(ans,1,10), answer:ans });
+  }
+  // ④ 凑十法（1 题）：9 + 5 = 10 + （  ），答案是从 5 里分出 1 之后剩下的 4
+  {
+    const a = 9, b = rnd(3,8), ans = b - 1;
+    questions.push({ id:"g1d", prompt:`${a} + ${b} = 10 + （  ）`, sub:"凑十法：先凑成 10，再加剩下的", options:opts(ans,1,8), answer:ans });
+  }
+  // ⑤ 比多少（1 题）
+  {
+    const a = rnd(11,19), b = rnd(2,9), ans = a - b;
+    questions.push({ id:"g1e", prompt:`小明有 ${a} 颗糖，小红有 ${b} 颗，小明比小红多几颗？`, promptClass:"small", sub:"比多少", options:opts(ans,1,15), answer:ans });
+  }
+  shuffle(questions);                          // 打乱知识点顺序，避免同类型连排
+  runQuiz({ title:"🔢 数学 · 一年级专项", color:"#F58A1F", questions, moduleKey:"math",
+    onFinish(acc){ openDialog(`<h2 style="color:#F58A1F">🎉 数学闯关成功！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">${acc>=80?"🏆":"💪"}</div><div style="font-size:26px;margin:10px 0">${acc>=80?"简直是数学小天才！":"继续加油，明天会更棒！"}奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('math')">收下精灵球 ⚡</button>`, {closable:false}); }
+  });
+}
+
 /* 按难度生成 10 道数学题 */
 function mathQuiz(diff){
+  if (diff === "g1") return mathQuizG1();       // 一年级专项走独立出题器
   const names={10:"10 以内",20:"20 以内",50:"50 以内",100:"100 以内",mul:"99 乘法",div:"表内除法"};
   const cap={10:10,20:20,50:50,100:100}[diff] || 0;
   const questions=[]; const used=new Set();
@@ -3454,7 +3594,7 @@ function buildHanziQ(type, bank, lv, i){
   if (type==="emoji"){
     const em = emojiFor(c);
     const wrongs = randomDistractors(c, bank, 3);
-    return { id:"h"+i, prompt:(em? em+" ":"") + "这个字是？", sub:`（${word}）`, speakText:`${c}，${word}`, speakOnShow:true, options:shuffle([c,...wrongs]), answer:c };
+    return { id:"h"+i, prompt:(em? em+" ":"") + "这个字是？", speakText:`${c}，${word}`, speakOnShow:true, options:shuffle([c,...wrongs]), answer:c };
   }
   if (type==="pinyin"){
     const wrongs = confuseDistractors(c,3,bank);
@@ -3564,7 +3704,7 @@ window.__closeAndReward = function(key){
 /* ==================== 6. 进化系统 ==================== */
 /* 显示用：现在每种形态都是独立图鉴条目，直接返回自身编号即可 */
 function displayId(id){ return id; }
-/* 尝试进化：累计“该形态自身”被抽到的次数达标则进阶，返回 {from,to} 或 null。
+/* 尝试进化：累计“该形态自身”被收服的次数达标则进阶，返回 {from,to} 或 null。
    进化时把下一形态加入图鉴（保持常亮，符合“捕捉过就一直点亮”的设定）。
    多链聚合：同一基础形态可能在多条链中出现（如 Wurmple 拆成两条共享 base 的链），
    这里遍历所有包含该 id 的链，向“当前尚未拥有”的下一形态进化，确保多级分支都能触发。 */
@@ -3814,25 +3954,25 @@ function openPokeDetail(id){
   $("#pokeClose").addEventListener("click", ()=>{ sfx.click(); closeDialog(); });
 }
 
-/* 抽取逻辑：优先未收集（未进化过的）宝可梦；保底模式 guaranteedUncollected 强制未收集 */
-/* ---------- 收服宝可梦抽取：优先基础形态（未进化），再从未收集里抽，最后兜底 ----------
-   抽取策略（普通球）：
-   ① 65% 概率从"未收集"池中抽 → 其中 85% 优先基础形态
-   ② 剩余 35% 从全部 151 只里抽 → 其中 80% 优先基础形态
+/* 收服逻辑：优先未收集（未进化过的）宝可梦；保底模式 guaranteedUncollected 强制未收集 */
+/* ---------- 收服宝可梦：优先基础形态（未进化），再从未收集里收服，最后兜底 ----------
+   收服策略（普通球）：
+   ① 65% 概率从"未收集"池中收服 → 其中 85% 优先基础形态
+   ② 剩余 35% 从全部 151 只里收服 → 其中 80% 优先基础形态
    效果：早期几乎只出基础形态，进化形态只在收集后期或运气差时才出现 */
 /* 可收服池：①基础形态（含无进化链的独立宝可梦）；②已通过进化获得过的形态。
-   进化前的形态不会被直接抽到，必须先抽到基础形态并进化解锁。 */
+   进化前的形态不会被直接收服，必须先收服基础形态并进化解锁。 */
 function drawableIds(){
   const [lo, hi] = activeRange();
   const bases = baseFormsForBook(state.activeBook);
   const res = [];
   for (let i=lo;i<=hi;i++){
     if (bases.has(i)) res.push(i);
-    else if (state.dex.includes(i)) res.push(i); // 只有已进化获得的形态才能再次抽到
+    else if (state.dex.includes(i)) res.push(i); // 只有已进化获得的形态才能再次收服
   }
   // 分支进化（基础形态出现在多条进化链中）：一旦基础形态已收集，就把各分支链里「基础之后的形态」
-  // 一并加入可抽/可遭遇池。否则其中某一支（如 #936 苍炎刃鬼、#937 红莲凯骑、#292 脱壳忍者、
-  // 刺尾虫→甲壳茧/盾甲茧、溜溜糖球→药师鼬/拖拖蚓 等）永远无法被抽到或冒险遭遇，导致图鉴卡死。
+  // 一并加入可收服/可遭遇池。否则其中某一支（如 #936 苍炎刃鬼、#937 红莲凯骑、#292 脱壳忍者、
+  // 刺尾虫→甲壳茧/盾甲茧、溜溜糖球→药师鼬/拖拖蚓 等）永远无法被收服或冒险遭遇，导致图鉴卡死。
   // 兼容两种写法：伊布式 c[1] 为数组 [134,135,136]；以及炭小侍式「多条链共享同一基础」[935,936]/[935,937]。
   const evoAll = EVO_CHAINS; // 已在 line 1386 把 EXTRA 并入，直接用权威数组（避免 concat 导致重复）
   const baseCnt = {};
@@ -3893,7 +4033,7 @@ function drawPokemon({ guaranteedUncollected = false } = {}){
       // 优先给「还需重复来进化」的副本（不算纯浪费），没有再退回全池随机
       const evoNeeded = pool.filter(id=>state.dex.includes(id) && needsMoreCopies(id));
       if (evoNeeded.length > 0) pool = evoNeeded;
-      // else pool 保持 drawableIds() 全池，极小概率（所有形态都不需进化时）会抽到纯重复
+      // else pool 保持 drawableIds() 全池，极小概率（所有形态都不需进化时）会收服纯重复
     }
   }
   if (pool.length === 0) return null;   // 真正集齐（图鉴 151/151）才让上层弹"已集齐"弹窗去开书架
@@ -3910,12 +4050,12 @@ function drawPokemon({ guaranteedUncollected = false } = {}){
       ? uncollected[rnd(0, uncollected.length-1)]
       : evoNeeded[rnd(0, evoNeeded.length-1)];
   }
-  return pool[rnd(0, pool.length-1)];   // 其余情况（含约10%概率）才可能抽到纯重复
+  return pool[rnd(0, pool.length-1)];   // 其余情况（含约10%概率）才可能收服纯重复
 }
 /* 收服宝可梦：ballType = normal|master|super */
 function openGacha(ballType){
   sfx.click();
-  if (isBookComplete(state.activeBook)){   // 当前图鉴已集齐：引导去书架开启新地区，不再抽出重复
+  if (isBookComplete(state.activeBook)){   // 当前图鉴已集齐：引导去书架开启新地区，不再收服重复
     const b = BOOKS[state.activeBook];
     openDialog(`<h2 style="color:var(--poke-blue)">🎉 已经集齐《${b.title}》全部 ${bookCapacity(state.activeBook)} 只宝可梦啦！</h2>
       <div style="font-size:64px;margin:10px 0">👑</div>
@@ -3940,7 +4080,7 @@ function openGacha(ballType){
   }
   beginDraw(ballType);
 }
-/* 真正开始抽卡动画（普通/大师/超级球共用） */
+/* 真正开始收服动画（普通/大师/超级球共用） */
 function beginDraw(ballType){
   openDialog(`<h2 style="color:var(--poke-red)">收服宝可梦！</h2><div id="gachaStage"><div class="gacha-ball shaking" id="gBall"><span class="gb-top"></span><span class="gb-bot"></span><span class="gb-core"></span></div>
     <div style="font-size:26px;color:#8a6d5c">${ballType==="master"?"🟣 紫色大师球光芒闪烁……":"精灵球在摇晃……里面是谁呢？"}</div></div>`, {closable:false});
@@ -3973,7 +4113,7 @@ function revealGacha(id, isNew, ballType){
   let evolved = null;
   if (isNew){ state.dex.push(id); state.copyCount[id]=1; state.evoStage[id]=0; }
   else { state.copyCount[id]=(state.copyCount[id]||0)+1; evolved = tryEvolve(id); }
-  // 有用但本次未进化的重复（仅推进进化进度，例如 Wartortle 还差副本凑够 3 只）：仍算有效抽卡
+  // 有用但本次未进化的重复（仅推进进化进度，例如 Wartortle 还差副本凑够 3 只）：仍算有效收服
   const usefulDup = !isNew && !evolved && needsMoreCopies(id);
   // 消耗球：普通球在「新收服 / 促成进化 / 推进进化进度」时扣 1；纯浪费重复（不新、不进化、无进度）不消耗也不加
   if (ballType==="normal"){ if (isNew || evolved || usefulDup) state.balls--; }
@@ -4014,11 +4154,11 @@ function revealGacha(id, isNew, ballType){
       $("#gOk2").onclick = ()=>{ sfx.click(); closeDialog(); afterGacha(); };
     });
   } else if (usefulDup){
-    // 对进化有促进的有效抽卡：copyCount 已 +1，进度推进但未凑够阈值，本次未触发进化
+    // 对进化有促进的有效收服：copyCount 已 +1，进度推进但未凑够阈值，本次未触发进化
     sfx.reward(); starBurst(window.innerWidth/2, window.innerHeight/2, 14);
     const info = evoProgressInfo(id);
     const prog = "进化进度 +1";
-    const tip = info ? `再抽到 <b style="color:var(--poke-red)">${info.remain}</b> 只就能进化成<br><b style="color:var(--poke-blue)">${info.nextName}</b> 啦！` : "继续收集就能进化！";
+    const tip = info ? `再收服 <b style="color:var(--poke-red)">${info.remain}</b> 只就能进化成<br><b style="color:var(--poke-blue)">${info.nextName}</b> 啦！` : "继续收集就能进化！";
     openDialog(`<div id="gachaResult"><div class="new-tag" style="background:var(--poke-yellow);color:#5a3e1b">🎯 进化进度 +1！</div>
       <div class="poke-detail">
         <div class="pd-left">
@@ -4032,7 +4172,7 @@ function revealGacha(id, isNew, ballType){
       </div>
       <button class="big-btn" id="gOk">加油！💪</button>
       ${canAgain?'<button class="big-btn yellow" id="gAgain">再收服一只！（'+remText+'）</button>':''}</div>`, {closable:false});
-    speak(`抽到${POKEMON[displayId(id)-1]}！进化进度提升，${info?('再抽到'+info.remain+'只就能进化成'+info.nextName+'啦'):'继续收集就能进化'}！`);
+    speak(`收服${POKEMON[displayId(id)-1]}！进化进度提升，${info?('再收服'+info.remain+'只就能进化成'+info.nextName+'啦'):'继续收集就能进化'}！`);
     $("#gOk").onclick = ()=>{ sfx.click(); closeDialog(); afterGacha(); };
     if ($("#gAgain")) $("#gAgain").onclick = ()=>{ sfx.click(); closeDialog(); renderDex(); beginDraw(ballType); };
   } else {
@@ -4159,7 +4299,7 @@ function play8bitMelody(){ const notes=[523,659,784,659,523,659,784,1047,880,784
 
 /* ==================== 8. 学习对战模式 ==================== */
 /* 随机出一道学习题（拼音/数学/识字） */
-function makePinyinQ(){ const [py,chr]=pick(ALL_PINYIN,1)[0]; const wrongs=pick(ALL_PINYIN.filter(p=>p[0]!==py),3).map(p=>p[0]); return { prompt:"👂 听一听，是哪个拼音？", promptClass:"small", speakText:chr, options:shuffle([py,...wrongs]), answer:py }; }
+function makePinyinQ(){ const [py,chr]=pick(ALL_PINYIN,1)[0]; const wrongs=pick(ALL_PINYIN.filter(p=>p[0]!==py),3).map(p=>p[0]); return { prompt:"👂 听一听，是哪个拼音？", promptClass:"small", speakText:chr, speakOnShow:true, options:shuffle([py,...wrongs]), answer:py }; }
 function makeMathQ(){ let a,b,op,ans; if(Math.random()<0.5){a=rnd(1,19);b=rnd(1,20-a);op="+";ans=a+b;} else {a=rnd(2,20);b=rnd(1,a-1);op="−";ans=a-b;} const w=new Set(); while(w.size<3){let x=ans+rnd(-4,4); if(x!==ans&&x>=0&&x<=20)w.add(x);} return { prompt:`${a} ${op} ${b} = ?`, options:shuffle([ans,...w]), answer:ans }; }
 function makeHanziQ(){ const [zi,py,word]=pick(HANZI,1)[0]; if(Math.random()<0.5){ const w=pick(HANZI.filter(h=>h[1]!==py),3).map(h=>h[1]); return { prompt:zi, sub:`组词：${word}｜它的拼音是哪个？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([py,...w]), answer:py }; } const w=pick(HANZI.filter(h=>h[0]!==zi),3).map(h=>h[0]); return { prompt:py, promptClass:"small", sub:`提示组词：${word}｜是哪个汉字？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...w]), answer:zi }; }
 /* 冒险可出的模块 + 出题函数；并按学习报告正确率计算薄弱模块（正确率最低者优先） */
@@ -4191,7 +4331,7 @@ function randomQuestion(preferWeak = true){
   return q;
 }
 
-/* 冒险对手抽取：优先未收集宝可梦补全图鉴；也允许已拥有但仍需副本进化的宝可梦，
+/* 冒险对手生成：优先未收集宝可梦补全图鉴；也允许已拥有但仍需副本进化的宝可梦，
    这样“战胜对面并获得它”才能推进其进化进度（如小锯鳄 1/2 再战一次得第 2 只即进化） */
 function pickWild(){
   const pool = drawableIds();
@@ -4214,6 +4354,7 @@ function startAdventure(){
   openDialog(html);
   document.querySelectorAll("#advPick .py-cell").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); beginBattle(+b.dataset.id); }));
 }
+let advToken = 0;   // 去冒险作答令牌：重开/切换题目时递增，旧朗读定时器据此作废，避免多题朗读互相打断（对齐 runQuiz 的 quizToken 守卫）
 function beginBattle(myId){
   let wildId = pickWild();   // 对手：含已拥有但仍需副本进化的宝可梦，使“战胜对面获得它”能推进其进化
   let myHP=3, wildHP=3, endured=false, committed=false; const myName = POKEMON[displayId(myId)-1];
@@ -4234,12 +4375,13 @@ function beginBattle(myId){
   }
   function askQ(){ busyStudying = true;
     const q = randomQuestion();
+    const myAdv = ++advToken;   // 本題令牌；后续场景切换会让旧题朗读定时器作废，避免多题朗读互相打断（对齐 runQuiz 的 quizToken 守卫）
     openDialog(`<h2 style="color:var(--poke-red)">⚔️ 答对才能攻击！</h2>
       <div class="quiz-question ${q.promptClass||''}">${q.prompt}</div>
       ${q.sub?`<div class="quiz-sub">${q.sub}</div>`:""}
       ${q.speakText?`<button class="big-btn blue" id="bSpeak">🔊 听一听</button>`:""}
       <div class="opt-grid" id="bOpt"></div><div class="feedback-line" id="bFb"></div>`, {closable:false});
-    if (q.speakText){ $("#bSpeak").addEventListener("click",()=>{ sfx.click(); speak(q.speakText, undefined, q.speakFallback); }); setTimeout(()=>speak(q.speakText, undefined, q.speakFallback),300); }
+    if (q.speakText){ $("#bSpeak").addEventListener("click",()=>{ sfx.click(); if (myAdv===advToken) speak(q.speakText, undefined, q.speakFallback); }); if (q.speakOnShow !== false) setTimeout(()=>{ if (myAdv===advToken) speak(q.speakText, undefined, q.speakFallback); },350); }
     const grid=$("#bOpt");
     q.options.forEach(opt=>{ const b=document.createElement("button"); b.className="opt-btn"; b.textContent=opt; b.addEventListener("click",()=>{ const fb=$("#bFb");
       if (q.module) recordAccuracy(q.module, opt===q.answer?1:0, 1);   // 冒险答题回写正确率，闭环薄弱点统计
@@ -4592,7 +4734,7 @@ function achievementDefsGen1(){
   // 御三家组合图标：妙蛙种子(1) + 小火龙(4) + 杰尼龟(7) 三个初始御三家精灵并排
   const startersIcon = [1,4,7].map(id=>`<img src="${spriteUrl(id)}" style="width:38px;height:38px;image-rendering:auto;object-fit:contain">`).join("");
   const defs=[
-    {key:"first", icon:"🌟", name:"初次邂逅", desc:"抽到第一只宝可梦", reward:1},
+    {key:"first", icon:"🌟", name:"初次邂逅", desc:"收服第一只宝可梦", reward:1},
     {key:"partner", icon: spriteUrl(25), name:"最初的伙伴", desc:"获得皮卡丘", reward:2},
     {key:"starters", icon: startersIcon, name:"御三家", desc:"集齐妙蛙种子・小火龙・杰尼龟", reward:3},
     {key:"streak7", icon:"🔥", name:"坚持不懈", desc:"连续 7 天完成全部学习任务", reward:2},
@@ -4812,7 +4954,7 @@ $("#masterBtn").addEventListener("click", ()=>{
 $("#superBtn").addEventListener("click", ()=>{
   sfx.click();
   if (state.superBalls<=0){ ballInfoToast("super"); return; }      // 灰色：自动消失提示获取方法
-  openGacha("super");                                              // 有球：直接收服宝可梦（必定抽到未收集）
+  openGacha("super");                                              // 有球：直接收服宝可梦（必定收服未收集）
 });
 $("#adventureBtn").addEventListener("click", (e)=>{ e.stopPropagation(); sfx.click();
   // 防御：若页面上已有残留弹窗（如旧版/页面恢复遗留在屏上的图鉴卡），先关掉，避免首击被其截获导致“点去冒险却打开图鉴卡、需双击才进入”
