@@ -2536,7 +2536,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.42.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.42.1";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -4425,7 +4425,8 @@ function play8bitMelody(){ const notes=[523,659,784,659,523,659,784,1047,880,784
 /* ==================== 8. 学习对战模式 ==================== */
 /* 随机出一道学习题（拼音/数学/识字） */
 function makePinyinQ(){ const [py,chr]=pick(ALL_PINYIN,1)[0]; const wrongs=pick(ALL_PINYIN.filter(p=>p[0]!==py),3).map(p=>p[0]); return { prompt:"👂 听一听，是哪个拼音？", promptClass:"small", speakText:chr, speakOnShow:true, options:shuffle([py,...wrongs]), answer:py }; }
-function makeMathQ(){ let a,b,op,ans; if(Math.random()<0.5){a=rnd(1,19);b=rnd(1,20-a);op="+";ans=a+b;} else {a=rnd(2,20);b=rnd(1,a-1);op="−";ans=a-b;} const w=new Set(); while(w.size<3){let x=ans+rnd(-4,4); if(x!==ans&&x>=0&&x<=20)w.add(x);} return { prompt:`${a} ${op} ${b} = ?`, options:shuffle([ans,...w]), answer:ans }; }
+/* 冒险数学题：答案为数字，与数学闯关保持一致，改用数字键盘输入（answerMode:"input" 时不给选项） */
+function makeMathQ(){ let a,b,op,ans; if(Math.random()<0.5){a=rnd(1,19);b=rnd(1,20-a);op="+";ans=a+b;} else {a=rnd(2,20);b=rnd(1,a-1);op="−";ans=a-b;} return { prompt:`${a} ${op} ${b} = ?`, answerMode:"input", answer:ans }; }
 function makeHanziQ(){ const [zi,py,word]=pick(HANZI,1)[0]; if(Math.random()<0.5){ const w=pick(HANZI.filter(h=>h[1]!==py),3).map(h=>h[1]); return { prompt:zi, sub:`组词：${word}｜它的拼音是哪个？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([py,...w]), answer:py }; } const w=pick(HANZI.filter(h=>h[0]!==zi),3).map(h=>h[0]); return { prompt:py, promptClass:"small", sub:`提示组词：${word}｜是哪个汉字？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...w]), answer:zi }; }
 /* 冒险可出的模块 + 出题函数；并按学习报告正确率计算薄弱模块（正确率最低者优先） */
 function adventurePoolWithRate(){
@@ -4480,6 +4481,7 @@ function startAdventure(){
   document.querySelectorAll("#advPick .py-cell").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); beginBattle(+b.dataset.id); }));
 }
 let advToken = 0;   // 去冒险作答令牌：重开/切换题目时递增，旧朗读定时器据此作废，避免多题朗读互相打断（对齐 runQuiz 的 quizToken 守卫）
+const ADV_REVEAL_MS = 900;   // 判定后先停顿，让小朋友看清对错（答错时能看到正确答案），再播战斗动画
 function beginBattle(myId){
   let wildId = pickWild();   // 对手：含已拥有但仍需副本进化的宝可梦，使“战胜对面获得它”能推进其进化
   let myHP=3, wildHP=3, endured=false, committed=false; const myName = POKEMON[displayId(myId)-1];
@@ -4501,35 +4503,69 @@ function beginBattle(myId){
   function askQ(){ busyStudying = true;
     const q = randomQuestion();
     const myAdv = ++advToken;   // 本題令牌；后续场景切换会让旧题朗读定时器作废，避免多题朗读互相打断（对齐 runQuiz 的 quizToken 守卫）
+    /* answerMode:"input" → 答案为数字（数学），用数字键盘输入；拼音/识字仍走 ABCD 选项。
+       输入模式沿用数学闯关的双列布局（左题目+显示框 / 右键盘），省竖向空间。 */
+    const isInput = q.answerMode === "input";
     openDialog(`<h2 style="color:var(--poke-red)">⚔️ 答对才能攻击！</h2>
-      <div class="quiz-question ${q.promptClass||''}">${q.prompt}</div>
-      ${q.sub?`<div class="quiz-sub">${q.sub}</div>`:""}
+      ${isInput
+        ? `<div class="num-row">
+             <div class="num-left">
+               <div class="quiz-question ${q.promptClass||''}">${q.prompt}</div>
+               ${q.sub?`<div class="quiz-sub">${q.sub}</div>`:""}
+               <div class="num-display empty" id="bNum">？</div>
+             </div>
+             <div class="num-pad" id="bPad">${NUMPAD_KEYS}</div>
+           </div>`
+        : `<div class="quiz-question ${q.promptClass||''}">${q.prompt}</div>
+           ${q.sub?`<div class="quiz-sub">${q.sub}</div>`:""}
+           <div class="opt-grid" id="bOpt"></div>`}
       ${q.speakText?`<button class="big-btn blue" id="bSpeak">🔊 听一听</button>`:""}
-      <div class="opt-grid" id="bOpt"></div><div class="feedback-line" id="bFb"></div>`, {closable:false});
+      <div class="feedback-line" id="bFb"></div>`, {closable:false});
     if (q.speakText){ $("#bSpeak").addEventListener("click",()=>{ sfx.click(); if (myAdv===advToken) speak(q.speakText, undefined, q.speakFallback); }); if (q.speakOnShow !== false) setTimeout(()=>{ if (myAdv===advToken) speak(q.speakText, undefined, q.speakFallback); },350); }
-    const grid=$("#bOpt");
-    q.options.forEach(opt=>{ const b=document.createElement("button"); b.className="opt-btn"; b.textContent=opt; b.addEventListener("click",()=>{ const fb=$("#bFb");
-      if (q.module) recordAccuracy(q.module, opt===q.answer?1:0, 1);   // 冒险答题回写正确率，闭环薄弱点统计
-      if (opt===q.answer){
-        sfx.correct(); b.classList.add("right"); fb.textContent="答对啦！攻击命中！⚔️"; fb.className="feedback-line good";
-        grid.querySelectorAll(".opt-btn").forEach(x=>x.disabled=true);
-        wildHP--; render("player");   // 答对：我方宝可梦冲撞对方宝可梦，对方扣血（含撞击动画）
-        setTimeout(()=>{ if (wildHP<=0) win(); }, 700);
+
+    /* 统一判定：optEl 为被点的选项按钮，数字键盘输入时传 null。
+       判定后立刻锁死两种作答控件，避免战斗动画播放期间重复提交。 */
+    function judge(isRight, optEl){
+      if (myAdv !== advToken) return;
+      if (q.module) recordAccuracy(q.module, isRight?1:0, 1);   // 冒险答题回写正确率，闭环薄弱点统计
+      const fb = $("#bFb");
+      document.querySelectorAll("#bOpt .opt-btn, #bPad .num-key").forEach(x=>x.disabled=true);
+      if (isRight){
+        sfx.correct();
+        if (optEl) optEl.classList.add("right");
+        else { const d=$("#bNum"); if(d){ d.classList.remove("empty"); d.classList.add("right"); } }
+        if (fb){ fb.textContent="答对啦！攻击命中！⚔️"; fb.className="feedback-line good"; }
+        wildHP--;
+        /* 先停顿展示反馈，再切战斗动画；动画结束后再判胜负 */
+        setTimeout(()=>{ if (myAdv!==advToken) return; render("player");   // 答对：我方宝可梦冲撞对方宝可梦，对方扣血（含撞击动画）
+          setTimeout(()=>{ if (myAdv===advToken && wildHP<=0) win(); }, 700); }, ADV_REVEAL_MS);
       } else {
-        sfx.wrong(); b.classList.add("wrong"); fb.textContent="答错啦，野生宝可梦反击！💥"; fb.className="feedback-line bad";
-        grid.querySelectorAll(".opt-btn").forEach(x=>x.disabled=true);
-        myHP--; render("enemy");      // 答错：对方宝可梦冲撞我方宝可梦，我方扣血（含撞击动画）
-        setTimeout(()=>{
-          if (myHP<=0){
-            if (!endured){ endured=true; myHP=1;   // 仿宝可梦"撑住"：最后一滴血时咬牙撑住，给小朋友一次机会
-              openDialog(`<h2 style="color:var(--poke-blue)">💪 ${myName} 撑住了！</h2><div style="font-size:60px">🛡️</div><div style="font-size:26px;line-height:1.6">在最后一刻，${myName} 咬牙撑住了！<br>别灰心，再试一次你一定行！</div><button class="big-btn yellow" id="endureGo">继续战斗！🔥</button>`, {closable:false});
-              $("#endureGo").addEventListener("click", ()=>{ sfx.click(); speak(`${myName}在最后一刻撑住了！别灰心，再试一次你一定行！`); askQ(); });
-            } else { lose(); }
-          }
-          // myHP>0：战斗场景已渲染（含受击动画与最新血量），等待再次点击攻击
-        }, 700);
+        sfx.wrong();
+        if (optEl){   // 选项模式：错题标红，并把正确项标绿，让孩子知道该选哪个
+          optEl.classList.add("wrong");
+          document.querySelectorAll("#bOpt .opt-btn").forEach(x=>{ if (x.textContent===String(q.answer)) x.classList.add("right"); });
+        } else { const d=$("#bNum"); if(d){ d.classList.remove("empty"); d.classList.add("wrong"); } }
+        if (fb){ fb.textContent=`答错啦，正确答案是 ${q.answer}，野生宝可梦反击！💥`; fb.className="feedback-line bad"; }
+        myHP--;
+        setTimeout(()=>{ if (myAdv!==advToken) return; render("enemy");   // 答错：对方宝可梦冲撞我方宝可梦，我方扣血（含撞击动画）
+          setTimeout(()=>{
+            if (myAdv !== advToken) return;
+            if (myHP<=0){
+              if (!endured){ endured=true; myHP=1;   // 仿宝可梦"撑住"：最后一滴血时咬牙撑住，给小朋友一次机会
+                openDialog(`<h2 style="color:var(--poke-blue)">💪 ${myName} 撑住了！</h2><div style="font-size:60px">🛡️</div><div style="font-size:26px;line-height:1.6">在最后一刻，${myName} 咬牙撑住了！<br>别灰心，再试一次你一定行！</div><button class="big-btn yellow" id="endureGo">继续战斗！🔥</button>`, {closable:false});
+                $("#endureGo").addEventListener("click", ()=>{ sfx.click(); speak(`${myName}在最后一刻撑住了！别灰心，再试一次你一定行！`); askQ(); });
+              } else { lose(); }
+            }
+            // myHP>0：战斗场景已渲染（含受击动画与最新血量），等待再次点击攻击
+          }, 700);
+        }, ADV_REVEAL_MS);
       }
-    }); grid.appendChild(b); });
+    }
+    if (isInput) bindNumPad("#bPad", "#bNum", ()=>myAdv===advToken, v=>judge(v===Number(q.answer), null));
+    else {
+      const grid=$("#bOpt");
+      q.options.forEach(opt=>{ const b=document.createElement("button"); b.className="opt-btn"; b.textContent=opt; b.addEventListener("click",()=>judge(opt===q.answer, b)); grid.appendChild(b); });
+    }
   }
   function win(){
     // 冒险的目标是对面的野生宝可梦：战胜它即可收服“获得”它；
