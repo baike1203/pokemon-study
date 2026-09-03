@@ -348,6 +348,58 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .feedback-line { font-size: 30px; min-height: 46px; margin-top: 14px; font-weight: bold; }
 .feedback-line.good { color: #3F9D3F; }
 .feedback-line.bad { color: #D95A62; }
+/* ===== 拼音键盘（拼音乐园「拼一拼」模式）=====
+    竖排布局，从上到下跟「读一个字」的顺序一致：题目字 → 部件显示框 → 键盘区 → 声调/功能键。
+    键盘区按部件分三块并排，从左到右 = 声母 | 介母 | 韵母，跟拼读顺序一致，三块各配一色一眼分得清；
+    介母只有 4 个（含「无」），做成中间窄窄一条，视觉上像连接声母和韵母的桥。
+    声调键用标准声调符号 ˉ ˊ ˇ ˋ（不带示例字母），拼出来是什么样看下面预览区实时变。 */
+.py-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.py-head { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; }
+.py-head .quiz-question { margin: 0; font-size: 60px; min-height: 0; line-height: 1.15; }
+.py-head .quiz-sub { margin: 2px 0 0; font-size: 22px; }
+.py-head .big-btn { min-height: 54px; }
+/* 显示框：上排四个部件格（实时亮起），下方是拼出来的音节 */
+.num-display.py-display { width: 100%; max-width: 560px; flex-direction: column; gap: 2px; padding: 4px 8px; min-height: 86px; }
+.py-slots { display: flex; gap: 8px; justify-content: center; }
+.py-slot { min-width: 54px; padding: 0 8px; border-radius: 12px; background: #fff; border: 3px dashed #e6d7c3;
+  font-size: 20px; color: #cdbba6; line-height: 1.25; }
+.py-slot.on { border-style: solid; border-color: #FFC36B; background: #FFF4E2; color: var(--text-dark); font-weight: bold; }
+.py-slot.py-slot-tone { font-size: 26px; line-height: 1.1; }
+.py-preview { font-size: 46px; font-weight: bold; letter-spacing: 4px; line-height: 1.05; }
+.py-preview.empty { color: #cdbba6; font-weight: normal; }
+/* 键盘区：声母 | 介母 | 韵母 三块并排 */
+.py-board { display: flex; align-items: stretch; justify-content: center; gap: 12px; width: 100%; }
+.py-zone { display: flex; flex-direction: column; gap: 6px; padding: 6px 10px 10px; border-radius: 20px; border: 3px solid; }
+/* 两块按列数 7:6 分剩余宽度，这样声母区与韵母区的单个键宽刚好一致；
+   介母区只有 1 列，固定自身宽度，视觉上像连接声母和韵母的一道窄桥。 */
+.py-zone-sm { flex: 7 1 0; min-width: 0; border-color: #FFD9A0; background: #FFFCF3; }
+.py-zone-jm { flex: 0 0 auto; border-color: #A8D5F2; background: #F6FBFF; }
+.py-zone-ym { flex: 6 1 0; min-width: 0; border-color: #B7E0A8; background: #F8FFF5; }
+.py-zone-title { font-size: 17px; font-weight: bold; letter-spacing: 3px; }
+.py-zone-sm .py-zone-title { color: #d08a2a; }
+.py-zone-jm .py-zone-title { color: #2f7fb4; }
+.py-zone-ym .py-zone-title { color: #4a8c37; }
+/* align-content:center —— 声母只有 3 行、韵母/介母 4 行，三块等高时让声母区在中间，上下留白均分 */
+.py-keys { display: grid; gap: 6px; align-content: center; }
+.py-keys.c7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.py-keys.c6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.py-keys.c1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.py-keys .num-key { min-width: 40px; min-height: 48px; border-radius: 14px; border-width: 3px;
+  padding: 0 2px; font-size: 23px; box-shadow: 0 3px 0 #ecc98d; }
+.py-key.py-sm { background: #FFF7EC; border-color: #FFD9A0; }
+.py-key.py-sm.on { background: #FFE0B2; border-color: #F58A1F; box-shadow: 0 3px 0 #d98a1f; color: #8a4b00; }
+.py-key.py-jm { background: #EAF6FF; border-color: #A8D5F2; box-shadow: 0 3px 0 #7fbfe0; }
+.py-key.py-jm.on { background: #BFE6FF; border-color: #3D9BD9; box-shadow: 0 3px 0 #2f7fb4; color: #165a80; }
+.py-key.py-ym { background: #F3FBEF; border-color: #B7E0A8; box-shadow: 0 3px 0 #8cc97b; }
+.py-key.py-ym.on { background: #CDF5BA; border-color: #5CAD45; box-shadow: 0 3px 0 #479135; color: #24601a; }
+.py-key.py-tone { font-size: 36px; background: #F3EDFF; border-color: #C7B6F5; box-shadow: 0 3px 0 #a894e0; color: #6b46c1; }
+.py-key.py-tone.on { background: #DCCBFF; border-color: #8E6CF0; box-shadow: 0 3px 0 #6f4fd0; color: #4a2b8f; }
+/* 底部一行：声调 4 键（左）+ ⌫重来 / ✔确定（右） */
+.py-bottom { display: flex; gap: 14px; justify-content: center; align-items: center; width: 100%; flex-wrap: wrap; }
+.py-tone-row { display: flex; gap: 10px; }
+.py-tone-row .num-key { flex: 0 0 76px; min-height: 56px; }
+.py-fn { display: flex; gap: 10px; }
+.py-fn .num-key { flex: 0 0 118px; min-height: 56px; font-size: 22px; }
 
 /* 拼音浏览 */
 .py-tabs { display: flex; justify-content: center; gap: 12px; margin: 10px 0 16px; flex-wrap: wrap; }
@@ -531,6 +583,13 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   .num-key.num-fn { font-size: 22px; }
   .num-key.num-ok { font-size: 24px; }
   .num-display { font-size: 52px; min-height: 74px; }
+  /* 窄屏：三区并排放不下（14 列），改成上下堆叠；介母区转横排 4 列，跟声母/韵母的横向阅读方向一致 */
+  .py-board { flex-direction: column; align-items: center; gap: 10px; }
+  .py-zone { width: 100%; max-width: 460px; }
+  .py-zone-jm .py-keys { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .py-keys .num-key { min-height: 54px; font-size: 24px; }
+  .py-key.py-tone { font-size: 32px; }
+  .py-head .quiz-question { font-size: 52px; }
   #celebrateText span { font-size: 54px; }
   .dialog h2 { font-size: 30px; }
 }
@@ -612,6 +671,22 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   .num-key:active { transform: translateY(2px); }
   .num-key.num-fn { font-size: 19px; }
   .num-key.num-ok { font-size: 21px; }
+  .py-wrap { gap: 6px; }
+  .py-head { gap: 14px; }
+  .py-head .quiz-question { font-size: 48px; }
+  .py-head .quiz-sub { font-size: 19px; }
+  .py-head .big-btn { min-height: 48px; }
+  .py-board { gap: 8px; }
+  .py-zone { padding: 4px 8px 8px; gap: 4px; }
+  .py-zone-title { font-size: 15px; }
+  .py-keys { gap: 5px; }
+  .py-keys .num-key { min-height: 46px; font-size: 22px; }
+  .py-key.py-tone { font-size: 32px; }
+  .py-tone-row .num-key { min-height: 50px; }
+  .py-fn .num-key { min-height: 50px; font-size: 21px; }
+  .num-display.py-display { min-height: 76px; }
+  .py-slot { min-width: 48px; font-size: 18px; }
+  .py-preview { font-size: 40px; }
   /* 宝可梦详情横向布局缩小 */
   .poke-detail { gap: 14px; align-items: flex-start; }
   .pd-left img { width: 150px; height: 150px; }
@@ -2536,7 +2611,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.42.1";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.44.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2562,8 +2637,10 @@ function defaultState(){
     adventureDate: "",      // 当日冒险日期
     adventureCount: 0,      // 当日冒险次数（上限3）
     partnerId: null,        // 今日伙伴基础编号
+    pyMode: "choose",       // 拼音乐园玩法（家长设置调整）：choose=四选一选音节 / spell=拼音键盘自己拼
     mathDiff: "10",         // 数学闯关难度（家长设置齿轮调整）：10/20/50/100/mul/div
     hanziDiff: "0",         // 识字达人难度（家长设置分级）：0~5 对应 预备班/一上/一下/二上/二下/三及以上
+    hanziReview: {},        // 识字错字复习池：{ 字: 连对次数 }，首答错进池、连对 3 次移出
     poemDiff: "0",          // 古诗小舟难度（家长设置分级）：0~11 对应 一年级上~六年级下 共 12 学期
     testMode: false,        // 测试模式（家长设置内输入密码 112233 开启，开启后首页显示测试按钮条）
     ttsWorker: "",           // 云端中文语音 Worker 地址（Edge-TTS 中转，留空=不启用；填 https://xxx.workers.dev）
@@ -3116,7 +3193,7 @@ function toast(msg){ const t=document.createElement("div"); t.className="toast";
 
 /* ==================== 5. 每日任务区（逻辑保持原样） ==================== */
 const TASKS = [
-  { key:"pinyin",  cls:"pinyin",  icon:"🔤", name:"拼音乐园", desc:"听音+看字选拼音 10 题" },
+  { key:"pinyin",  cls:"pinyin",  icon:"🔤", name:"拼音乐园", desc:"选音节 ・ 自己拼读 10 题" },
   { key:"math",    cls:"math",    icon:"🔢", name:"数学闯关", desc:"键盘输入答案 · 10 题" },
   { key:"hanzi",   cls:"hanzi",   icon:"✍️", name:"识字达人", desc:"认一认 10 个汉字" },
   { key:"poem",    cls:"poem",    icon:"📜", name:"古诗小舟", desc:"背一背填一填" },
@@ -3132,7 +3209,9 @@ function renderTasks(){
     const done = state.daily.done[t.key];
     const card = document.createElement("div");
     card.className = `task-card ${t.cls}` + (done ? " done" : "");
-    card.innerHTML = `<div class="icon">${t.icon}</div><div class="name">${t.name}</div><div class="desc">${done ? "🎉今日任务完成" : t.desc}</div>`;
+    const revN = t.key === "hanzi" && !done ? hanziReviewCount() : 0;
+    const descHtml = done ? "🎉今日任务完成" : t.desc + (revN > 0 ? ` <span style="display:inline-block;padding:2px 12px;border-radius:12px;background:#FFE3E3;color:#E03131;font-size:15px;font-weight:700;vertical-align:middle">📌 待复习 ${revN} 字</span>` : "");
+    card.innerHTML = `<div class="icon">${t.icon}</div><div class="name">${t.name}</div><div class="desc">${descHtml}</div>`;
     card.addEventListener("click", () => { sfx.click(); openModule(t.key); });
     g.appendChild(card);
   });
@@ -3224,8 +3303,119 @@ function bindNumPad(padSel, dispSel, alive, onSubmit){
   return { detach };
 }
 
+/* ===== 拼音键盘（拼音乐园「拼一拼」模式）=====
+   输入的是拼音部件：声母 + 介母（可空）+ 韵母 + 声调，提交时拼成带调音节交给 onSubmit。
+   只给「声母 21 + 韵母 24 + 介母 4 + 声调 4」，不含 y/w——整体认读音节（yi/wu/yu…）
+   在一年级是整体记的、不拆，题库里也压根没把它们拆开，给了反而误导。
+   判定按「最终拼出的音节」而不是「按了哪几个键」，所以 jiē 拼 j+ie 或 j+i+e 都算对（两种教法都说得通），
+   而 nǚ 必须拼 n+ü（拼 n+u 出来的是 nǔ，判错是对的）。
+    用法：bindPinyinPad(整块容器, 显示框, alive, onSubmit)——事件委托挂在整个 .py-wrap 上，
+    因为声调键与 ⌫/✔ 两个功能键在最底部一行，不在键盘区里。 */
+/* 键盘分三区，从左到右 = 声母 | 介母 | 韵母，跟拼读顺序一致。
+   每区一行标题 + 网格，声母 7 列 3 行、介母 1 列 4 行、韵母 6 列 4 行。
+   介母第一项的「无」= 两拼音节没有介母，按钮标签与按键值分开存（标签可写中文，值为空串）。 */
+const PY_ZONES = [
+  { part:"sm", cls:"sm", title:"声母", cols:7, items:["b","p","m","f","d","t","n","l","g","k","h","j","q","x","zh","ch","sh","r","z","c","s"] },
+  { part:"jm", cls:"jm", title:"介母", cols:1, items:[["","无"],["i","i"],["u","u"],["ü","ü"]] },
+  { part:"ym", cls:"ym", title:"韵母", cols:6, items:["a","o","e","i","u","ü","ai","ei","ui","ao","ou","iu","ie","üe","er","an","en","in","un","ün","ang","eng","ing","ong"] }
+];
+/* 声调键只用标准声调符号，不挂示例字母——拼完什么样看下方预览区实时变，孩子自己就能对上号 */
+const PY_TONE_KEYS = [["1","ˉ"],["2","ˊ"],["3","ˇ"],["4","ˋ"]];
+const PY_BOARD = PY_ZONES.map(z => `<div class="py-zone py-zone-${z.cls}">
+    <div class="py-zone-title">${z.title}</div>
+    <div class="py-keys c${z.cols}">${z.items.map(it => { const [v,l] = Array.isArray(it) ? it : [it,it];
+      return `<button class="num-key py-key py-${z.cls}" data-part="${z.part}" data-v="${v}">${l}</button>`; }).join("")}</div>
+  </div>`).join("");
+const PY_TONE_ROW = `<div class="py-tone-row">${PY_TONE_KEYS.map(([v,l]) => `<button class="num-key py-key py-tone" data-part="tone" data-v="${v}">${l}</button>`).join("")}</div>`;
+const PY_FN_KEYS = `<div class="py-fn"><button class="num-key num-fn" data-act="del">⌫ 重来</button><button class="num-key num-ok" data-act="ok">✔ 确定</button></div>`;
+/* 带调元音表：按声调序号 1~4 取字符 */
+const PY_TONE_CHAR = { a:"āáǎà", o:"ōóǒò", e:"ēéěè", i:"īíǐì", u:"ūúǔù", "ü":"ǖǘǚǜ" };
+/* 标调规则：有 a 标 a，没 a 找 o/e，i/u/ü 并列标在后（iu → iǔ、ui → uī） */
+function pyMarkTone(base, tone){
+  if (!tone) return base;
+  let idx = -1;
+  if (base.indexOf("a") >= 0) idx = base.indexOf("a");
+  else if (base.indexOf("o") >= 0) idx = base.indexOf("o");
+  else if (base.indexOf("e") >= 0) idx = base.indexOf("e");
+  else { for (let k = base.length - 1; k >= 0; k--){ if ("iuü".indexOf(base[k]) >= 0){ idx = k; break; } } }
+  if (idx < 0) return base;
+  const tbl = PY_TONE_CHAR[base[idx]];
+  return tbl ? base.slice(0, idx) + tbl[(+tone) - 1] + base.slice(idx + 1) : base;
+}
+/* 归一化：j/q/x 与 ü 相拼要去两点（j+ǖ → jū）；n/l 保留两点（nǚ 拼成 nǔ 就是错的） */
+const PY_U2U = { "ü":"u", "ǖ":"ū", "ǘ":"ú", "ǚ":"ǔ", "ǜ":"ù" };
+function pyNormalize(s){
+  let out = "";
+  for (let i = 0; i < s.length; i++){
+    const ch = s[i];
+    out += (PY_U2U[ch] !== undefined && i > 0 && "jqx".indexOf(s[i-1]) >= 0) ? PY_U2U[ch] : ch;
+  }
+  return out;
+}
+function pyJoin(sm, jm, ym, tone){ return pyNormalize(pyMarkTone(sm + jm + ym, tone)); }
+
+function bindPinyinPad(rowSel, dispSel, alive, onSubmit){
+  let sm = "", jm = "", ym = "", tone = "", keyHandler = null;
+  function detach(){ if (keyHandler){ document.removeEventListener("keydown", keyHandler); keyHandler = null; } }
+  function ready(){ return !!(sm && ym && tone); }                 // 介母可以没有（两拼音节），其余三项必填
+  function cur(){ return pyJoin(sm, jm, ym, Number(tone)); }
+  function valOf(p){ return p === "sm" ? sm : p === "jm" ? jm : p === "ym" ? ym : tone; }
+  function paint(){
+    const d = $(dispSel); if (!d) return;
+    d.innerHTML = `<div class="py-slots">
+        <span class="py-slot ${sm?"on":""}">${sm || "声母"}</span>
+        <span class="py-slot ${jm?"on":""}">${jm || "介母"}</span>
+        <span class="py-slot ${ym?"on":""}">${ym || "韵母"}</span>
+        <span class="py-slot py-slot-tone ${tone?"on":""}">${tone ? PY_TONE_KEYS[(+tone)-1][1] : "声调"}</span>
+      </div>
+      <div class="py-preview ${ready()?"":"empty"}">${ready() ? cur() : "？"}</div>`;
+    d.classList.toggle("empty", !ready());
+  }
+  function press(part, v){
+    sfx.click();
+    if (part === "sm") sm = v; else if (part === "jm") jm = v; else if (part === "ym") ym = v; else tone = v;
+    paint();
+    const row = $(rowSel); if (!row) return;
+    row.querySelectorAll(`.py-key[data-part="${part}"]`).forEach(b => b.classList.toggle("on", v !== "" && b.dataset.v === valOf(part)));
+  }
+  function clearAll(){
+    sfx.click(); sm = ""; jm = ""; ym = ""; tone = "";
+    paint();
+    const row = $(rowSel); if (row) row.querySelectorAll(".py-key").forEach(b => b.classList.remove("on"));
+  }
+  function submit(){
+    if (!alive()) return;
+    if (!ready()){                                   // 没拼完整就点确定：晃一下，不判定
+      const d = $(dispSel);
+      if (d){ d.classList.add("wrong"); setTimeout(()=>{ const x = $(dispSel); if (x) x.classList.remove("wrong"); }, 400); }
+      return;
+    }
+    const v = cur();
+    const d = $(dispSel); if (d) d.dataset.typed = v;   // 存给 judge：答错时好把「孩子拼的 → 正确答案」并排显示
+    detach(); onSubmit(v);
+  }
+  const row = $(rowSel);
+  if (row) row.addEventListener("click", e => {
+    const b = e.target.closest(".num-key"); if (!b || b.disabled || !alive()) return;
+    if (b.dataset.act === "del") clearAll();
+    else if (b.dataset.act === "ok") submit();
+    else if (b.dataset.part) press(b.dataset.part, b.dataset.v);
+  });
+  keyHandler = e => {
+    /* 三重失效保护同 bindNumPad：本轮作废 / 键盘随弹窗消失 / 弹窗已关闭 → 不响应并自我解绑 */
+    if (!alive() || !$(rowSel) || !$("#overlay").classList.contains("show")) return detach();
+    if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    if (/^[1-4]$/.test(e.key)) press("tone", e.key);
+    else if (e.key === "Backspace"){ e.preventDefault(); clearAll(); }
+    else if (e.key === "Enter" || e.key === " "){ e.preventDefault(); submit(); }
+  };
+  document.addEventListener("keydown", keyHandler);
+  paint();
+  return { detach };
+}
+
 /* 通用答题引擎：答错题重排队尾直到答对（儿童友好） */
-function runQuiz({ title, color, questions, onFinish, speakOnShow = false, moduleKey = null }){
+function runQuiz({ title, color, questions, onFinish, speakOnShow = false, moduleKey = null, onAnswer = null }){
   const myToken = ++quizToken;   // 本场作答令牌；重开/切换时令牌变更，旧计时器回调据此失效
   busyStudying = true;   // 进入答题：抑制空闲气泡
   let queue = [...questions], total = questions.length, firstTryRight = 0, answeredSet = new Set(), attemptedFirst = new Set();
@@ -3235,28 +3425,50 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
     if (myToken !== quizToken) return;
     detachKeys();
     const q = queue[0], doneN = answeredSet.size;
-    /* answerMode:"input" → 答案为数字，用数字键盘输入，不给 ABCD 选项（数学用） */
+    /* answerMode:"input" → 答案为数字，用数字键盘输入（数学用）
+       answerMode:"spell" → 答案为拼音，用拼音键盘自己拼出来（拼音乐园「拼一拼」用）
+       两种都不给 ABCD 选项，共用「左题目 / 右键盘」骨架 */
     const isInput = q.answerMode === "input";
+    const isSpell = q.answerMode === "spell";
+    const isPad = isInput || isSpell;
     openDialog(`<h2 style="color:${color}">${title}</h2>
       <div class="quiz-progress">第 ${Math.min(doneN+1,total)} / ${total} 题 ⭐ 已答对 ${doneN} 题</div>
-      ${isInput
-        /* 输入模式：左题目 + 右数字键盘（横屏双列，省竖向空间） */
+      ${isSpell
+        /* 拼音模式：竖排——题目字在最上，其下是部件显示框，再下是「声母|介母|韵母」三区键盘，最底一行声调 + ⌫/✔。
+           顺序跟着「看字 → 想声母 → 想介母 → 想韵母 → 定调」走，孩子视线一路向下不用跳。 */
+        ? `<div class="py-wrap" id="pyRow">
+             <div class="py-head">
+               <div>
+                 <div class="quiz-question ${q.promptClass||""}" id="qPrompt">${q.prompt}</div>
+                 ${q.sub?`<div class="quiz-sub">${q.sub}</div>`:""}
+               </div>
+               ${q.speakText?`<button class="big-btn blue" id="btnSpeak" style="min-width:170px">🔊 再听一遍</button>`:""}
+             </div>
+             <div class="num-display py-display empty" id="numDisplay">？</div>
+             <div class="py-board">${PY_BOARD}</div>
+             <div class="py-bottom">${PY_TONE_ROW}${PY_FN_KEYS}</div>
+           </div>`
+        /* 数字键盘模式（数学）：左题目 + 右键盘，横屏双列省竖向空间 */
+        : isInput
         ? `<div class="num-row">
              <div class="num-left">
                <div class="quiz-question ${q.promptClass||""}" id="qPrompt">${q.prompt}</div>
                ${q.sub?`<div class="quiz-sub">${q.sub}</div>`:""}
+               ${q.speakText?`<button class="big-btn blue" id="btnSpeak" style="min-width:180px">🔊 再听一遍</button>`:""}
                <div class="num-display empty" id="numDisplay">？</div>
              </div>
              <div class="num-pad" id="numPad">${NUMPAD_KEYS}</div>
            </div>`
         : `<div class="quiz-question ${q.promptClass||""}" id="qPrompt">${q.prompt}</div>
            ${q.sub?`<div class="quiz-sub">${q.sub}</div>`:""}`}
-      ${q.speakText?`<button class="big-btn blue" id="btnSpeak" style="min-width:220px">🔊 再听一遍</button>`:""}
-      ${isInput ? "" : `<div class="opt-grid" id="optGrid"></div>`}
+      ${(!isPad && q.speakText)?`<button class="big-btn blue" id="btnSpeak" style="min-width:220px">🔊 再听一遍</button>`:""}
+      ${isPad ? "" : `<div class="opt-grid" id="optGrid"></div>`}
       <div class="feedback-line" id="fbLine"></div>`);
     const auto = (q.speakOnShow !== undefined) ? q.speakOnShow : speakOnShow;  // 允许每题单独控制是否自动朗读
     if (q.speakText){ $("#btnSpeak").addEventListener("click", ()=>{ sfx.click(); if(myToken===quizToken) speak(q.speakText, undefined, q.speakFallback); }); if (auto) setTimeout(()=>{ if(myToken===quizToken) speak(q.speakText, undefined, q.speakFallback); },350); }
     if (isInput) numPad = bindNumPad("#numPad", "#numDisplay", ()=>myToken===quizToken, v=>judge(null, v===Number(q.answer), q));
+    /* 拼音模式：比对「拼出来的音节」而不是按键路径，所以 j+ie 与 j+i+e 都算对 */
+    else if (isSpell) numPad = bindPinyinPad("#pyRow", "#numDisplay", ()=>myToken===quizToken, v=>judge(null, pyNormalize(v)===pyNormalize(q.answer), q));
     else {
       const grid = $("#optGrid");
       q.options.forEach(opt => { const b=document.createElement("button"); b.className="opt-btn"; b.textContent=opt; b.addEventListener("click", ()=>judge(b, opt===q.answer, q)); grid.appendChild(b); });
@@ -3273,14 +3485,24 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
       else { const d=$("#numDisplay"); if(d){ d.classList.remove("empty"); d.classList.add("right"); } }
       document.querySelectorAll(".num-key").forEach(b=>b.disabled=true);
       fb.textContent = pick(["太棒了！✨","答对啦！👍","真聪明！🌟","好厉害！🎈"],1)[0] + (q.reveal ? ` 就是「${q.reveal}」${q.answer}` : ""); fb.className="feedback-line good";
-      if (!attemptedFirst.has(q.id)) firstTryRight++; attemptedFirst.add(q.id); answeredSet.add(q.id); queue.shift();
+      if (!attemptedFirst.has(q.id)){ firstTryRight++; if (onAnswer) onAnswer(q, true); }
+      attemptedFirst.add(q.id); answeredSet.add(q.id); queue.shift();
       setTimeout(()=>{ if (myToken!==quizToken) return; queue.length ? show() : finish(); }, 900);
     } else {
       sfx.wrong();
       if (btn){ btn.classList.add("wrong"); buttons.forEach(b=>b.disabled=true); buttons.forEach(b=>{ if(b.textContent===String(q.answer)) b.classList.add("right"); }); }
-      else { const d=$("#numDisplay"); if(d){ d.classList.remove("empty"); d.classList.add("wrong"); } }
+      else {
+        const d=$("#numDisplay");
+        if (d){
+          d.classList.remove("empty"); d.classList.add("wrong");
+          /* 拼音模式：把「孩子拼的 → 正确答案」并排显示，一眼看出差在声母、韵母还是声调 */
+          const pv = d.querySelector(".py-preview");
+          if (pv && d.dataset.typed) pv.innerHTML = `<span style="opacity:.55">${d.dataset.typed}</span> → <b>${q.answer}</b>`;
+        }
+      }
       document.querySelectorAll(".num-key").forEach(b=>b.disabled=true);
       fb.textContent = `正确答案是「${q.answer}」${q.reveal?`（${q.reveal}）`:""}，这道题等会儿再试一次！`; fb.className="feedback-line bad";
+      if (!attemptedFirst.has(q.id) && onAnswer) onAnswer(q, false);   // 首答错才回调（重试不再扣）
       attemptedFirst.add(q.id); queue.push(queue.shift()); setTimeout(()=>{ if(myToken===quizToken) show(); }, 1600);
     }
   }
@@ -3291,14 +3513,18 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
 /* 各模块 */
 function pinyinHome(){
   const done = state.daily.done.pinyin;
-  openDialog(`<h2 style="color:#F45E85">🔤 拼音乐园</h2>
+  const isSpellMode = (state.pyMode || "choose") === "spell";
+  openDialog(`<h2 style="color:#F45E85">🔤 拼音乐园${isSpellMode?" · 拼一拼":" · 选一选"}</h2>
     <div class="py-tabs"><button class="py-tab active" data-cat="sm">声母 23</button><button class="py-tab" data-cat="ym">韵母 24</button><button class="py-tab" data-cat="zt">整体认读 16</button></div>
     <div style="font-size:20px;color:#9b8676;margin-bottom:10px">👆 点一点卡片就能听到读音哦</div>
     <div class="py-grid" id="pyGrid"></div>
     <div style="margin-top:20px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
-      <button class="big-btn ${done?'gray':''}" id="pyStart" ${done?'disabled':''}>${done?"✔ 今日任务已完成":"🔤 开始拼音乐园（10 题）"}</button>
+      <button class="big-btn ${done?'gray':''}" id="pyStart" ${done?'disabled':''}>${done?"✔ 今日任务已完成":(isSpellMode?"🧩 开始「拼一拼」（10 题）":"👆 开始「选一选」（10 题）")}</button>
     </div>
-    <div style="font-size:19px;color:#b09a8a;margin-top:8px">10 道题随机 mix：👂 听音辨音 ・ 📝 看字选拼音 ・ 🎧 听音选音节（两拼）・ 🎧 三拼听辨 ・ 🎵 四声辨析</div>`);
+    <div style="font-size:19px;color:#b09a8a;margin-top:8px">${isSpellMode
+      ? "10 道题：听汉字读音，用拼音键盘自己拼出音节（声母 + 介母 + 韵母 + 声调）"
+      : "10 道题随机 mix：👂 听音辨音 ・ 📝 看字选拼音 ・ 🎧 听音选音节（两拼）・ 🎧 三拼听辨 ・ 🎵 四声辨析"}</div>
+    <div style="font-size:15px;color:#c3b09f;margin-top:6px">当前玩法：${isSpellMode?"🧩 拼一拼":"👆 选一选"}（可在右下角 ⚙️ 家长设置里切换）</div>`);
   const cats = { sm:SHENGMU, ym:YUNMU, zt:ZHENGTI };
   function renderGrid(cat){ const grid=$("#pyGrid"); grid.innerHTML=""; cats[cat].forEach(([py,chr])=>{ const c=document.createElement("button"); c.className="py-cell"; c.innerHTML=`${py}<small>像「${chr}」</small>`; c.addEventListener("click",()=>{ sfx.click(); speak(chr,0.7); }); grid.appendChild(c); }); }
   renderGrid("sm");
@@ -3380,8 +3606,41 @@ function makeToneQ(i){
     options:quad.map(q=>q[0]), answer:syl };
 }
 
-/* 拼音乐园：10 题混合 5 种题型（单音听辨 / 看字选拼音 / 两拼 / 三拼 / 四声） */
+/* ===== 「拼一拼」模式题库：只给汉字（同时朗读），孩子用拼音键盘自己拼出音节 =====
+   过滤掉「同一个示范字在题库里出现多次」的条目——万一将来混进多音字，孩子拼对了也会被判错。 */
+function buildPinyinSpellBank(){
+  const bank = [], seen = {};
+  /* 先收三拼：像「小/先/钱/桥」这类字在两张表里都有，优先按三拼归类（三拼难，别白白丢掉） */
+  TRI_SYLLABLES.forEach(t => { const k = t[3] + "#" + t[4]; if (seen[k]) return; seen[k] = 1; bank.push({ syl: t[3], chr: t[4], tri: true }); });
+  Object.keys(SYLLABLES).forEach(sm => SYLLABLES[sm].forEach(p => {
+    const k = sm + p[0] + "#" + p[1]; if (seen[k]) return; seen[k] = 1;      // 完全重复的条目只留一条
+    bank.push({ syl: sm + p[0], chr: p[1], tri: false });
+  }));
+  const cnt = {};
+  bank.forEach(x => { cnt[x.chr] = (cnt[x.chr] || 0) + 1; });
+  return bank.filter(x => cnt[x.chr] === 1);                                 // 多音字整条剔除
+}
+const PY_SPELL_BANK = buildPinyinSpellBank();
+const PY_SPELL_TWO  = PY_SPELL_BANK.filter(x => !x.tri);
+const PY_SPELL_TRI  = PY_SPELL_BANK.filter(x =>  x.tri);
+function makeSpellWriteQ(i, tri){
+  const x = pick(tri ? PY_SPELL_TRI : PY_SPELL_TWO, 1)[0];
+  return { id:"pw"+i, prompt:x.chr, sub:"用拼音键盘拼出它的音节", speakText:x.chr, speakOnShow:true,
+    answerMode:"spell", answer:pyNormalize(x.syl) };
+}
+/* 完成弹窗：两种玩法共用 */
+function pinyinFinishDialog(acc){
+  openDialog(`<h2 style="color:#F45E85">🎉 拼音乐园完成！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">🏆</div><div style="font-size:26px;margin:10px 0">奖励你 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('pinyin')">收下精灵球 ⚡</button>`, {closable:false});
+}
+/* 「拼一拼」：10 题 = 两拼 7 + 三拼 3（三拼多一层介母，少出一点） */
+function pinyinStartSpell(){
+  const order = shuffle(["two","two","two","two","two","two","two","tri","tri","tri"]);
+  const questions = order.map((t,i) => makeSpellWriteQ(i, t === "tri"));
+  runQuiz({ title:"🔤 拼音乐园 · 拼一拼", color:"#F45E85", questions, moduleKey:"pinyin", onFinish:pinyinFinishDialog });
+}
+/* 拼音乐园入口：按家长设置里的玩法分流（选一选 / 拼一拼） */
 function pinyinStart(){
+  if ((state.pyMode || "choose") === "spell") return pinyinStartSpell();
   /* 一年级重点在拼读：拼读类占 6 成（两拼 3 + 三拼 2 + 四声 1），保留原单音听辨 2 与看字选拼音 2 */
   const order = shuffle(["listen","listen","hanzi","hanzi","spell","spell","spell","tri","tri","tone"]);
   const questions = order.map((type,i)=>{
@@ -3398,9 +3657,7 @@ function pinyinStart(){
       return { id:"ph"+i, prompt:h[0], sub:`（${h[2]}）这个字的拼音是？`, speakText:h[0], speakOnShow:true, options:shuffle([h[1],...wrongs]), answer:h[1] };
     }
   });
-  runQuiz({ title:"🔤 拼音乐园", color:"#F45E85", questions, moduleKey:"pinyin",
-    onFinish(acc){ openDialog(`<h2 style="color:#F45E85">🎉 拼音乐园完成！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">🏆</div><div style="font-size:26px;margin:10px 0">奖励你 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('pinyin')">收下精灵球 ⚡</button>`, {closable:false}); }
-  });
+  runQuiz({ title:"🔤 拼音乐园", color:"#F45E85", questions, moduleKey:"pinyin", onFinish:pinyinFinishDialog });
 }
 /* 数学闯关：点开即直接开始（难度取家长设置齿轮调整的 state.mathDiff） */
 function mathTask(){
@@ -3437,6 +3694,7 @@ function openSettings(sub){
       <div style="font-size:20px;color:#9b8676;margin:6px 0 12px">点开下面的模块，分别设置难度</div>
       ${accountBlockHTML()}
       <div class="set-modules">
+        <button class="big-btn set-mod" data-m="pinyin">🔤 拼音乐园<small>选一选 / 拼一拼 两种玩法</small></button>
         <button class="big-btn set-mod" data-m="math">🔢 数学闯关<small>一年级专项 + 加减乘除 7 档</small></button>
         <button class="big-btn set-mod" data-m="hanzi">✍️ 识字达人<small>6 级字库分级</small></button>
         <button class="big-btn set-mod" data-m="poem">📜 古诗小舟<small>12 学期分级</small></button>
@@ -3494,6 +3752,7 @@ function openSettings(sub){
     });
     return;
   }
+  if (sub==="pinyin"){ renderPinyinSettings(); return; }
   if (sub==="math"){ renderMathSettings(); return; }
   if (sub==="hanzi"){ renderHanziSettings(); return; }
   if (sub==="poem"){ renderPoemSettings(); return; }
@@ -3527,6 +3786,24 @@ function bindSettingsTest(){
       if (cancelBtn) cancelBtn.onclick = ()=>{ sfx.click(); closeDialog(); };
     } else { state.testMode=false; saveState(); applyTestMode(); testSwitch.classList.remove("on"); testSwitch.setAttribute("aria-checked","false"); toast("测试模式已关闭"); }
   });
+}
+/* 拼音乐园玩法：
+   选一选 —— 现在的四选一（听音 / 看字，从 4 个音节里挑），上手快，适合刚接触拼音；
+   拼一拼 —— 用拼音键盘自己拼（声母 + 介母 + 韵母 + 声调），答案不在屏幕上，必须真会拼才过得去。 */
+const PY_MODE_NAMES = { choose:"👆 选一选", spell:"🧩 拼一拼" };
+function renderPinyinSettings(){
+  const cur = (state.pyMode === "spell") ? "spell" : "choose";
+  openDialog(`<h2 style="color:#F45E85">🔤 拼音乐园 · 玩法</h2>
+    <button class="big-btn yellow" id="setBack" style="min-width:120px;margin-bottom:8px">← 返回</button>
+    <div class="py-tabs" style="flex-direction:column;align-items:stretch;gap:14px">
+      <button class="big-btn set-diff ${cur==="choose"?"active":""}" data-d="choose">👆 选一选<small>听一听 ・ 看字，从 4 个音节里选出正确的（入门）</small></button>
+      <button class="big-btn set-diff ${cur==="spell"?"active":""}" data-d="spell">🧩 拼一拼<small>用拼音键盘自己拼：声母 + 介母 + 韵母 + 声调（进阶）</small></button>
+    </div>
+    <div style="margin-top:16px;font-size:22px;color:#9b8676">当前玩法：<b id="setCur" style="color:#F45E85">${PY_MODE_NAMES[cur]}</b></div>
+    <div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`, { dialogClass: "set-dialog" });
+  $("#setBack").addEventListener("click",()=>{ sfx.click(); openSettings(); });
+  document.querySelectorAll(".set-diff").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); state.pyMode=b.dataset.d; saveState(); document.querySelectorAll(".set-diff").forEach(x=>x.classList.remove("active")); b.classList.add("active"); $("#setCur").textContent=PY_MODE_NAMES[b.dataset.d]; toast("拼音玩法已设为："+PY_MODE_NAMES[b.dataset.d]); if(activeModule==="pinyin"){ setTimeout(()=>{ closeDialog(); activeModule="pinyin"; pinyinHome(); },700); } }));
+  $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
 }
 function renderMathSettings(){
   const cur = state.mathDiff||"10";
@@ -3654,19 +3931,19 @@ function writingTask(){
     $("#wYes").addEventListener("click", ()=>{ state.writingStreak+=1; state.writingLastDate=todayStr(); saveState(); closeDialog(); completeTask("writing"); setTimeout(()=>openDialog(`<h2 style="color:#E08A2B">🎉 打卡成功！</h2><div style="font-size:64px">✏️</div><div style="font-size:28px;margin:10px 0">已连续打卡 <b style="color:#F58A1F">${state.writingStreak}</b> 天，奖励 1 个精灵球！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好耶！</button>`),1000); });
     $("#wNo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); }); }); }
 }
-/* ============ 识字分级系统（部编思路 · 代表性字库） ============
+/* ============ 识字分级系统（部编思路 · 官方字表） ============
    难度 0~5：预备班 / 一上 / 一下 / 二上 / 二下 / 三及以上。
-   每条 [汉字, 拼音, 组词]。后续可直接替换为完整官方部编字表，结构不变。 */
+   一上（300 字）/ 一下（405 字）已替换为部编版全字表：读音按课标注、多音字依课文，每条 [汉字, 拼音, 组词]。 */
 const EMOJI_FOR = { "人":"👤","口":"👄","手":"✋","日":"🌞","月":"🌙","水":"💧","火":"🔥","山":"⛰️","石":"🪨","田":"🌾","土":"🟫","木":"🌳","林":"🌲","禾":"🌿","目":"👀","耳":"👂","心":"❤️","牙":"🦷","足":"🦶","刀":"🔪","尺":"📏","门":"🚪","车":"🚗","舟":"⛵","马":"🐴","牛":"🐮","羊":"🐑","鸟":"🐦","鱼":"🐟","虫":"🐛","花":"🌸","草":"🌿","云":"☁️","雨":"🌧️","风":"🌬️","电":"⚡","光":"💡","天":"🌌","地":"🌍","上":"⬆️","下":"⬇️","大":"🔼","小":"🔻","多":"➕","少":"➖","中":"🎯","力":"💪","气":"🎈","一":"1️⃣","二":"2️⃣","三":"3️⃣","四":"4️⃣","五":"5️⃣","六":"6️⃣","七":"7️⃣","八":"8️⃣","九":"9️⃣","十":"🔟","米":"🌾","面":"🍜","饭":"🍚","菜":"🥬","果":"🍎","瓜":"🍉","豆":"🫘","肉":"🍖","鸡":"🐔","狗":"🐶","猫":"🐱","兔":"🐰","猪":"🐷","红":"🔴","黄":"🟡","白":"⚪","黑":"⚫","绿":"🟢","蓝":"🔵","衣":"👕","帽":"🧢","鞋":"👟","书":"📖","笔":"✏️","画":"🎨","歌":"🎵","笑":"😄","哭":"😢","飞":"✈️","看":"👀","听":"👂","吃":"🍴","喝":"🥤","来":"➡️","去":"⬅️","开":"🔓","关":"🔒","早":"🌅","晚":"🌆","好":"👍","友":"🤝","学":"🏫","生":"🐣","河":"🌊","江":"🌊","湖":"🌊","海":"🌊","树":"🌳","桃":"🍑","李":"🍒","梅":"🌸","跑":"🏃","跳":"🤾","踢":"⚽","站":"🧍","抱":"🤗","找":"🔍","捉":"🐛","唱":"🎤","吹":"🌬️","叶":"🍃","苗":"🌱","茶":"🍵","爸":"👨","妈":"👩","奶":"👵","哥":"👦","姐":"👧","弟":"👦","妹":"👧","爷":"👴" };
 const HANZI_LEVELS = {
   0:{ name:"预备班・幼升小", desc:"基础独体字 · 看图选字", chars:[
     ["人","rén","人们"],["口","kǒu","人口"],["手","shǒu","小手"],["日","rì","日子"],["月","yuè","月亮"],["水","shuǐ","水果"],["火","huǒ","火苗"],["山","shān","大山"],["石","shí","石头"],["田","tián","田地"],["土","tǔ","泥土"],["木","mù","木头"],["林","lín","树林"],["禾","hé","禾苗"],["目","mù","目光"],["耳","ěr","耳朵"],["心","xīn","开心"],["牙","yá","牙齿"],["足","zú","足球"],["刀","dāo","小刀"],["尺","chǐ","尺子"],["门","mén","大门"],["车","chē","火车"],["舟","zhōu","小舟"],["马","mǎ","小马"],["牛","niú","小牛"],["羊","yáng","小羊"],["鸟","niǎo","小鸟"],["鱼","yú","小鱼"],["虫","chóng","虫子"],["花","huā","花朵"],["草","cǎo","草地"],["云","yún","白云"],["雨","yǔ","下雨"],["风","fēng","大风"],["电","diàn","雷电"],["光","guāng","阳光"],["天","tiān","天空"],["地","dì","大地"],["上","shàng","上学"],["下","xià","下课"],["大","dà","大小"],["小","xiǎo","小心"],["多","duō","多少"],["少","shǎo","少数"],["中","zhōng","中间"],["力","lì","力气"],["气","qì","天气"],["一","yī","一个"],["二","èr","二十"],["三","sān","三月"],["四","sì","四方"],["五","wǔ","五个"],["六","liù","六月"],["七","qī","七天"],["八","bā","八只"],["九","jiǔ","九个"],["十","shí","十分"]
   ]},
-  1:{ name:"一年级上册", desc:"简单合体字 · 看图+认字混合", chars:[
-    ["你","nǐ","你好"],["我","wǒ","我们"],["他","tā","他们"],["爸","bà","爸爸"],["妈","mā","妈妈"],["哥","gē","哥哥"],["姐","jiě","姐姐"],["弟","dì","弟弟"],["妹","mèi","妹妹"],["爷","yé","爷爷"],["奶","nǎi","奶奶"],["米","mǐ","大米"],["面","miàn","面条"],["饭","fàn","吃饭"],["菜","cài","青菜"],["果","guǒ","苹果"],["瓜","guā","西瓜"],["豆","dòu","豆子"],["肉","ròu","鱼肉"],["鸡","jī","小鸡"],["狗","gǒu","小狗"],["猫","māo","小猫"],["兔","tù","兔子"],["猪","zhū","小猪"],["红","hóng","红色"],["黄","huáng","黄色"],["白","bái","白色"],["黑","hēi","黑色"],["绿","lǜ","绿色"],["蓝","lán","蓝色"],["衣","yī","衣服"],["帽","mào","帽子"],["鞋","xié","鞋子"],["书","shū","书本"],["笔","bǐ","铅笔"],["画","huà","画画"],["歌","gē","唱歌"],["跑","pǎo","跑步"],["笑","xiào","笑声"],["哭","kū","哭泣"],["坐","zuò","坐下"],["走","zǒu","走路"],["飞","fēi","飞机"],["看","kàn","看见"],["听","tīng","听见"],["说","shuō","说话"],["吃","chī","吃饭"],["喝","hē","喝水"],["来","lái","回来"],["去","qù","去年"],["开","kāi","开门"],["关","guān","关门"],["进","jìn","进去"],["出","chū","出门"],["问","wèn","问好"],["答","dá","回答"],["早","zǎo","早上"],["晚","wǎn","晚上"],["明","míng","明天"],["好","hǎo","好人"],["友","yǒu","朋友"],["同","tóng","同学"],["学","xué","学习"],["生","shēng","学生"],["先","xiān","首先"],["后","hòu","后面"]
+  1:{ name:"一年级上册", desc:"部编版一上 300 字 · 看图+认字混合", chars:[
+    ["天","tiān","今天"],["地","dì","慢慢地、飞快地"],["人","rén","人口"],["你","nǐ","你们"],["我","wǒ","我们"],["他","tā","他们、其他"],["一","yī","一个"],["二","èr","二手"],["三","sān","三天"],["四","sì","四个"],["五","wǔ","五天"],["上","shàng","上下"],["下","xià","上下"],["口","kǒu","人口"],["耳","ěr","木耳"],["目","mù","头目"],["手","shǒu","手巾"],["足","zú","足球、手足"],["站","zhàn","车站、站立"],["坐","zuò","坐下、坐车"],["日","rì","日子"],["月","yuè","月牙"],["水","shuǐ","水果"],["火","huǒ","火车"],["山","shān","大山"],["石","shí","石头"],["田","tián","水田"],["禾","hé","禾田"],["对","duì","对面"],["云","yún","白云"],["雨","yǔ","雨水"],["风","fēng","大风、风雨"],["花","huā","花朵、开花"],["鸟","niǎo","小鸟"],["虫","chóng","虫子"],["六","liù","六个、六月"],["七","qī","七个、七天"],["八","bā","八个"],["九","jiǔ","九个、九月"],["十","shí","十个"],["爸","bà","爸爸、爸妈"],["妈","mā","妈妈"],["马","mǎ","马车"],["土","tǔ","风土"],["不","bù","不行"],["画","huà","画画、图画"],["打","dǎ","打开、打水"],["棋","qí","下棋、棋子"],["鸡","jī","小鸡、公鸡"],["字","zì","写字、汉字"],["词","cí","词语、歌词"],["语","yǔ","语文、词语"],["句","jù","句子、语句"],["子","zǐ","儿子"],["桌","zhuō","课桌、桌面"],["纸","zhǐ","白纸、纸张"],["文","wén","语文、文字"],["数","shù","数一数、数星星"],["学","xué","放学"],["音","yīn","音乐、声音"],["乐","yuè","欢乐"],["妹","mèi","妹妹、姐妹"],["奶","nǎi","奶奶、牛奶"],["白","bái","白天"],["皮","pí","果皮、皮球"],["小","xiǎo","大小"],["桥","qiáo","小桥、大桥"],["台","tái","台灯、台风"],["雪","xuě","雪花、下雪"],["儿","ér","儿子"],["草","cǎo","小草、草地"],["家","jiā","大家、回家"],["是","shì","不是"],["车","chē","火车、汽车"],["羊","yáng","小羊、山羊"],["走","zǒu","走路、行走"],["也","yě","也是、也许"],["秋","qiū","秋天、秋风"],["气","qì","天气、空气"],["了","le","走了"],["树","shù","大树、树叶"],["叶","yè","叶子、绿叶"],["片","piàn","一片、叶片"],["大","dà","大小"],["飞","fēi","飞机、飞走"],["会","huì","学会、开会"],["个","gè","一个"],["的","de","好的"],["船","chuán","小船、轮船"],["两","liǎng","两个、两天"],["头","tóu","木头"],["在","zài","正在"],["里","lǐ","心里"],["看","kàn","看见、看书"],["见","jiàn","会见"],["闪","shǎn","闪光、闪电"],["星","xīng","星星、星空"],["江","jiāng","江水、长江"],["南","nán","南方、江南"],["可","kě","可口"],["采","cǎi","采花、采摘"],["莲","lián","莲花、莲子"],["鱼","yú","小鱼、金鱼"],["东","dōng","东西"],["西","xī","东西"],["北","běi","北方、北风"],["尖","jiān","笔尖、尖尖"],["说","shuō","说话、听说"],["春","chūn","春天、春风"],["青","qīng","青草、青蛙"],["蛙","wā","青蛙、蛙泳"],["夏","xià","夏天、夏日"],["弯","wān","弯弯、弯腰"],["就","jiù","就是、就去"],["冬","dōng","冬天、冬日"],["男","nán","男孩、男生"],["女","nǚ","女儿"],["开","kāi","开门"],["关","guān","关门、关心"],["正","zhèng","正在"],["反","fǎn","反正、反面"],["远","yuǎn","远方、远处"],["有","yǒu","有无"],["色","sè","颜色、红色"],["近","jìn","近处、远近"],["听","tīng","听见、好听"],["无","wú","无声、无边"],["声","shēng","声音、歌声"],["去","qù","出去"],["还","hái","还有、还是"],["来","lái","回来"],["多","duō","多少"],["少","shǎo","少了"],["黄","huáng","黄色、黄叶"],["牛","niú","牛羊"],["只","zhī","只好"],["猫","māo","小猫、猫咪"],["边","biān","旁边、一边"],["鸭","yā","鸭子、小鸭"],["苹","píng","苹果、苹果树"],["果","guǒ","水果"],["杏","xìng","杏子、杏树"],["桃","táo","桃子、桃花"],["书","shū","书本"],["包","bāo","书包、面包"],["尺","chǐ","尺子"],["作","zuò","作业、工作"],["业","yè","作业、毕业"],["本","běn","书本"],["笔","bǐ","铅笔、毛笔"],["刀","dāo","大刀"],["课","kè","上课、课本"],["早","zǎo","早上"],["校","xiào","学校、校园"],["明","míng","明天"],["力","lì","用力"],["尘","chén","灰尘、尘土"],["从","cóng","从小"],["众","zhòng","观众、大众"],["双","shuāng","双手、一双"],["木","mù","木头"],["林","lín","林子"],["森","sēn","森林、森林公园"],["条","tiáo","一条、面条"],["心","xīn","开心"],["升","shēng","升起、上升"],["国","guó","国旗、中国"],["旗","qí","红旗、国旗"],["中","zhōng","口中"],["红","hóng","红色、红花"],["歌","gē","唱歌、歌声"],["起","qǐ","起床、起来"],["么","me","什么、多么"],["美","měi","美丽、美好"],["丽","lì","美丽、亮丽"],["立","lì","立正"],["午","wǔ","中午、午后"],["晚","wǎn","晚上、夜晚"],["昨","zuó","昨天、昨日"],["今","jīn","今天、今年"],["年","nián","新年、过年"],["影","yǐng","影子、电影"],["前","qián","前面、前后"],["后","hòu","后果"],["黑","hēi","黑色、黑夜"],["狗","gǒu","小狗、黑狗"],["左","zuǒ","左边、左右"],["右","yòu","右手、右边"],["它","tā","它们、其它"],["好","hǎo","好人"],["朋","péng","朋友、亲朋"],["友","yǒu","朋友、友爱"],["比","bǐ","比一比"],["尾","wěi","尾巴、结尾"],["巴","bā","下巴"],["谁","shuí","是谁、谁的"],["长","cháng","长处"],["短","duǎn","长短、短小"],["把","bǎ","一把刀"],["伞","sǎn","雨伞、打伞"],["兔","tù","白兔、兔子"],["最","zuì","最好、最大"],["公","gōng","公园、公鸡"],["写","xiě","写字、写作"],["诗","shī","古诗、诗人"],["点","diǎn","点头、点心"],["要","yào","不要、主要"],["过","guò","过来、过去"],["给","gěi","送给、给你"],["当","dāng","当心、当时"],["串","chuàn","一串、串门"],["们","men","他们"],["以","yǐ","以后、可以"],["成","chéng","成长、完成"],["彩","cǎi","彩色、彩虹"],["半","bàn","半个"],["空","kōng","空地"],["问","wèn","问好"],["到","dào","到来、到处"],["方","fāng","地方、方向"],["没","méi","没有、没来"],["更","gèng","更多、更大"],["绿","lǜ","绿色、绿叶"],["出","chū","日出"],["睡","shuì","睡觉、午睡"],["那","nà","那里、那个"],["海","hǎi","大海、海水"],["真","zhēn","真的、真心"],["老","lǎo","老师、老人"],["师","shī","老师、师傅"],["吗","ma","好吗、是吗"],["同","tóng","同学"],["什","shén","什么、什锦"],["才","cái","人才"],["亮","liàng","月亮、明亮"],["时","shí","时间、小时"],["候","hòu","时候、气候"],["觉","jué","睡觉"],["得","de","总得"],["自","zì","自己"],["己","jǐ","自己"],["很","hěn","很好、很大"],["穿","chuān","穿衣、穿上"],["衣","yī","毛衣"],["服","fú","衣服、舒服"],["快","kuài","快乐、飞快"],["蓝","lán","蓝天、蓝色"],["又","yòu","又一个"],["笑","xiào","大笑、笑声"],["着","zhe","着火、睡着"],["向","xiàng","向上、向前"],["和","hé","和平"],["贝","bèi","宝贝、贝壳"],["娃","wá","娃娃、女娃"],["挂","guà","挂上、牵挂"],["活","huó","生活、活动"],["金","jīn","金色、金鱼"],["哥","gē","哥哥、大哥"],["姐","jiě","姐姐、大姐"],["弟","dì","弟弟、兄弟"],["叔","shū","叔叔、大叔"],["爷","yé","爷爷、老爷"],["群","qún","一群、羊群"],["竹","zhú","竹子"],["牙","yá","门牙"],["用","yòng","有用"],["几","jǐ","几个"],["步","bù","跑步、脚步"],["为","wèi","因为、为了"],["参","cān","参加、参与"],["加","jiā","加法、加油"],["洞","dòng","山洞、洞口"],["乌","wū","乌云、乌鸦"],["鸦","yā","乌鸦、涂鸦"],["处","chù","到处、处处"],["找","zhǎo","找到、寻找"],["办","bàn","办法、办事"],["旁","páng","旁边、路旁"],["许","xǔ","许多、许愿"],["法","fǎ","方法、办法"],["放","fàng","放下、放学"],["进","jìn","进来、进去"],["高","gāo","高兴、高大"],["住","zhù","居住、住下"],["孩","hái","孩子、小孩"],["玩","wán","玩耍、好玩"],["吧","ba","好吧、来吧"],["发","fā","出发、发现"],["芽","yá","发芽、嫩芽"],["爬","pá","爬山、爬树"],["呀","ya","好呀、来呀"],["久","jiǔ","好久、长久"],["回","huí","回去"],["全","quán","大全"],["变","biàn","变成、变化"],["工","gōng","工人、工作"],["厂","chǎng","工厂、厂房"],["医","yī","医生、医院"],["院","yuàn","医院、院子"],["生","shēng","学生、生日"]
   ]},
-  2:{ name:"一年级下册", desc:"偏旁识字 · 看图+看拼音", chars:[
-    ["河","hé","小河"],["江","jiāng","长江"],["湖","hú","湖水"],["海","hǎi","大海"],["流","liú","流水"],["洗","xǐ","洗手"],["汽","qì","汽水"],["清","qīng","清水"],["树","shù","大树"],["松","sōng","松树"],["柏","bǎi","柏树"],["桃","táo","桃子"],["李","lǐ","李子"],["梅","méi","梅花"],["跑","pǎo","跑步"],["跳","tiào","跳高"],["踢","tī","踢球"],["路","lù","马路"],["跟","gēn","跟着"],["站","zhàn","站立"],["打","dǎ","打电话"],["拍","pāi","拍手"],["抱","bào","拥抱"],["拉","lā","拉手"],["找","zhǎo","找到"],["把","bǎ","把手"],["扫","sǎo","扫地"],["捉","zhuō","捉虫"],["唱","chàng","唱歌"],["吹","chuī","吹风"],["呼","hū","呼喊"],["叶","yè","叶子"],["苗","miáo","禾苗"],["草","cǎo","小草"],["茶","chá","喝茶"]
+  2:{ name:"一年级下册", desc:"部编版一下 405 字 · 看图+看拼音", chars:[
+    ["霜","shuāng","秋霜"],["吹","chuī","吹气"],["落","luò","落下"],["降","jiàng","下降"],["飘","piāo","飘落"],["游","yóu","游泳"],["池","chí","池塘"],["入","rù","加入"],["姓","xìng","姓氏"],["氏","shì","氏族"],["李","lǐ","李树"],["张","zhāng","张开"],["古","gǔ","古今"],["吴","wú","吴国"],["赵","zhào","赵国"],["钱","qián","钱包"],["孙","sūn","子孙"],["周","zhōu","周全"],["王","wáng","王子"],["官","guān","做官"],["清","qīng","清水"],["晴","qíng","晴天"],["眼","yǎn","眼镜"],["睛","jīng","眼睛"],["保","bǎo","保护"],["护","hù","护士"],["害","hài","害怕"],["事","shì","事情"],["情","qíng","友情"],["请","qǐng","请问"],["让","ràng","让开"],["病","bìng","病人"],["相","xiāng","相同"],["遇","yù","遇见"],["喜","xǐ","喜爱"],["欢","huān","欢乐"],["怕","pà","害怕"],["言","yán","语言"],["互","hù","互相"],["令","lìng","命令"],["动","dòng","动人"],["万","wàn","万里"],["纯","chūn","纯洁"],["净","jìng","干净"],["阴","yīn","阴天"],["雷","léi","雷电"],["电","diàn","电视"],["阵","zhèn","阵雨"],["冰","bīng","结冰"],["冻","dòng","冰冻"],["夹","jiā","夹菜"],["吃","chī","吃饭"],["忘","wàng","遗忘"],["井","jǐng","井口"],["村","cūn","山村"],["叫","jiào","叫声"],["毛","máo","皮毛"],["主","zhǔ","主要"],["席","xí","凉席"],["乡","xiāng","乡村"],["亲","qīn","亲热"],["战","zhàn","战士"],["士","shì","士兵"],["面","miàn","面前"],["想","xiǎng","思想"],["告","gào","告诉"],["诉","sù","诉苦"],["路","lù","马路"],["京","jīng","北京"],["安","ān","安全"],["门","mén","门口"],["广","guǎng","广场"],["非","fēi","非常"],["常","cháng","经常"],["壮","zhuàng","壮丽"],["观","guān","观看"],["接","jiē","迎接"],["觉","jiào","睡觉"],["再","zài","再见"],["做","zuò","做事"],["各","gè","各位"],["种","zhǒng","种子"],["样","yàng","样子"],["梦","mèng","梦想"],["伙","huǒ","同伙"],["伴","bàn","陪伴"],["却","què","盛情难却"],["趣","qù","有趣"],["这","zhè","这里"],["太","tài","太好"],["阳","yáng","阳光"],["道","dào","道路"],["送","sòng","送给"],["忙","máng","连忙"],["尝","cháng","品尝"],["香","xiāng","香气"],["甜","tián","甜美"],["温","wēn","温暖"],["暖","nuǎn","暖和"],["该","gāi","应该"],["颜","yán","颜色"],["因","yīn","因为"],["辆","liàng","车辆"],["匹","pǐ","一匹马"],["册","cè","一册书"],["支","zhī","一支笔"],["铅","qiān","铅笔"],["棵","kē","一棵树"],["架","jià","一架飞机"],["块","kuài","土块"],["捉","zhuō","捉虫"],["急","jí","着急"],["直","zhí","直接"],["河","hé","小河"],["行","xíng","行走"],["死","sǐ","生死"],["信","xìn","写信"],["跟","gēn","跟从"],["忽","hū","忽然"],["喊","hǎn","叫喊"],["身","shēn","身体"],["只","zhǐ","只好"],["窝","wō","鸟窝"],["孤","gū","孤独"],["单","dān","单独"],["都","dōu","全都"],["邻","lín","邻居"],["居","jū","居住"],["招","zhāo","招收"],["呼","hū","呼喊"],["静","jìng","安静"],["乐","lè","欢乐"],["怎","zěn","怎么"],["独","dú","单独"],["跳","tiào","跳绳"],["绳","shéng","绳子"],["讲","jiǎng","讲话"],["得","děi","总得"],["羽","yǔ","羽毛"],["球","qiú","篮球"],["戏","xì","唱戏"],["排","pái","排队"],["篮","lán","篮筐"],["连","lián","连接"],["运","yùn","运动"],["夜","yè","黑夜"],["思","sī","思念"],["床","chuáng","起床"],["光","guāng","发光"],["疑","yí","怀疑"],["举","jǔ","举手"],["望","wàng","看望"],["低","dī","低头"],["故","gù","故乡"],["胆","dǎn","大胆"],["敢","gǎn","敢于"],["往","wǎng","往前"],["外","wài","外面"],["勇","yǒng","勇敢"],["窗","chuāng","窗户"],["乱","luàn","杂乱"],["偏","piān","偏爱"],["散","sàn","散开"],["原","yuán","原来"],["像","xiàng","好像"],["微","wēi","微笑"],["端","duān","端水"],["粽","zàng","粽子"],["节","jié","节日"],["总","zǒng","总是"],["米","mǐ","大米"],["间","jiān","中间"],["分","fēn","分开"],["豆","dòu","大豆"],["肉","ròu","猪肉"],["带","dài","带鱼"],["知","zhī","知道"],["据","jù","根据"],["念","niàn","思念"],["虹","hóng","彩虹"],["座","zuò","座位"],["提","tí","提水"],["浇","jiāo","浇水"],["洒","sǎ","洒水"],["挑","tiāo","挑水"],["兴","xìng","高兴"],["拿","ná","拿走"],["镜","jìng","镜子"],["照","zhào","关照"],["千","qiān","千家万户"],["裙","qún","花裙"],["眉","méi","眉毛"],["鼻","bí","鼻子"],["嘴","zuǐ","嘴巴"],["脖","bó","脖子"],["臂","bì","手臂"],["肚","dù","肚子"],["腿","tuǐ","鸡腿"],["脚","jiǎo","赤脚"],["蜻","qīng","蜻蜓"],["蜓","tíng","蜻蜓"],["迷","mí","迷路"],["藏","cáng","捉迷藏"],["造","zào","造纸"],["蚂","mǎ","蚂蚁"],["蚁","yǐ","蚂蚁"],["食","shí","食物"],["粮","liáng","粮食"],["蜘","zhī","蜘蛛"],["蛛","zhū","蜘蛛"],["网","wǎng","蛛网"],["圆","yuán","团圆"],["严","yán","严格"],["寒","hán","寒假"],["酷","kù","冷酷"],["暑","shǔ","暑假"],["凉","liáng","冰凉"],["晨","chén","早晨"],["细","xì","细小"],["朝","zhāo","朝夕"],["霞","xiá","彩霞"],["夕","xī","夕阳"],["杨","yáng","杨树"],["操","cāo","操场"],["场","chǎng","球场"],["拔","bá","拔牙"],["拍","pāi","拍球"],["跑","pǎo","跑步"],["踢","tī","踢球"],["铃","líng","铃铛"],["热","rè","热闹"],["闹","nào","闹事"],["锻","duàn","锻炼"],["炼","liàn","锻炼"],["体","tǐ","体育"],["之","zhī","之前"],["初","chū","初一"],["性","xìng","性格"],["善","shàn","善良"],["习","xí","习惯"],["教","jiào","教师"],["迁","qiān","变迁"],["贵","guì","富贵"],["专","zhuān","专家"],["幼","yòu","幼儿"],["玉","yù","宝玉"],["器","qì","木器"],["义","yì","意义"],["饭","fàn","吃饭"],["能","néng","能力"],["饱","bǎo","吃饱"],["茶","chá","喝茶"],["泡","pǎo","泡茶"],["轻","qīng","年轻"],["鞭","biān","鞭炮"],["炮","pào","大炮"],["首","shǒu","首都"],["踪","zōng","失踪"],["迹","jì","古迹"],["浮","fú","漂浮"],["萍","píng","浮萍"],["泉","quán","山泉"],["流","liú","水流"],["爱","ài","友爱"],["柔","róu","柔软"],["荷","hé","荷花"],["露","lù","露水"],["角","jiǎo","角落"],["珠","zhū","珍珠"],["摇","yáo","摇手"],["躺","tǎng","躺下"],["晶","jīng","水晶"],["停","tíng","停止"],["机","jī","飞机"],["展","zhǎn","展示"],["透","tòu","透气"],["翅","chì","翅膀"],["膀","bǎng","翅膀"],["唱","chàng","唱歌"],["朵","duǒ","一朵花"],["腰","yāo","弯腰"],["坡","pō","山坡"],["沉","chén","下沉"],["伸","shén","伸手"],["潮","cháo","潮水"],["湿","shī","潮湿"],["呢","ne","你呢"],["空","kòng","空地"],["闷","mēn","闷热"],["消","xiāo","消息"],["息","xī","休息"],["搬","bān","搬家"],["响","xiǎng","响声"],["棍","gùn","棍棒"],["汤","tāng","喝汤"],["扇","shàn","扇子"],["椅","yǐ","桌椅"],["萤","yíng","流萤"],["牵","qiān","牵牛花"],["织","zhī","织女"],["斗","dǒu","北斗星"],["具","jù","玩具"],["次","cì","一次"],["丢","diū","丢失"],["哪","nǎ","哪里"],["新","xīn","新旧"],["每","měi","每天"],["平","píng","平安"],["她","tā","她们"],["些","xiē","一些"],["仔","zǐ","仔细"],["检","jiǎn","检查"],["查","chá","查看"],["所","suǒ","所以"],["钟","zhōng","闹钟"],["元","yuán","元旦"],["迟","chí","迟到"],["洗","xǐ","清洗"],["背","bēi","背包"],["刚","gāng","刚才"],["叹","tàn","叹气"],["共","gòng","一共"],["汽","qì","汽车"],["决","jué","决定"],["定","dìng","一定"],["已","yǐ","已经"],["经","jīng","经过"],["物","wù","动物"],["虎","hǔ","老虎"],["熊","xióng","黑熊"],["通","tōng","通过"],["注","zhù","注意"],["意","yì","意义"],["遍","biàn","一遍"],["百","bǎi","成百上千"],["舌","shé","舌头"],["鬼","guǐ","小鬼"],["脸","liǎn","脸蛋"],["准","zhǔn","准备"],["第","dì","第一"],["猴","hóu","猴子"],["结","jiē","结果"],["掰","bāi","掰开"],["扛","káng","扛起"],["满","mǎn","满意"],["扔","rēng","扔掉"],["摘","zhāi","摘下"],["捧","pěng","捧起"],["瓜","guā","西瓜"],["抱","bào","怀抱"],["蹦","bèng","蹦跳"],["追","zhuī","追赶"],["吵","chǎo","争吵"],["胖","pàng","肥胖"],["岁","suì","岁月"],["现","xiàn","现在"],["票","piào","邮票"],["交","jiāo","交换"],["弓","gōng","弓箭"],["甘","gān","甘心"],["棉","mián","棉花"],["娘","niáng","大娘"],["治","zhì","医治"],["燕","yàn","燕子"],["别","bié","别人"],["干","gàn","干活"],["然","rán","然后"],["奇","qí","奇怪"],["颗","kē","一颗枣"],["瓢","piáo","瓢虫"],["碧","bì","碧绿"],["吐","tǔ","吐气"],["啦","la","来啦"],["咕","gū","咕咚"],["咚","dōng","咚咚响"],["熟","shú","熟人"],["掉","diào","掉下"],["吓","xià","吓人"],["鹿","lù","梅花鹿"],["逃","táo","逃跑"],["命","mìng","生命"],["象","xiàng","大象"],["野","yě","野生"],["拦","lán","拦住"],["领","lǐng","带领"],["壁","bì","墙壁"],["墙","qiáng","墙角"],["蚊","wén","蚊子"],["咬","yǎo","咬断"],["断","duàn","断开"],["您","nín","您好"],["拨","bō","拨开"],["甩","shuǎi","甩开"],["赶","gǎn","赶走"],["房","fáng","房屋"],["傻","shǎ","傻瓜"],["转","zhuǎn","转弯"],["卫","wèi","保卫"],["刷","shuā","刷子"],["梳","shū","梳头"],["巾","jīn","毛巾"],["擦","cā","擦手"],["皂","zhào","肥皂"],["澡","zǎo","洗澡"],["盆","pén","脸盆"]
   ]},
   3:{ name:"二年级上册", desc:"形声字 · 拼音选字+组词", chars:[
     ["园","yuán","公园"],["圆","yuán","圆形"],["份","fèn","一份"],["分","fēn","分开"],["城","chéng","城市"],["诚","chéng","诚实"],["进","jìn","进去"],["近","jìn","远近"],["晴","qíng","晴天"],["请","qǐng","请坐"],["清","qīng","清水"],["青","qīng","青草"],["今","jīn","今天"],["金","jīn","金色"],["生","shēng","学生"],["声","shēng","声音"],["在","zài","正在"],["再","zài","再见"],["已","yǐ","已经"],["以","yǐ","以后"],["做","zuò","做工"],["作","zuò","作业"],["坐","zuò","坐下"],["座","zuò","座位"],["话","huà","说话"],["化","huà","变化"],["子","zǐ","孩子"],["字","zì","写字"],["香","xiāng","香味"],["乡","xiāng","家乡"]
@@ -3709,34 +3986,86 @@ function confuseDistractors(c, n, bank){
   return out.slice(0,n);
 }
 function blankPhrase(c, word){
-  const idx = word.indexOf(c);
-  if (idx<0) return "（ ）";
-  return word.slice(0,idx) + "___" + word.slice(idx+1);
+  /* 挖掉词语里【所有】出现的目标字。
+     原来只挖第一个（indexOf 只找首个匹配），叠词会漏：「爸爸」→「___爸」，答案字仍留在题干里。
+     挖空后一个字都不剩（「爸爸」→「＿＿」）时说明该词撑不起填空语境，由调用方换字。 */
+  if (!word.includes(c)) return "";
+  return word.split("").map(ch => ch === c ? "＿" : ch).join("");
 }
 function replaceChar(word, c, rep){ return word.split("").map(ch=> ch===c?rep:ch).join(""); }
-function buildHanziQ(type, bank, lv, i){
-  const e = pick(bank,1)[0]; const [c, py, word] = e;
+function buildHanziQ(type, bank, lv, i, forceChar){
+  /* forceChar：复习池指定要考的字（任务②）。字库里找得到就考它，找不到忽略强制。 */
+  const e = forceChar ? (bank.find(x => x[0] === forceChar) || pick(bank,1)[0]) : pick(bank,1)[0];
+  const [c, py, word] = e;
   if (type==="emoji"){
-    const em = emojiFor(c);
-    const wrongs = randomDistractors(c, bank, 3);
-    return { id:"h"+i, prompt:(em? em+" ":"") + "这个字是？", speakText:`${c}，${word}`, speakOnShow:true, options:shuffle([c,...wrongs]), answer:c };
+    /* 任务⑤兜底：抽到的字没有 emoji → 改抽一个有图字出题，不让孩子裸看文字猜；
+       整库都无图 → 退化成看拼音选字。复习池强制字没图时同理走拼音题。 */
+    let e2 = e;
+    if (forceChar && !emojiFor(c)){
+      return buildHanziQ("pinyin", bank, lv, i, forceChar);
+    }
+    if (!forceChar && !emojiFor(c)){
+      const withEm = bank.filter(x => emojiFor(x[0]));
+      if (!withEm.length) return buildHanziQ("pinyin", bank, lv, i);
+      e2 = pick(withEm,1)[0];
+    }
+    const em = emojiFor(c), ce = e2[0], we = e2[2];
+    const wrongs = randomDistractors(ce, bank, 3);
+    return { id:"h"+i, hanziChar:ce, prompt:`${em} 这个字是？`, speakText:`${ce}，${we}`, speakOnShow:true, options:shuffle([ce,...wrongs]), answer:ce };
   }
   if (type==="pinyin"){
-    const wrongs = confuseDistractors(c,3,bank);
-    return { id:"h"+i, prompt:py, promptClass:"small", sub:`（${word}）选正确的汉字`, speakText:`${c}，${word}`, speakOnShow:false, options:shuffle([c,...wrongs]), answer:c };
+    /* 组词必然包含目标字（「妈」→「妈妈」），把它放进 sub 等于把答案打在屏幕上，所以这里只给拼音。
+       代价：同音字会让题目无解（做/作/坐/座 都读 zuò），因此干扰项必须排除所有与答案同拼音的字。
+       喇叭仍会读「妈，妈妈」——那是孩子主动点的求助通道，且听了仍需从 4 个字形里认出目标字，不算白送。 */
+    const samePy = new Set(bank.filter(x => x[1] === py).map(x => x[0]));
+    let wrongs = confuseDistractors(c, 3, bank).filter(w => !samePy.has(w));
+    if (wrongs.length < 3){
+      let pool = bank.map(x => x[0]).filter(x => x !== c && !samePy.has(x) && !wrongs.includes(x));
+      while (wrongs.length < 3 && pool.length){ const w = pick(pool,1)[0]; wrongs.push(w); pool = pool.filter(x => x !== w); }
+    }
+    if (wrongs.length < 3){                       // 极端兜底：宁可容忍同音歧义，也不能少选项
+      let pool = bank.map(x => x[0]).filter(x => x !== c && !wrongs.includes(x));
+      while (wrongs.length < 3 && pool.length){ const w = pick(pool,1)[0]; wrongs.push(w); pool = pool.filter(x => x !== w); }
+    }
+    return { id:"h"+i, hanziChar:c, prompt:py, promptClass:"small", sub:"选出正确的汉字", speakText:`${c}，${word}`, speakOnShow:false, options:shuffle([c,...wrongs]), answer:c };
   }
   if (type==="word"){
-    const ws = [...new Set(pick(bank.filter(x=>x[2]!==word).map(x=>x[2]), 6))].slice(0,3);
-    return { id:"h"+i, prompt:c, sub:"选一个正确的组词", speakText:null, speakOnShow:false, options:shuffle([word,...ws]), answer:word };
+    /* 先按词条去重再抽：字库里两字可能共用同一组词（「我」「们」→ 都是「我们」），
+       不去重会让选项里出现两条一模一样的词，答案等于直接暴露。 */
+    const uniqWords = [...new Set(bank.map(x => x[2]))].filter(w => w !== word);
+    const ws = [...new Set(pick(uniqWords, 6))].slice(0,3);
+    return { id:"h"+i, hanziChar:c, prompt:c, sub:"选一个正确的组词", speakText:null, speakOnShow:false, options:shuffle([word,...ws]), answer:word };
   }
   if (type==="confuse" || type==="fill"){
-    const grp = confuseGroup(c);
-    if (grp.length){
-      const opts = shuffle([c, ...grp]).slice(0, Math.min(4, grp.length+1));
-      return { id:"h"+i, prompt:"选字填空：" + blankPhrase(c, word), sub: type==="fill" ? "（根据词语选字）" : "", speakText:word, speakOnShow:false, options:opts, answer:c };
+    /* 换字重抽，两条筛选：
+       ① 挖空后必须还剩字——叠词「爸爸」挖完是「＿＿」，没有任何语境，题目无解；
+       ② 有形近字组的优先——「做/作/坐/座」这种才是填空的好题，随机字凑出来的没区分度。 */
+    let best = null;
+    for (let t = 0; t < 40; t++){
+      const e2 = pick(bank,1)[0];
+      const ph = blankPhrase(e2[0], e2[2]);
+      if (!ph || ph.replace(/＿/g, "").length < 1) continue;      // 无语境，换一个字
+      const g2 = confuseGroup(e2[0]);
+      const score = g2.length ? 2 : 1;
+      if (!best || score > best.score) best = { e:e2, phrase:ph, grp:g2, score };
+      if (score === 2) break;
     }
-    const wrongs = randomDistractors(c, bank, 3);
-    return { id:"h"+i, prompt:py, promptClass:"small", sub:`（${word}）选正确的汉字`, speakText:`${c}，${word}`, speakOnShow:false, options:shuffle([c,...wrongs]), answer:c };
+    if (!best) return buildHanziQ("pinyin", bank, lv, i);        // 极端：整库都是叠词 → 退化成看拼音选字
+    const [c2, , word2] = best.e;
+    if (best.grp.length){
+      let opts = shuffle([c2, ...best.grp]).slice(0, Math.min(4, best.grp.length+1));
+      if (opts.length < 4){
+        /* 形近组只有 1~2 个成员时（如「玩/完」「汽/气」）会变成 2 选 1，蒙对率 50%，太送分。
+           补齐到 4 个，优先用与答案同音的字——同音混淆本来就是这类题的考点。 */
+        const used = new Set(opts), py2 = best.e[1];
+        const samePy = bank.map(x => x[0]).filter(x => !used.has(x) && x[1] === py2);
+        let pool = samePy.length ? samePy : bank.map(x => x[0]).filter(x => !used.has(x));
+        while (opts.length < 4 && pool.length){ const w = pick(pool,1)[0]; opts.push(w); pool = pool.filter(x => x !== w); }
+      }
+      return { id:"h"+i, hanziChar:c2, prompt:"选字填空：" + best.phrase, sub: type==="fill" ? "（根据词语选字）" : "", speakText:word2, speakOnShow:false, options:shuffle(opts), answer:c2 };
+    }
+    const wrongs = randomDistractors(c2, bank, 3);
+    return { id:"h"+i, hanziChar:c2, prompt:"选字填空：" + best.phrase, sub: type==="fill" ? "（根据词语选字）" : "", speakText:word2, speakOnShow:false, options:shuffle([c2,...wrongs]), answer:c2 };
   }
   if (type==="judge"){
     const grp = confuseGroup(c);
@@ -3745,10 +4074,28 @@ function buildHanziQ(type, bank, lv, i){
     let phrase, ans;
     if (showCorrect){ phrase = word; ans = "对"; }
     else { phrase = replaceChar(word, c, wrongMember); ans = "错"; }
-    return { id:"h"+i, prompt:`这个词用字对吗：${phrase}？`, sub:"", speakText:null, speakOnShow:false, options:shuffle(["对","错"]), answer:ans };
+    return { id:"h"+i, hanziChar:c, prompt:`这个词用字对吗：${phrase}？`, sub:"", speakText:null, speakOnShow:false, options:shuffle(["对","错"]), answer:ans };
   }
-  const wrongs = randomDistractors(c, bank, 3);
-  return { id:"h"+i, prompt:c, sub:`（${word}）`, speakText:`${c}，${word}`, speakOnShow:lv<=1, options:shuffle([c,...wrongs]), answer:c };
+  /* 兜底：未知题型。原来这里直接把目标字当题干（prompt:c 且 answer:c），答案白送，
+     改为退化成看拼音选字（该分支不会含答案字）。typePlan 已覆盖全部题型，实际走不到这里。 */
+  return buildHanziQ("pinyin", bank, lv, i);
+}
+/* 错字复习池（任务②）：首答错的字进池（连对清零），之后每场优先重考；
+   首答连对 3 次移出池。跨难度保留——切走难度的字留在池里，切回来继续复习。 */
+function hanziReviewChars(){ return Object.keys(state.hanziReview || {}); }
+function hanziReviewCount(){ return hanziReviewChars().length; }
+function hanziAnswerHook(q, ok){
+  const c = q.hanziChar; if (!c) return;
+  if (!state.hanziReview) state.hanziReview = {};
+  if (ok){
+    if (c in state.hanziReview){
+      state.hanziReview[c] += 1;
+      if (state.hanziReview[c] >= 3){ delete state.hanziReview[c]; toast(`🎓「${c}」复习过关，毕业啦！`); }
+    }
+  } else {
+    state.hanziReview[c] = 0;   // 首答错：进池并把连对清零
+  }
+  saveState();
 }
 function hanziTask(){
   if (state.daily.done.hanzi) return alreadyDone("✍️ 识字达人");
@@ -3758,9 +4105,17 @@ function hanziTask(){
   const lvNum = +lv;
   const typePlan = { 0:["emoji"], 1:["emoji","pinyin"], 2:["emoji","pinyin"], 3:["pinyin","word"], 4:["confuse"], 5:["fill","judge"] }[lvNum] || ["emoji"];
   const questions = [];
-  for (let i=0;i<10;i++){ questions.push(buildHanziQ(typePlan[i % typePlan.length], bank, lvNum, i)); }
+  /* 复习优先：每场最多把 5 个待复习字织进偶数题位（0,2,4,6,8），其余照常出题。
+     只重考当前难度字库里的复习字（切过难度的老字留在池里，切回来再考）。 */
+  const reviewChars = hanziReviewChars().filter(c => bank.some(x => x[0] === c));
+  let ri = 0;
+  for (let i=0;i<10;i++){
+    const type = typePlan[i % typePlan.length];
+    const force = (i % 2 === 0 && ri < reviewChars.length) ? reviewChars[ri++] : null;
+    questions.push(buildHanziQ(type, bank, lvNum, i, force));
+  }
   shuffle(questions);
-  runQuiz({ title:`✍️ 识字 · ${hanziDiffName(lv)}`, color:"#45B045", questions, moduleKey:"hanzi",
+  runQuiz({ title:`✍️ 识字 · ${hanziDiffName(lv)}`, color:"#45B045", questions, moduleKey:"hanzi", onAnswer:hanziAnswerHook,
     onFinish(acc){ openDialog(`<h2 style="color:#45B045">🎉 识字任务完成！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">📝</div><div style="font-size:26px;margin:10px 0">又认识了好多字，奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('hanzi')">收下精灵球 ⚡</button>`, {closable:false}); }
   });
 }
@@ -4427,7 +4782,19 @@ function play8bitMelody(){ const notes=[523,659,784,659,523,659,784,1047,880,784
 function makePinyinQ(){ const [py,chr]=pick(ALL_PINYIN,1)[0]; const wrongs=pick(ALL_PINYIN.filter(p=>p[0]!==py),3).map(p=>p[0]); return { prompt:"👂 听一听，是哪个拼音？", promptClass:"small", speakText:chr, speakOnShow:true, options:shuffle([py,...wrongs]), answer:py }; }
 /* 冒险数学题：答案为数字，与数学闯关保持一致，改用数字键盘输入（answerMode:"input" 时不给选项） */
 function makeMathQ(){ let a,b,op,ans; if(Math.random()<0.5){a=rnd(1,19);b=rnd(1,20-a);op="+";ans=a+b;} else {a=rnd(2,20);b=rnd(1,a-1);op="−";ans=a-b;} return { prompt:`${a} ${op} ${b} = ?`, answerMode:"input", answer:ans }; }
-function makeHanziQ(){ const [zi,py,word]=pick(HANZI,1)[0]; if(Math.random()<0.5){ const w=pick(HANZI.filter(h=>h[1]!==py),3).map(h=>h[1]); return { prompt:zi, sub:`组词：${word}｜它的拼音是哪个？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([py,...w]), answer:py }; } const w=pick(HANZI.filter(h=>h[0]!==zi),3).map(h=>h[0]); return { prompt:py, promptClass:"small", sub:`提示组词：${word}｜是哪个汉字？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...w]), answer:zi }; }
+function makeHanziQ(){
+  const [zi,py,word]=pick(HANZI,1)[0];
+  /* 候选项必须先去重：字库里不同字可能同音（「和」「禾」都读 hé），
+     直接 map 出拼音会产生两条一样的选项，答案等于直接暴露。 */
+  if(Math.random()<0.5){                       // 看字选拼音：题干就是汉字本身，组词提示不构成泄露
+    const w=pick([...new Set(HANZI.filter(h=>h[1]!==py).map(h=>h[1]))],3);
+    return { prompt:zi, sub:`组词：${word}｜它的拼音是哪个？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([py,...w]), answer:py };
+  }
+  /* 看拼音选字：组词必然包含目标字（「妈」→「妈妈」），放进 sub 等于把答案打在屏幕上，去掉。
+     干扰项同时排除同音字，否则 做/作/坐/座 都读 zuò 时题目无解。 */
+  const w=pick([...new Set(HANZI.filter(h=>h[0]!==zi&&h[1]!==py).map(h=>h[0]))],3);
+  return { prompt:py, promptClass:"small", sub:"是哪个汉字？", speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...w]), answer:zi };
+}
 /* 冒险可出的模块 + 出题函数；并按学习报告正确率计算薄弱模块（正确率最低者优先） */
 function adventurePoolWithRate(){
   const POOL = [["pinyin",makePinyinQ],["math",makeMathQ],["hanzi",makeHanziQ]];
