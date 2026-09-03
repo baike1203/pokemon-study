@@ -395,11 +395,14 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .py-key.py-tone { font-size: 36px; background: #F3EDFF; border-color: #C7B6F5; box-shadow: 0 3px 0 #a894e0; color: #6b46c1; }
 .py-key.py-tone.on { background: #DCCBFF; border-color: #8E6CF0; box-shadow: 0 3px 0 #6f4fd0; color: #4a2b8f; }
 /* 底部一行：声调 4 键（左）+ ⌫重来 / ✔确定（右） */
-.py-bottom { display: flex; gap: 14px; justify-content: center; align-items: center; width: 100%; flex-wrap: wrap; }
+/* 底部两行：上一行声调 4 键，下一行 ⌫重来 / ✔确定。
+   改成上下两行（column）布局是为了任何真机宽度都不会挤一行重叠——希沃平板 WebView
+   实际渲染 dialog 时宽度会被压，如果还保持 row+wrap，声调三/四声键会被 ⌫/✔ 顶替覆盖。 */
+.py-bottom { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
 .py-tone-row { display: flex; gap: 10px; }
 .py-tone-row .num-key { flex: 0 0 76px; min-height: 56px; }
-.py-fn { display: flex; gap: 10px; }
-.py-fn .num-key { flex: 0 0 118px; min-height: 56px; font-size: 22px; }
+.py-fn { display: flex; gap: 10px; justify-content: center; width: 100%; max-width: 280px; }
+.py-fn .num-key { flex: 1 1 0; min-width: 100px; min-height: 56px; font-size: 22px; }
 
 /* 拼音浏览 */
 .py-tabs { display: flex; justify-content: center; gap: 12px; margin: 10px 0 16px; flex-wrap: wrap; }
