@@ -954,7 +954,7 @@ const SYLLABLES = {
   d:[["ā","搭"],["á","答"],["ǎ","打"],["à","大"],["é","得"],["ì","弟"],["ū","都"],["ài","带"],["āo","刀"],["ān","丹"],["āng","当"],["ēng","灯"],["ōng","东"]],
   t:[["ā","他"],["ǎ","塔"],["à","踏"],["í","提"],["ǔ","土"],["ài","太"],["áo","桃"],["án","谈"],["áng","糖"],["éng","疼"],["ōng","通"],["īng","听"]],
   n:[["á","拿"],["ǐ","你"],["ù","怒"],["ǚ","女"],["ǎi","奶"],["án","南"],["éng","能"],["ín","您"],["íng","宁"],["ào","闹"]],
-  l:[["ā","拉"],["ǐ","里"],["ì","力"],["ù","路"],["ǜ","绿"],["ài","来"],["ǎo","老"],["è","乐"],["án","蓝"],["áng","狼"],["ěng","冷"],["íng","铃"],["ín","林"]],
+  l:[["ā","拉"],["ǐ","里"],["ì","力"],["ù","路"],["ǜ","绿"],["ài","赖"],["ái","来"],["ǎo","老"],["è","乐"],["án","蓝"],["áng","狼"],["ěng","冷"],["íng","铃"],["ín","林"]],
   g:[["ē","哥"],["é","格"],["ǔ","古"],["ù","故"],["āi","该"],["ěi","给"],["āo","高"],["ǎn","赶"],["ān","干"],["āng","刚"],["ēng","更"],["ōng","工"]],
   k:[["ē","科"],["é","咳"],["ǔ","苦"],["ù","库"],["àn","看"],["ào","靠"],["ǎn","砍"],["āng","康"],["ēng","坑"],["ěn","肯"],["ōng","空"]],
   h:[["ē","喝"],["é","河"],["ǔ","虎"],["ù","户"],["ēi","黑"],["ái","还"],["ǎo","好"],["ān","寒"],["ào","号"],["ěn","很"],["éng","横"],["ōng","红"]],
@@ -2632,7 +2632,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.44.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.44.3";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -4872,20 +4872,26 @@ let advToken = 0;   // 去冒险作答令牌：重开/切换题目时递增，�
 const ADV_REVEAL_MS = 900;   // 判定后先停顿，让小朋友看清对错（答错时能看到正确答案），再播战斗动画
 function beginBattle(myId){
   let wildId = pickWild();   // 对手：含已拥有但仍需副本进化的宝可梦，使“战胜对面获得它”能推进其进化
-  let myHP=3, wildHP=3, endured=false, committed=false; const myName = POKEMON[displayId(myId)-1];
+  let myHP=3, wildHP=3, endured=false, committed=false, fighting=false; const myName = POKEMON[displayId(myId)-1];
   function render(side){
+    /* clamp 兜底：极端情况下（动画等待中又被快速点击触发）HP 可能在 render 执行时已越过 0 边界，
+       这里钳到 [0,3] 后再喂给 repeat()，避免 Invalid count value 报错把战斗锁死 */
+    const mHP = Math.max(0, Math.min(3, myHP));
+    const wHP = Math.max(0, Math.min(3, wildHP));
     const pCls = "btl-sprite" + (side==="player" ? " atk-right" : side==="enemy" ? " hit" : "");
     const eCls = "btl-sprite" + (side==="enemy" ? " atk-left" : side==="player" ? " hit" : "");
     openDialog(`<div style="position:relative">
       <button id="advExit" title="选错了？点这里退出（不消耗次数）" style="position:absolute;top:-8px;right:-8px;width:48px;height:48px;border-radius:50%;background:var(--poke-yellow);border:none;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:5;line-height:1">✕</button>
       <h2 style="color:var(--poke-red)">⚔️ 宝可梦大冒险</h2>
       <div style="display:flex;justify-content:space-around;align-items:center;margin:10px 0">
-        <div><img class="${pCls}" src="${spriteUrl(displayId(myId))}" style="width:110px;height:110px;image-rendering:auto;object-fit:contain"><div>${POKEMON[displayId(myId)-1]}</div><div class="hearts" style="color:#E0524C">${"❤️".repeat(myHP)}${"🖤".repeat(3-myHP)}</div></div>
+        <div><img class="${pCls}" src="${spriteUrl(displayId(myId))}" style="width:110px;height:110px;image-rendering:auto;object-fit:contain"><div>${POKEMON[displayId(myId)-1]}</div><div class="hearts" style="color:#E0524C">${"❤️".repeat(mHP)}${"🖤".repeat(3-mHP)}</div></div>
         <div style="font-size:40px">VS</div>
-        <div><img class="${eCls}" src="${spriteUrl(wildId)}" style="width:110px;height:110px;image-rendering:auto;object-fit:contain"><div>野生的${POKEMON[wildId-1]}</div><div class="hearts" style="color:#E0524C">${"❤️".repeat(wildHP)}${"🖤".repeat(3-wildHP)}</div></div>
+        <div><img class="${eCls}" src="${spriteUrl(wildId)}" style="width:110px;height:110px;image-rendering:auto;object-fit:contain"><div>野生的${POKEMON[wildId-1]}</div><div class="hearts" style="color:#E0524C">${"❤️".repeat(wHP)}${"🖤".repeat(3-wHP)}</div></div>
       </div>
       <div id="battleArea"><button class="big-btn" id="atkBtn">⚔️ 攻击！</button></div></div>`, {closable:false});
-    $("#atkBtn").addEventListener("click", ()=>{ sfx.click(); if(!committed){ committed = true; state.adventureCount++; saveState(); } askQ(); });
+    /* fighting 守卫：动画进行中（myHP/wildHP 还没结算）禁止重复点 atkBtn，否则会触发新的 askQ → 再扣一次血，
+       导致 HP 被扣到 -1，render 时 String.repeat(-1) 抛 RangeError 把整个冒险锁死 */
+    $("#atkBtn").addEventListener("click", ()=>{ sfx.click(); if (fighting) return; if(!committed){ committed = true; state.adventureCount++; saveState(); } fighting = true; askQ(); });
     $("#advExit").addEventListener("click", ()=>{ sfx.click(); closeDialog(); if(!committed) setTimeout(startAdventure, 60); });
   }
   function askQ(){ busyStudying = true;
@@ -4926,6 +4932,7 @@ function beginBattle(myId){
         wildHP--;
         /* 先停顿展示反馈，再切战斗动画；动画结束后再判胜负 */
         setTimeout(()=>{ if (myAdv!==advToken) return; render("player");   // 答对：我方宝可梦冲撞对方宝可梦，对方扣血（含撞击动画）
+          fighting = false;   // 动画渲染完毕，解除守卫让孩子能继续点 atkBtn
           setTimeout(()=>{ if (myAdv===advToken && wildHP<=0) win(); }, 700); }, ADV_REVEAL_MS);
       } else {
         sfx.wrong();
@@ -4936,12 +4943,13 @@ function beginBattle(myId){
         if (fb){ fb.textContent=`答错啦，正确答案是 ${q.answer}，野生宝可梦反击！💥`; fb.className="feedback-line bad"; }
         myHP--;
         setTimeout(()=>{ if (myAdv!==advToken) return; render("enemy");   // 答错：对方宝可梦冲撞我方宝可梦，我方扣血（含撞击动画）
+          fighting = false;   // 动画渲染完毕，解除守卫
           setTimeout(()=>{
             if (myAdv !== advToken) return;
             if (myHP<=0){
               if (!endured){ endured=true; myHP=1;   // 仿宝可梦"撑住"：最后一滴血时咬牙撑住，给小朋友一次机会
                 openDialog(`<h2 style="color:var(--poke-blue)">💪 ${myName} 撑住了！</h2><div style="font-size:60px">🛡️</div><div style="font-size:26px;line-height:1.6">在最后一刻，${myName} 咬牙撑住了！<br>别灰心，再试一次你一定行！</div><button class="big-btn yellow" id="endureGo">继续战斗！🔥</button>`, {closable:false});
-                $("#endureGo").addEventListener("click", ()=>{ sfx.click(); speak(`${myName}在最后一刻撑住了！别灰心，再试一次你一定行！`); askQ(); });
+                $("#endureGo").addEventListener("click", ()=>{ sfx.click(); speak(`${myName}在最后一刻撑住了！别灰心，再试一次你一定行！`); fighting = true; askQ(); });
               } else { lose(); }
             }
             // myHP>0：战斗场景已渲染（含受击动画与最新血量），等待再次点击攻击
