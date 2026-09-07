@@ -2658,7 +2658,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.44.7";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.44.8";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2703,6 +2703,7 @@ function defaultState(){
 }
 /* 自动备份（单文件滚动）：平板 APK 端把存档写入下载目录的固定文件名，同名覆盖 → 永远只有 1 个文件，不累积杂乱 */
 let loadedEmpty = false;
+let stateLoadFailed = false;   // v3.44.8：loadState 抛异常（底层有档但读不出，如损坏/历史 TDZ）时为 true → 禁止一切"空档自动写回"
 let _autoBkTimer = null;
 /* v3.44.7 修复 TDZ：state 初始化已下移到 const TASKS 定义之后（见下）。
    loadState→rebuildCheckinLog 会读 TASKS；原先在 TASKS 声明前执行必然抛
@@ -2750,8 +2751,17 @@ function normalizeState(s){
   for (const id of (s.dex||[])){ if (s.copyCount[id] == null) s.copyCount[id] = 1; }
   return s;
 }
-function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); loadedEmpty = !raw; if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); rebuildCheckinLog(s); return normalizeState(s); } catch(e){ loadedEmpty = true; return defaultState(); } }
+function loadState(){ try { const raw = localStorage.getItem(STORE_KEY); loadedEmpty = !raw; if (!raw) return defaultState(); const s = Object.assign(defaultState(), JSON.parse(raw)); stateLoadFailed = false; rebuildCheckinLog(s); return normalizeState(s); } catch(e){ loadedEmpty = true; stateLoadFailed = true; return defaultState(); } }
 function saveState(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){ /* 某些浏览器/方式下 localStorage 不可用，忽略写入错误，保证不中断交互 */ } scheduleAutoBackup(); cloudSave(); }
+/* v3.44.8 防误清档：本地若已有真实存档（哪怕本次加载失败/loadedEmpty=true，如存档损坏或早期
+   TDZ 异常），绝不把内存里的空档 state 写回覆盖。仅在 localStorage 确实没有任何存档时才写入
+   空档基线（全新设备首次「暂不登录」需要一条落盘存档）。读取存储失败同样宁可不写。 */
+function persistLocalBaselineIfEmpty(){
+  if (stateLoadFailed) return;   // 底层有档但读取失败：绝不把空档写回覆盖
+  if (!loadedEmpty) return;
+  try { if (localStorage.getItem(STORE_KEY)) return; } catch(e){ return; }
+  state.lastVisit = todayStr(); saveState();
+}
 /* ============ 云端进度（Cloudflare D1 账号系统） ============ */
 let _cloudTimer = null;
 function cloudSave(){           // 防抖：连续多次保存合并成一次云端写入
@@ -2846,7 +2856,7 @@ function showLoginDialog(onDone){
   };
   tabs.login.onclick = ()=>setMode("login");
   tabs.reg.onclick   = ()=>setMode("reg");
-  document.getElementById("lgSkip").onclick = ()=>{ sfx.click(); closeDialog(); if (loadedEmpty){ state.lastVisit = todayStr(); saveState(); } welcomeIfNeeded(); };
+  document.getElementById("lgSkip").onclick = ()=>{ sfx.click(); closeDialog(); persistLocalBaselineIfEmpty(); welcomeIfNeeded(); };
   document.getElementById("lgSubmit").onclick = async ()=>{
     const username = document.getElementById("lgUser").value.trim();
     const password = document.getElementById("lgPw").value;
@@ -2863,7 +2873,7 @@ function showLoginDialog(onDone){
       closeDialog();
       const ok = await restoreFromCloud();
       if (!ok && !loadedEmpty) cloudSave();
-      if (!ok && loadedEmpty){ state.lastVisit = todayStr(); saveState(); }
+      if (!ok && loadedEmpty) persistLocalBaselineIfEmpty();
       toast("☁️ 已登录：" + j.username);
       if (onDone) onDone();
     } catch(e){ document.getElementById("lgMsg").textContent = "网络错误，请稍后重试"; btn.textContent = mode === "login" ? "登录" : "注册并登录"; btn.disabled = false; }
@@ -5821,7 +5831,7 @@ function tickClock(){
 function welcomeIfNeeded(){
   const t = todayStr();
   if (state.lastVisit !== t){
-    state.lastVisit = t; saveState();
+    if (!stateLoadFailed){ state.lastVisit = t; saveState(); }   // v3.44.8：读取失败时只更新内存、绝不把空档写回覆盖真档
     const doneCount = TASKS.filter(x => state.daily.done[x.key]).length;
     openDialog(`<h2 style="color:var(--poke-red)">你好呀，${state.name}！👋</h2>
       <div style="font-size:64px;margin:6px 0">🌿<img src="${spriteUrl(906)}" alt="新叶喵" style="width:92px;height:92px;image-rendering:auto;object-fit:contain;vertical-align:middle">🌿</div>
