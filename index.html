@@ -2658,7 +2658,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.44.6";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.44.7";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2704,8 +2704,9 @@ function defaultState(){
 /* 自动备份（单文件滚动）：平板 APK 端把存档写入下载目录的固定文件名，同名覆盖 → 永远只有 1 个文件，不累积杂乱 */
 let loadedEmpty = false;
 let _autoBkTimer = null;
-let state = loadState();
-if (state.name === "小宝"){ state.name = "苏打"; saveState(); }   // 默认名字由「小宝」改为「苏打」（仅影响仍用旧默认名的存档）
+/* v3.44.7 修复 TDZ：state 初始化已下移到 const TASKS 定义之后（见下）。
+   loadState→rebuildCheckinLog 会读 TASKS；原先在 TASKS 声明前执行必然抛
+   ReferenceError(TDZ)，被 loadState 的 catch 吞掉后返回空档 → 存档永远读不回。 */
 let quizToken = 0;          // 答题会话令牌：每开新一题/新一场自增，旧回调据此失效（防止切换时旧计时器串场）
 let activeModule = null;    // 当前打开的学习模块（家长设置齿轮借此判断是否要按新难度重开数学）
 function hasMeaningfulProgress(){
@@ -3247,6 +3248,10 @@ const TASKS = [
   { key:"english", cls:"english", icon:"📖", name:"英语 RAZ", desc:"今日阅读打卡" },
   { key:"writing", cls:"writing", icon:"✏️", name:"写字练习", desc:"今日练字打卡" }
 ];
+/* state 初始化必须位于 TASKS 之后：loadState→rebuildCheckinLog 依赖 TASKS 常量，
+   提前执行会触发 TDZ ReferenceError，被 catch 吞掉后存档被当成空档（v3.44.7） */
+let state = loadState();
+if (state.name === "小宝"){ state.name = "苏打"; saveState(); }   // 默认名字由「小宝」改为「苏打」（仅影响仍用旧默认名的存档）
 function renderTasks(){
   const g = $("#taskGrid"); g.innerHTML = "";
   const doneCount = TASKS.filter(t => state.daily.done[t.key]).length;
