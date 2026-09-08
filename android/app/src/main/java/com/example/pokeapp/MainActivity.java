@@ -220,6 +220,16 @@ public class MainActivity extends Activity {
 
             @JavascriptInterface
             public void exportSave(String json, String filename) {
+                writeSave(json, filename, true);   // 手动导出：成功弹完整位置提示
+            }
+
+            /** 自动备份：固定文件名 + 静默写入（成功不弹 Toast 打扰孩子；失败仍提示） */
+            @JavascriptInterface
+            public void autoBackupSave(String json) {
+                writeSave(json, "pokemon-study-auto-backup.json", false);
+            }
+
+            private void writeSave(String json, String filename, boolean showToastOnSuccess) {
                 try {
                     if (filename == null || filename.isEmpty()) filename = "pokemon-save.json";
                     // 自动备份固定用 pokemon-study-auto-backup.json：需要「始终覆盖同一文件」策略；
@@ -284,9 +294,11 @@ public class MainActivity extends Activity {
                                 }
                             }
                         }
-                        showToast(isAutoBackup
-                                ? "进度已自动备份到：平板「下载 / Download」\n" + actual
-                                : "进度文件已下载到：平板「下载 / Download」\n" + filename);
+                        if (showToastOnSuccess) {
+                            showToast(isAutoBackup
+                                    ? "进度已自动备份到：平板「下载 / Download」\n" + actual
+                                    : "进度文件已下载到：平板「下载 / Download」\n" + filename);
+                        }
                     } else {
                         File dir = android.os.Environment
                                 .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
@@ -295,10 +307,12 @@ public class MainActivity extends Activity {
                         try (FileOutputStream fos = new FileOutputStream(f)) {
                             fos.write(json.getBytes(StandardCharsets.UTF_8));
                         }
-                        showToast("进度已自动备份到：" + f.getAbsolutePath());
+                        if (showToastOnSuccess) {
+                            showToast("进度已保存到：" + f.getAbsolutePath());
+                        }
                     }
                 } catch (Exception e) {
-                    showToast("自动备份失败：" + e.getMessage());
+                    showToast("进度保存失败：" + e.getMessage());
                 }
             }
 
