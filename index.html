@@ -2658,7 +2658,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.44.8";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.44.9";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2714,7 +2714,7 @@ function hasMeaningfulProgress(){
   return (state.dex && state.dex.length>0) ||
          (state.checkinLog && Object.keys(state.checkinLog).length>0) ||
          (state.superBalls>0) || (state.masterBalls>0) ||
-         (state.achievements && state.achievements.length>0);
+         (state.achievements && Object.keys(state.achievements).length>0);
 }
 function scheduleAutoBackup(){
   if (_autoBkTimer) clearTimeout(_autoBkTimer);
