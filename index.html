@@ -2764,7 +2764,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.45.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.46.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2850,10 +2850,15 @@ function normalizeState(s){
   if (!s.activeAchBook) s.activeAchBook = "gen1";
   // 兜底：daily 缺失 / 为 null 时补默认（防止 60 秒定时器读 state.daily.date 报错，云端/导入/旧档都可能缺）
   if (!s.daily || typeof s.daily !== "object" || typeof s.daily.done !== "object") s.daily = { date: todayStr(), done: { pinyin:false, math:false, english:false, hanzi:false, poem:false, writing:false }, celebrated:false };
-  // 兼容老用户：若 gen1 已实际集齐（含 allComplete 标记或 dex 含 1-151 全部）但未记录，则补记
-  let c1 = 0; for (const id of (s.dex||[])){ if (id>=1 && id<=151) c1++; }
-  const gen1Done = (s.allComplete===true) || c1 >= 151;
-  if (gen1Done && !s.completedBooks.gen1) s.completedBooks.gen1 = true;
+  // v3.46.0 B4 修复：任何世代只要 dex 实际集齐就补记 completedBooks（原来只补 gen1，
+  // 其他世代在云端并集后可能出现「实际集齐但标记缺失」，书架卡在“收集中 N/N”）。
+  // gen1 额外兼容极老版本的 allComplete 标记。
+  for (const g of BOOK_ORDER){
+    if (s.completedBooks[g]) continue;
+    const b = BOOKS[g]; let c = 0;
+    for (const id of (s.dex||[])){ if (id>=b.minId && id<=b.maxId) c++; }
+    if (c >= bookCapacity(g) || (g==="gen1" && s.allComplete===true)) s.completedBooks[g] = true;
+  }
   // 兼容：早期版本进化生成的中间形态未写入 copyCount，导致图鉴显示 0/need（如月桂叶 0/3）。
   // 任何已拥有的宝可梦至少算 1 只，因此缺失项补 1；同时保证 copyCount 对象存在。
   if (!s.copyCount || typeof s.copyCount !== "object") s.copyCount = {};
@@ -2892,7 +2897,8 @@ async function doCloudSave(token){
     await fetch(CLOUD_API + "/progress", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-      body: JSON.stringify({ progress: state })
+      body: JSON.stringify({ progress: state }),
+      keepalive: true   // v3.46.0 B3：beforeunload/杀进程时请求仍会发出（普通 async fetch 在卸载时可能被中止）
     });
   } catch(e){ /* 离线 / 未绑定 D1 / 非 Pages：静默降级，下次联网保存时再同步 */ }
 }
@@ -2931,6 +2937,40 @@ function mergeCloudIntoState(cloud){
   // 成就 / 已集齐世代：并集（已领取/已达成不回退）
   if (state.achievements && cloud.achievements) base.achievements = Object.assign({}, cloud.achievements, state.achievements);
   if (state.completedBooks && cloud.completedBooks) base.completedBooks = Object.assign({}, cloud.completedBooks, state.completedBooks);
+  // v3.46.0 B1 修复：其余进度字段此前一律以云端为准，离线攒下的球数/进化次数/学习统计会被旧云端值覆盖丢失。
+  // 策略：资源与进度「只增不回退」（孩子奖励不倒扣；多设备同步宁可保留更多），设置类字段仍以云端为基础。
+  const num0 = v => Number(v) || 0;
+  // 1) 数值标量取两端较大值：三类球、连续全勤、当日冒险已用次数
+  ["balls","superBalls","masterBalls","allCompleteStreak","adventureCount"].forEach(k=>{
+    if (typeof state[k]==="number" || typeof base[k]==="number") base[k] = Math.max(num0(state[k]), num0(base[k]));
+  });
+  // 2) per-id 进度表逐键取大：收服次数、进化阶段（只进不退）
+  ["copyCount","evoStage"].forEach(k=>{
+    const m = Object.assign({}, (base[k] && typeof base[k]==="object") ? base[k] : {});
+    for (const id in (state[k]||{})) m[id] = Math.max(num0(m[id]), num0(state[k][id]));
+    base[k] = m;
+  });
+  // 3) 分支进化形态（伊布）：本机已选定优先，避免被云端空值/旧值覆盖
+  if (state.evoForm && typeof state.evoForm==="object") base.evoForm = Object.assign({}, base.evoForm||{}, state.evoForm);
+  // 4) 错字复习池：每字连对次数逐键取大，不回退
+  if (state.hanziReview && typeof state.hanziReview==="object"){
+    const hr = Object.assign({}, (base.hanziReview&&typeof base.hanziReview==="object") ? base.hanziReview : {});
+    for (const ch in state.hanziReview) hr[ch] = Math.max(num0(hr[ch]), num0(state.hanziReview[ch]));
+    base.hanziReview = hr;
+  }
+  // 5) 学习报告统计：各模块完成数/答对数/总题数逐键取大（不翻倍、不回退）
+  if (state.stat && base.stat){
+    for (const sec of ["modDone","modRight","modTotal"]){
+      const out = Object.assign({}, base.stat[sec]||{});
+      for (const mod in (state.stat[sec]||{})) out[mod] = Math.max(num0(out[mod]), num0(state.stat[sec][mod]));
+      base.stat[sec] = out;
+    }
+  }
+  // 6) 连续打卡天数取大；配套日期取较新
+  ["razStreak","writingStreak"].forEach(k=>{ base[k] = Math.max(num0(state[k]), num0(base[k])); });
+  ["razLastDate","writingLastDate","lastVisit","lastAllCompleteDate","adventureDate"].forEach(k=>{
+    if ((state[k]||"") > (base[k]||"")) base[k] = state[k];
+  });
   state = base;
   rebuildCheckinLog(state);
   normalizeState(state);
@@ -5780,7 +5820,7 @@ function showEyeRest(){
 }
 function doImport(txt){
   try{
-    const obj = JSON.parse(txt); if (typeof obj!=="object" || !obj.dex) throw 0;
+    const obj = JSON.parse(txt); if (typeof obj!=="object" || obj===null || !Array.isArray(obj.dex)) throw 0;   // v3.46.0 B5：dex 必须是数组，畸形存档直接判无效
     const merged = Object.assign(defaultState(), obj);
     // 打卡日历（checkinLog）改为「合并」而非「覆盖」：
     // 以日期为键，保留完成数更大者。这样导入旧备份时不会静默抹掉已有打卡记录。

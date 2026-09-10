@@ -14,3 +14,14 @@ scripts/pokedata_extra.json
 
 # Python 缓存
 scripts/__pycache__/
+
+# 闪光效果测试产物（本地预览用，不发布；正式开发闪光系统时再调整命名入库）
+/shiny-preview.html
+/assets/sprites/home/shiny_*.png
+
+# 自检截图与根目录临时审查脚本（functions/api/_auth.js 为正式文件，不受影响）
+/_shots/
+/_*.js
+
+# 修订前本地回退备份（不发布）
+/_backup/
