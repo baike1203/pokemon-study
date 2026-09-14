@@ -2778,7 +2778,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.48.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.48.1";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2799,8 +2799,10 @@ function defaultState(){
     achievements: {},       // 已解锁成就 key -> true
     superBalls: 0,          // 超级球数量
     masterBalls: 0,         // 大师球数量
-    allCompleteStreak: 0,   // 连续“当日5任务全完成”天数
+    allCompleteStreak: 0,   // 连续“当日5任务全完成”天数（全局，供大师球奖励）
     lastAllCompleteDate: "",// 上次全勤日期
+    achStreak: {},          // v3.48.1 每世代成就书独立连续全勤天数 { gen1: n }（只累计当前成就书架世代）
+    achStreakDate: {},      // v3.48.1 每世代最后全勤日期 { gen1: "YYYY-MM-DD" }
     adventureDate: "",      // 当日冒险日期
     adventureCount: 0,      // 当日冒险次数（上限3）
     partnerId: null,        // 今日伙伴基础编号
@@ -2877,6 +2879,14 @@ function normalizeState(s){
   // 任何已拥有的宝可梦至少算 1 只，因此缺失项补 1；同时保证 copyCount 对象存在。
   if (!s.copyCount || typeof s.copyCount !== "object") s.copyCount = {};
   for (const id of (s.dex||[])){ if (s.copyCount[id] == null) s.copyCount[id] = 1; }
+  // v3.48.1：每世代独立连续天数字段兜底 + 老用户迁移。仅当该世代从未初始化过时才把全局天数落给 gen1
+  // （只迁移一次；之后全局 allCompleteStreak 随大师球逻辑继续增长，不得再拽动 gen1 的独立计数）
+  if (!s.achStreak || typeof s.achStreak !== "object") s.achStreak = {};
+  if (!s.achStreakDate || typeof s.achStreakDate !== "object") s.achStreakDate = {};
+  if (!s.achStreak.gen1 && (s.allCompleteStreak||0) > 0){
+    s.achStreak.gen1 = s.allCompleteStreak;
+    if (!s.achStreakDate.gen1) s.achStreakDate.gen1 = s.lastAllCompleteDate || "";
+  }
   return s;
 }
 function loadState(){
@@ -2985,6 +2995,17 @@ function mergeCloudIntoState(cloud){
   ["razLastDate","writingLastDate","lastVisit","lastAllCompleteDate","adventureDate"].forEach(k=>{
     if ((state[k]||"") > (base[k]||"")) base[k] = state[k];
   });
+  // 7) v3.48.1 每世代独立连续天数：计数逐键取大；日期逐键取较新
+  if (state.achStreak && typeof state.achStreak==="object"){
+    const as = Object.assign({}, (base.achStreak&&typeof base.achStreak==="object") ? base.achStreak : {});
+    for (const g in state.achStreak) as[g] = Math.max(num0(as[g]), num0(state.achStreak[g]));
+    base.achStreak = as;
+  }
+  if (state.achStreakDate && typeof state.achStreakDate==="object"){
+    const ad = Object.assign({}, (base.achStreakDate&&typeof base.achStreakDate==="object") ? base.achStreakDate : {});
+    for (const g in state.achStreakDate) if ((state.achStreakDate[g]||"") > (ad[g]||"")) ad[g] = state.achStreakDate[g];
+    base.achStreakDate = ad;
+  }
   state = base;
   rebuildCheckinLog(state);
   normalizeState(state);
@@ -3471,14 +3492,22 @@ function completeTask(key){
   }
 }
 
-/* 当日5任务全部完成：统计连续天数，满7天发大师球 */
+/* 当日5任务全部完成：统计连续天数，满7天发大师球；v3.48.1 起成就书「坚持不懈」改为每世代独立连续 */
 function onAllTasksDone(){
   const t = todayStr();
   if (state.lastAllCompleteDate === t) return;
   const y = yesterdayStr();
   if (state.lastAllCompleteDate === y) state.allCompleteStreak += 1;
   else { state.allCompleteStreak = 1; }
-  state.lastAllCompleteDate = t; saveState();
+  state.lastAllCompleteDate = t;
+  // v3.48.1：每世代成就书独立连续天数——只累计「当前成就书架」世代，昨天在该世代全勤则 +1，否则重新从 1 起
+  const g = state.activeAchBook || "gen1";
+  if (!state.achStreak) state.achStreak = {};
+  if (!state.achStreakDate) state.achStreakDate = {};
+  if (state.achStreakDate[g] === y) state.achStreak[g] = (state.achStreak[g]||0) + 1;
+  else state.achStreak[g] = 1;
+  state.achStreakDate[g] = t;
+  saveState();
   if (state.allCompleteStreak > 0 && state.allCompleteStreak % 7 === 0){
     state.masterBalls += 1;
     renderBalls();   // 即时刷新顶部大师球数量，无需刷新整页
@@ -5691,7 +5720,7 @@ function checkAchievements(){
       if (base==="first") ok = owned>=1;
       else if (base==="partner") ok = state.dex.includes(25);            // 最初的伙伴：仅 gen1 含此键
       else if (base==="starters") ok = starterIds.length>0 && starterIds.every(id=>state.dex.includes(id));
-      else if (base==="streak7") ok = (gen === state.activeAchBook) && state.allCompleteStreak>=7;  // 坚持不懈只解锁“当前成就书架”对应的世代，避免一连满 7 天把 gen1~gen9 全触发
+      else if (base==="streak7") ok = (state.achStreak && state.achStreak[gen]||0) >= 7;  // v3.48.1 每世代独立连续天数，天然避免"满7天全世代触发"，不再依赖当前书架 hack
       else if (base==="mid") ok = owned >= Math.ceil(cap/2);
       else if (base==="high") ok = owned >= Math.ceil(cap*0.9);
       else if (base==="master") ok = isBookComplete(gen);
@@ -5714,7 +5743,7 @@ function achievementProgress(d){
   if (base==="first"){ const c=Math.min(owned,1); return {cur:c,need:1,label:"已收集 "+c+"/1"}; }
   if (base==="partner"){ const c=state.dex.includes(25)?1:0; return {cur:c,need:1,label:"皮卡丘 "+c+"/1"}; }
   if (base==="starters"){ const c=starterIds.filter(id=>state.dex.includes(id)).length; return {cur:c,need:starterIds.length,label:"已收集 "+c+"/"+starterIds.length}; }
-  if (base==="streak7"){ const c=Math.min(state.allCompleteStreak,7); return {cur:c,need:7,label:"连续全勤 "+c+"/7 天"}; }
+  if (base==="streak7"){ const c=Math.min(state.achStreak && state.achStreak[gen]||0, 7); return {cur:c,need:7,label:"连续全勤 "+c+"/7 天"}; }
   if (base==="mid"){ const need=Math.ceil(cap/2); const c=Math.min(owned,need); return {cur:c,need,label:"已收集 "+c+"/"+need}; }
   if (base==="high"){ const need=Math.ceil(cap*0.9); const c=Math.min(owned,need); return {cur:c,need,label:"已收集 "+c+"/"+need}; }
   if (base==="master"){ const c=Math.min(owned,cap); return {cur:c,need:cap,label:"已收集 "+c+"/"+cap}; }
