@@ -266,6 +266,10 @@ public class MainActivity extends Activity {
                             cv.put(MediaStore.Downloads.MIME_TYPE, "application/json");
                             cv.put(MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
                             target = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                            if (target == null) {   // v3.48.2 B10：存储满/无写入权限时 insert 可能返回 null——明确提示，避免 NPE 后只显示 "保存失败：null"
+                                showToast("进度保存失败：存储空间不足或没有写入权限");
+                                return;
+                            }
                             // 读取真实生成的文件名（MediaStore 可能自动加了 (N) 后缀），记住它以便下次覆盖，避免无限循环
                             try (Cursor c = getContentResolver().query(
                                     MediaStore.Downloads.EXTERNAL_CONTENT_URI,

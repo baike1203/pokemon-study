@@ -2778,7 +2778,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.48.1";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.48.2";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2949,7 +2949,7 @@ function mergeCloudIntoState(cloud){
     const dL = state.daily.date || "", dC = cloud.daily.date || "";
     if (dL > dC) base.daily = state.daily;
     else if (dL === dC){
-      base.daily = Object.assign({}, cloud.daily, { done: Object.assign({}, cloud.daily.done||{}, state.daily.done||{}) });
+      base.daily = Object.assign({}, cloud.daily, { done: Object.assign({}, cloud.daily.done||{}, state.daily.done||{}), celebrated: !!(state.daily.celebrated || cloud.daily.celebrated) });   // v3.48.2 B7：任一端已庆祝过就不再重复弹庆祝
     } else base.daily = cloud.daily;
   }
   // checkinLog：按日期 key 取较大值（不丢日历记录）
@@ -4693,7 +4693,7 @@ function renderDex(){
       if (nxt){
         const c = chainOfId(id);
         const req = EVO_REQ[c.length];
-        const need = req ? req[chainPos(id)] : 0;
+        const need = req ? (req[chainPos(id)] || 1) : 1;   // v3.48.2 B6：need 兜底，防进化链结构异常时进度条 NaN%
         const have = state.copyCount[id]||0;
         if (nxt.some(n=>state.dex.includes(n))) prog = `<div class="evo-text done">★ 已进化完成</div>`;
         else prog = `<div class="evo-row"><div class="evo-bar"><div class="evo-fill" style="width:${Math.min(100, have/need*100)}%"></div></div><span class="evo-num">${have}/${need}</span></div><div class="evo-text">即将进化 ⏳</div>`;
@@ -6082,7 +6082,7 @@ function welcomeIfNeeded(){
     $("#welcomeGo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); speak(`${state.name}，${timeHello()}！新的宝可梦冒险开始啦！`); if (state.partnerId) setTimeout(()=>partnerSay(timeGreetingLine()), 600); });
   }
 }
-setInterval(()=>{ const before=state.daily.date; checkDailyReset(); if(state.daily.date!==before){ renderTasks(); renderHeader(); } }, 60000);
+setInterval(()=>{ const before=state.daily.date; checkDailyReset(); if(state.daily.date!==before){ renderTasks(); renderHeader(); renderDex(); renderBalls(); } }, 60000);   // v3.48.2 B9：跨天时同步刷新图鉴页球数标签与按钮可用态
 
 checkDailyReset();
 closeDialog();            // 启动即关闭任何残留弹窗：防止 WebView 页面恢复(bfcache)把上次开着的图鉴/弹窗带回来，导致“杀后台重启仍卡住”
