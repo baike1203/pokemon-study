@@ -179,6 +179,14 @@ public class MainActivity extends Activity {
     private class PokeJSBridge {
         private static final String PREFS = "poke_save_prefs";
         private static final String KEY = "save_json";
+        /** 测试模式口令：只存在于原生层，网页源码 / 线上页面看不到明文（v3.48.0） */
+        private static final String TEST_CODE = "112233";
+
+        /** 测试模式口令校验：网页把用户输入交给原生判断，前端不再写死密码 */
+        @JavascriptInterface
+        public boolean verifyTestCode(String code) {
+            return TEST_CODE.equals(code);
+        }
 
         /** 原生持久化：写入 SharedPreferences（WebView 的 localStorage 在 file:// 离线模式下可能失效，这里做保底） */
         @JavascriptInterface

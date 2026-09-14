@@ -511,6 +511,20 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .report-row { display: flex; justify-content: space-between; font-size: 22px; padding: 8px 4px; border-bottom: 1px dashed #ecdfc8; }
 .report-row b { color: var(--poke-red); }
 .report-weak { background: #FFF6E6; border: 2px solid #FFD66B; border-radius: 14px; padding: 10px 14px; font-size: 22px; margin-top: 8px; }
+/* v3.47.0 学习报告：本周打卡热力图 + 薄弱项一键练习 */
+.wk-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 10px 0 4px; }
+.wk-cell { text-align: center; border-radius: 12px; padding: 8px 2px 6px; background: #f0e9dc; }
+.wk-cell .wk-day { display: block; font-size: 13px; color: #8a6d5c; }
+.wk-cell .wk-num { display: block; font-size: 22px; font-weight: 700; color: #5b4a3a; line-height: 1.25; }
+.wk-cell.lv1 { background: #D8EFC9; }
+.wk-cell.lv2 { background: #A9DE90; }
+.wk-cell.lv3 { background: #6FC463; }
+.wk-cell.today { outline: 2px solid var(--poke-blue); outline-offset: 1px; }
+.weak-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px; border-bottom: 1px dashed #ecdfc8; }
+.weak-row .weak-nm { font-size: 22px; }
+.weak-row .weak-pct { font-size: 16px; color: #8a6d5c; margin-left: 8px; }
+.mini-btn { background: var(--poke-blue); color: #fff; border: none; border-radius: 999px; padding: 6px 18px; font-size: 17px; cursor: pointer; }
+.mini-btn:active { transform: scale(.95); }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* 对战血量 */
@@ -2764,7 +2778,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.46.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.48.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2795,7 +2809,7 @@ function defaultState(){
     hanziDiff: "0",         // 识字达人难度（家长设置分级）：0~5 对应 预备班/一上/一下/二上/二下/三及以上
     hanziReview: {},        // 识字错字复习池：{ 字: 连对次数 }，首答错进池、连对 3 次移出
     poemDiff: "0",          // 古诗小舟难度（家长设置分级）：0~11 对应 一年级上~六年级下 共 12 学期
-    testMode: false,        // 测试模式（家长设置内输入密码 112233 开启，开启后首页显示测试按钮条）
+    testMode: false,        // 测试模式（家长设置内开启：APK 端原生校验密码 / 浏览器 ?dev=1；开启后首页显示测试按钮条）
     ttsWorker: "",           // 云端中文语音 Worker 地址（Edge-TTS 中转，留空=不启用；填 https://xxx.workers.dev）
     autoBackup: true,        // 平板 APK 自动备份开关（仅 APK 内有意义；默认开启，保持原“自动落盘”行为）
     checkinLog: {},         // 打卡记录：{ "YYYY-MM-DD": 当天完成任务数 }，用于日历展示打卡情况
@@ -4128,25 +4142,38 @@ function bindSettingsTTS(){
 }
 function bindSettingsTest(){
   const testSwitch = $("#testSwitch"); if (!testSwitch) return;
+  // v3.48.0：密码已移出前端——APK（新版壳）走 PokeBridge.verifyTestCode 原生校验；
+  // 电脑浏览器调试走 URL ?dev=1 开发通道（免密，仅开发环境）；两者都不满足则提示，不再校验任何前端明文密码。
+  const hasNativeVerify = !!(window.PokeBridge && window.PokeBridge.verifyTestCode);
+  const isDevChannel = new URLSearchParams(location.search).has("dev");
   testSwitch.addEventListener("click", ()=>{
     sfx.click();
     if (!state.testMode){
-      openDialog(`<h2 style="color:var(--poke-red)">🛠 测试模式</h2>
-        <div style="font-size:20px;color:#5b4a3a;margin:8px 0">请输入测试模式密码：</div>
-        <input type="password" id="testPwdInput" placeholder="输入密码" style="width:200px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;box-sizing:border-box">
-        <button class="big-btn" id="testPwdOk">确认</button>
-        <button class="big-btn gray" id="testPwdCancel" style="margin-top:6px">取消</button>`, {closable:false});
-      const inp = $("#testPwdInput");
-      const okBtn = $("#testPwdOk");
-      const cancelBtn = $("#testPwdCancel");
-      if (inp){ inp.focus(); inp.addEventListener("keydown",(e)=>{ if (e.key==="Enter"){ e.preventDefault(); okBtn.click(); } }); }
-      if (okBtn) okBtn.onclick = ()=>{
-        const pwd = inp ? inp.value : "";
-        closeDialog();
-        if (pwd!=="112233"){ toast("密码错误，无法开启测试模式"); return; }
+      if (hasNativeVerify){
+        openDialog(`<h2 style="color:var(--poke-red)">🛠 测试模式</h2>
+          <div style="font-size:20px;color:#5b4a3a;margin:8px 0">请输入测试模式密码：</div>
+          <input type="password" id="testPwdInput" placeholder="输入密码" style="width:200px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;box-sizing:border-box">
+          <button class="big-btn" id="testPwdOk">确认</button>
+          <button class="big-btn gray" id="testPwdCancel" style="margin-top:6px">取消</button>`, {closable:false});
+        const inp = $("#testPwdInput");
+        const okBtn = $("#testPwdOk");
+        const cancelBtn = $("#testPwdCancel");
+        if (inp){ inp.focus(); inp.addEventListener("keydown",(e)=>{ if (e.key==="Enter"){ e.preventDefault(); okBtn.click(); } }); }
+        if (okBtn) okBtn.onclick = ()=>{
+          const pwd = inp ? inp.value : "";
+          closeDialog();
+          let ok = false;
+          try { ok = !!window.PokeBridge.verifyTestCode(pwd); } catch(e){ ok = false; }
+          if (!ok){ toast("密码错误，无法开启测试模式"); return; }
+          state.testMode=true; saveState(); applyTestMode(); testSwitch.classList.add("on"); testSwitch.setAttribute("aria-checked","true"); toast("测试模式已开启 🛠");
+        };
+        if (cancelBtn) cancelBtn.onclick = ()=>{ sfx.click(); closeDialog(); };
+      } else if (isDevChannel){
+        // 浏览器开发通道（URL 带 ?dev=1）：免密开启，方便电脑上调试
         state.testMode=true; saveState(); applyTestMode(); testSwitch.classList.add("on"); testSwitch.setAttribute("aria-checked","true"); toast("测试模式已开启 🛠");
-      };
-      if (cancelBtn) cancelBtn.onclick = ()=>{ sfx.click(); closeDialog(); };
+      } else {
+        toast("测试模式仅在 APK 内可用（需新版 APK），浏览器调试请访问时加 ?dev=1");
+      }
     } else { state.testMode=false; saveState(); applyTestMode(); testSwitch.classList.remove("on"); testSwitch.setAttribute("aria-checked","false"); toast("测试模式已关闭"); }
   });
 }
@@ -5771,32 +5798,61 @@ function openBackup(){
     if (nowOn) doAutoBackup();                        // 开启后立即备份一次
   });
 }
-/* 学习报告：家长查看打卡天数、各模块完成次数、答题正确率与薄弱点、收集进度 */
+/* 学习报告：家长查看打卡天数、各模块完成次数、答题正确率与薄弱点、收集进度
+   v3.47.0：新增①本周打卡热力图（周一到周日每日任务数着色）②薄弱项 Top3 + 一键去练习 */
 function openReport(){
   const keys = Object.keys(state.checkinLog||{}).filter(k=> (state.checkinLog[k]||0) > 0);
   const since = d => { const c = new Date(); c.setDate(c.getDate()-d); return keys.filter(k => new Date(k+"T00:00:00") >= c).length; };
   const totalDays = keys.length, weekDays = since(7), monthDays = since(30);
   const MODS = [["pinyin","🔤 拼音乐园"],["math","🔢 数学闯关"],["english","📖 英语 RAZ"],["hanzi","✍️ 识字达人"],["poem","📜 古诗小舟"],["writing","✏️ 写字练习"]];
-  const NM = { pinyin:"拼音乐园", math:"数学闯关", english:"英语 RAZ", hanzi:"识字达人", poem:"古诗小舟", writing:"写字练习" };
   const doneRows = MODS.map(([k,nm])=>`<div class="report-row"><span>${nm}</span><b>${state.stat.modDone[k]||0} 次</b></div>`).join("");
   const accRows = MODS.map(([k,nm])=>{
     const t = state.stat.modTotal[k]||0, r = state.stat.modRight[k]||0;
     const pct = t ? Math.round(r/t*100) : null;
     return `<div class="report-row"><span>${nm}</span><b>${pct===null ? "—" : pct+"%"}</b></div>`;
   }).join("");
-  let weak = null;
-  MODS.forEach(([k])=>{ const t = state.stat.modTotal[k]||0, r = state.stat.modRight[k]||0; if (!t) return; const pct = Math.round(r/t*100); if (pct >= 100) return; if (!weak || pct < weak.pct) weak = { k, pct }; });
-  const weakHTML = weak
-    ? `<div class="report-weak">💡 薄弱点建议：多练习 <b>${NM[weak.k]}</b>（正确率 ${weak.pct}%）</div>`
-    : `<div class="report-weak">💡 先做几道题，我就能告诉你薄弱点啦～</div>`;
+  // 本周热力图：周一到周日，每天完成任务数着色（0 灰 / 1-2 浅绿 / 3-4 中绿 / 5+ 深绿）
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dow = (today.getDay()+6)%7;                       // 0=周一 … 6=周日
+  const mon = new Date(today); mon.setDate(today.getDate()-dow);
+  const WD = ["一","二","三","四","五","六","日"];
+  let wkCells = "", wkDone = 0, wkTotal = 0;
+  for (let i=0;i<7;i++){
+    const d = new Date(mon); d.setDate(mon.getDate()+i);
+    const ds = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    const n = state.checkinLog[ds]||0;
+    if (n>0) wkDone++;
+    wkTotal += n;
+    const lv = n===0 ? 0 : (n<=2 ? 1 : (n<=4 ? 2 : 3));
+    const isToday = ds === todayStr();
+    wkCells += `<div class="wk-cell lv${lv}${isToday?" today":""}" title="${ds} 完成 ${n} 个任务"><span class="wk-day">周${WD[i]}</span><span class="wk-num">${n===0?"–":n}</span></div>`;
+  }
+  // 薄弱项 Top3：正确率最低优先，正确率相同练得少优先；无数据的模块不参与
+  const weakList = MODS.map(([k,nm])=>{
+    const t = state.stat.modTotal[k]||0, r = state.stat.modRight[k]||0;
+    return { k, nm, t, pct: t ? Math.round(r/t*100) : null };
+  }).filter(x => x.t>0 && x.pct!==null && x.pct<100)
+    .sort((a,b)=> a.pct-b.pct || a.t-b.t)
+    .slice(0,3);
+  const weakHTML = weakList.length
+    ? `<div class="report-sec"><h3>🎯 薄弱项 · 一键练习</h3>${weakList.map(w=>`
+        <div class="weak-row"><span class="weak-nm">${w.nm}<span class="weak-pct">正确率 ${w.pct}%</span></span>
+        <button class="mini-btn" onclick="closeDialog();openModule('${w.k}')">去练习</button></div>`).join("")}</div>`
+    : `<div class="report-weak">💡 暂无薄弱项：先做几道题，我就能告诉你啦～</div>`;
   openDialog(`<h2 style="color:var(--poke-blue)">📊 学习报告</h2>
     <div class="report-sec"><h3>📅 打卡天数</h3>
       <div class="report-row"><span>累计打卡</span><b>${totalDays} 天</b></div>
       <div class="report-row"><span>最近 7 天</span><b>${weekDays} 天</b></div>
       <div class="report-row"><span>最近 30 天</span><b>${monthDays} 天</b></div>
     </div>
+    <div class="report-sec"><h3>🗓️ 本周打卡</h3>
+      <div class="wk-grid">${wkCells}</div>
+      <div class="report-row"><span>本周已打卡</span><b>${wkDone} 天</b></div>
+      <div class="report-row"><span>本周完成任务</span><b>${wkTotal} 个</b></div>
+    </div>
     <div class="report-sec"><h3>✅ 各模块完成次数</h3>${doneRows}</div>
-    <div class="report-sec"><h3>🎯 答题正确率</h3>${accRows}${weakHTML}</div>
+    <div class="report-sec"><h3>🎯 答题正确率</h3>${accRows}</div>
+    ${weakHTML}
     <div class="report-sec"><h3>⭐ 收集进度</h3><div class="report-row"><span>当前图鉴（${BOOKS[state.activeBook].title}）</span><b>${bookDexCount(state.activeBook)} / ${bookCapacity(state.activeBook)}</b></div></div>
     <button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">关闭</button>`, { dialogClass:"" });
 }
