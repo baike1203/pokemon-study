@@ -597,6 +597,10 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .toast { position: fixed; left: 50%; bottom: 130px; transform: translateX(-50%) translateY(20px); background: rgba(60,40,30,.92); color: #fff; padding: 12px 22px; border-radius: 999px; font-size: 22px; z-index: 500; opacity: 0; transition: .35s; pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.3); white-space: nowrap; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* v3.49.3：顶栏小提示（自动备份成功等不打扰场景）：顶栏下方居中、小巧胶囊，短暂显示后淡出（避开顶栏中央时钟） */
+.top-toast { position: fixed; top: 100px; left: 50%; transform: translateX(-50%) translateY(-14px); display: flex; align-items: center; gap: 6px; background: rgba(46,125,50,.96); color: #fff; padding: 7px 18px; border-radius: 999px; font-size: 18px; font-weight: 600; letter-spacing: .5px; z-index: 700; opacity: 0; transition: .35s; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,.25); white-space: nowrap; }
+.top-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
 /* 球获取方法提示（自动消失，仅在没有球时点击触发） */
 .ball-toast { position: fixed; left: 50%; top: 38%; transform: translate(-50%,-50%) scale(.92); background: rgba(46,30,22,.96); color: #fff; padding: 18px 26px; border-radius: 18px; font-size: 21px; line-height: 1.75; max-width: 540px; text-align: left; z-index: 600; opacity: 0; transition: .3s; pointer-events: none; box-shadow: 0 10px 34px rgba(0,0,0,.45); }
 .ball-toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
@@ -2778,7 +2782,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.49.1";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.49.4";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2848,10 +2852,11 @@ function doAutoBackup(){
     if (state.autoBackup === false) return;          // 自动备份开关已关闭：不写文件
     if (!hasMeaningfulProgress()) return;            // 进度为空（如刚被清空）时不覆盖，避免冲掉已有的好备份
     const json = JSON.stringify(state, null, 2);
-    const fn = "pokemon-study-auto-backup.json";     // 固定文件名，每次覆盖，下载目录里始终只有这一个
     if (window.PokeBridge){
-      if (window.PokeBridge.autoBackupSave){ window.PokeBridge.autoBackupSave(json); }        // 新 APK：原生静默备份（成功不打扰，失败仍提示）
-      else if (window.PokeBridge.exportSave){ window.PokeBridge.exportSave(json, fn); }       // 旧 APK：兼容回退（仍弹成功提示）
+      // v3.49.3：新版壳走 autoBackupSave（原生静默），网页在顶栏给一个不挡界面的小提示
+      if (window.PokeBridge.autoBackupSave){ window.PokeBridge.autoBackupSave(json); topToast("💾 已自动备份"); }
+      // v3.49.3：旧版壳不再走 exportSave 自动备份——旧壳 exportSave 成功后必弹屏幕中下方的原生长条，
+      // 网页端无法抑制；改为放弃旧壳的文件自动备份（本地/云端备份不受影响），长条随之消失。手动导出仍走 exportSave。
     }
     // 电脑浏览器端不自动落文件：localStorage 已自动保存；且 blob 同名下载会被加 (1) 累积，反而更乱
   } catch(e){}
@@ -3455,6 +3460,17 @@ function celebrateAchievement(d){
 
 /* 轻提示 toast */
 function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.classList.add("show"),10); setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.remove(),400); }, 2600); }
+/* v3.49.3：顶栏小提示——不挡界面的轻反馈（复用单例节点，防抖连发只刷新内容） */
+function topToast(msg){
+  let t = document.getElementById("topToast");
+  if (!t){ t = document.createElement("div"); t.id = "topToast"; t.className = "top-toast"; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.remove("show");
+  void t.offsetWidth;                     // 重新触发过渡
+  t.classList.add("show");
+  clearTimeout(t._tm);
+  t._tm = setTimeout(()=>{ t.classList.remove("show"); }, 2200);
+}
 
 /* ==================== 5. 每日任务区（逻辑保持原样） ==================== */
 const TASKS = [
@@ -3496,8 +3512,10 @@ function renderTasks(){
     const card = document.createElement("div");
     card.className = `task-card ${t.cls}` + (done ? " done" : "");
     const revN = t.key === "hanzi" && !done ? hanziReviewCount() : 0;
-    const descHtml = done ? "🎉今日任务完成" : t.desc + (revN > 0 ? ` <span style="display:inline-block;padding:2px 12px;border-radius:12px;background:#FFE3E3;color:#E03131;font-size:15px;font-weight:700;vertical-align:middle">📌 待复习 ${revN} 字</span>` : "");
-    card.innerHTML = `<div class="icon">${t.icon}</div><div class="name">${t.name}</div><div class="desc">${descHtml}</div>`;
+    const escT = s => (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");   // v3.49.2：小标题为可编辑输入，渲染统一转义
+    const descText = done ? "🎉今日任务完成" : escT(t.desc||"");
+    const descHtml = descText + (revN > 0 ? ` <span style="display:inline-block;padding:2px 12px;border-radius:12px;background:#FFE3E3;color:#E03131;font-size:15px;font-weight:700;vertical-align:middle">📌 待复习 ${revN} 字</span>` : "");
+    card.innerHTML = `<div class="icon">${t.icon}</div><div class="name">${escT(t.name)}</div>` + (descHtml ? `<div class="desc">${descHtml}</div>` : "");   // v3.49.2：小标题可自定义/可清空，空则不显示
     card.addEventListener("click", () => { sfx.click(); openModule(t.key); });
     g.appendChild(card);
   });
@@ -4218,6 +4236,7 @@ function openSettings(sub){
 function openModuleManager(){
   if (!Array.isArray(state.taskModules) || state.taskModules.length === 0) state.taskModules = defaultModules();   // 新用户路径兜底
   let mmScroll = 0;   // v3.49.1：跨弹窗重渲染保持列表滚动位置，排序/改名/添加后不跳回顶部
+  const escT = s => (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");   // v3.49.2：小标题转义
   function render(){
     const cur = document.getElementById("mmList");
     if (cur && cur.scrollTop) mmScroll = cur.scrollTop;
@@ -4226,7 +4245,8 @@ function openModuleManager(){
       const canEdit = kind === "check";
       return `<div class="mod-row" style="display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid #f0e6d8">
         <span style="font-size:26px">${t.icon||"📌"}</span>
-        <div style="flex:1;text-align:left;min-width:0"><div style="font-size:20px;font-weight:700;color:#5b4a3a">${(t.name||"").replace(/"/g,"&quot;")}</div>
+        <div style="flex:1;text-align:left;min-width:0"><div style="font-size:20px;font-weight:700;color:#5b4a3a">${escT(t.name)}</div>
+          ${t.desc?`<div style="font-size:13px;color:#b9a98f">${escT(t.desc)}</div>`:""}
           <div style="font-size:13px;color:${kind==="fixed"?"#b9a98f":"#3F9D3F"}">${kind==="fixed"?"答题模块 · 不可删改":"打卡模块"}</div></div>
         <button class="mini-btn" data-act="up" data-i="${i}" ${i===0?"disabled":""} title="上移">▲</button>
         <button class="mini-btn" data-act="down" data-i="${i}" ${i===state.taskModules.length-1?"disabled":""} title="下移">▼</button>
@@ -4257,6 +4277,8 @@ function openModuleManager(){
     openDialog(`<h2 style="color:#3D8EE8">＋ 添加打卡模块</h2>
       <div style="font-size:20px;color:#8a6d5c;margin:8px 0">给它起个名字（如「阅读」「跳绳」）</div>
       <input id="mmName" maxlength="8" placeholder="最多 8 个字" style="width:240px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;font-family:inherit">
+      <div style="font-size:20px;color:#8a6d5c;margin:14px 0 6px">小标题（可选，最多 14 字）</div>
+      <input id="mmDesc" maxlength="14" placeholder="如：今日阅读 20 分钟" style="width:240px;font-size:18px;padding:8px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;font-family:inherit">
       <div style="font-size:20px;color:#8a6d5c;margin:14px 0 6px">选个图标</div>
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;justify-items:center">
         ${CHECK_TASK_ICONS.map(ic=>`<button class="mini-btn mm-ic" data-ic="${ic}" style="font-size:26px;padding:8px 12px">${ic}</button>`).join("")}
@@ -4271,17 +4293,25 @@ function openModuleManager(){
       if (!name){ toast("请先输入模块名称"); return; }
       const cnt = state.taskModules.filter(m=>kindOf(m)==="check").length;
       if (cnt >= MAX_CHECK_TASKS){ toast("打卡模块最多 " + MAX_CHECK_TASKS + " 个，先删掉一些再添加吧"); return; }
-      state.taskModules.push({ key: nextCustomKey(), cls:"check", icon: chosen, name, desc:"今日打卡", kind:"check" });
+      const desc = ($("#mmDesc").value||"").trim().slice(0,14);   // v3.49.2：小标题可自定义，留空用默认
+      state.taskModules.push({ key: nextCustomKey(), cls:"check", icon: chosen, name, desc: desc || "今日打卡", kind:"check" });
       saveState(); renderTasks(); render();   // v3.49.1：内部重渲染，保持滚动位置
     });
     $("#mmCancel").addEventListener("click",()=>{ sfx.click(); render(); });
   }
   function renameModule(i){
     const t = state.taskModules[i];
-    openDialog(`<h2 style="color:#3D8EE8">✏️ 修改名称</h2>
-      <input id="mmRename" value="${(t.name||"").replace(/"/g,"&quot;")}" maxlength="8" style="width:240px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;font-family:inherit">
+    openDialog(`<h2 style="color:#3D8EE8">✏️ 编辑打卡模块</h2>
+      <div style="font-size:20px;color:#8a6d5c;margin:8px 0">名称</div>
+      <input id="mmRename" value="${escT(t.name)}" maxlength="8" style="width:240px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;font-family:inherit">
+      <div style="font-size:20px;color:#8a6d5c;margin:14px 0 6px">小标题（留空则不显示，最多 14 字）</div>
+      <input id="mmDesc" value="${escT(t.desc)}" maxlength="14" placeholder="如：今日阅读 20 分钟" style="width:240px;font-size:18px;padding:8px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;font-family:inherit">
       <div style="display:flex;gap:10px;justify-content:center;margin-top:14px"><button class="big-btn" id="mmRenameOk">保存</button><button class="big-btn gray" id="mmRenameNo">取消</button></div>`);
-    $("#mmRenameOk").addEventListener("click",()=>{ const nm=($("#mmRename").value||"").trim().slice(0,8); if(nm){ t.name=nm; saveState(); renderTasks(); } render(); });
+    $("#mmRenameOk").addEventListener("click",()=>{
+      const nm=($("#mmRename").value||"").trim().slice(0,8);
+      if (nm){ t.name=nm; t.desc=($("#mmDesc").value||"").trim().slice(0,14); saveState(); renderTasks(); }
+      render();
+    });
     $("#mmRenameNo").addEventListener("click",()=>{ sfx.click(); render(); });
   }
   function delModule(i){
