@@ -2778,7 +2778,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.48.2";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.49.1";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2820,7 +2820,8 @@ function defaultState(){
       modDone:  { pinyin:0, math:0, english:0, hanzi:0, poem:0, writing:0 },  // 各模块累计完成（打卡）次数
       modRight: { pinyin:0, math:0, english:0, hanzi:0, poem:0, writing:0 },  // 累计一次答对题数（runQuiz 记录）
       modTotal: { pinyin:0, math:0, english:0, hanzi:0, poem:0, writing:0 }   // 累计总题数
-    }
+    },
+    taskModules: null    // v3.49.0：模块管理——null=未初始化（用默认6个）；数组=[{key,cls,icon,name,desc,kind}]，kind=fixed答题/check打卡
   };
 }
 /* 自动备份（单文件滚动）：平板 APK 端把存档写入下载目录的固定文件名，同名覆盖 → 永远只有 1 个文件，不累积杂乱 */
@@ -2864,8 +2865,19 @@ function normalizeState(s){
   if (!s.activeBook) s.activeBook = "gen1";
   if (!s.completedBooks || typeof s.completedBooks !== "object") s.completedBooks = {};
   if (!s.activeAchBook) s.activeAchBook = "gen1";
-  // 兜底：daily 缺失 / 为 null 时补默认（防止 60 秒定时器读 state.daily.date 报错，云端/导入/旧档都可能缺）
-  if (!s.daily || typeof s.daily !== "object" || typeof s.daily.done !== "object") s.daily = { date: todayStr(), done: { pinyin:false, math:false, english:false, hanzi:false, poem:false, writing:false }, celebrated:false };
+  // v3.49.0：模块管理——无配置/空配置用默认 6 个；fixed 答题模块永远补齐（防误删/导入缺失）；打卡模块尊重家长删除
+  if (!Array.isArray(s.taskModules) || s.taskModules.length === 0) s.taskModules = defaultModules();
+  else {
+    const keep = s.taskModules.filter(m => m && typeof m === "object");
+    const has = k => keep.some(m => m.key === k);
+    FIXED_TASK_KEYS.forEach(k => { if (!has(k)){ const t = TASKS.find(x => x.key === k); if (t) keep.push({ key:t.key, cls:t.cls, icon:t.icon, name:t.name, desc:t.desc, kind:"fixed" }); } });
+    s.taskModules = keep;
+  }
+  // 兜底：daily 缺失 / 为 null 时补默认（按当前模块表动态生成 key；防止 60 秒定时器读 state.daily.date 报错，云端/导入/旧档都可能缺）
+  if (!s.daily || typeof s.daily !== "object" || typeof s.daily.done !== "object"){
+    const nd = {}; taskListOf(s).forEach(t => nd[t.key] = false);
+    s.daily = { date: todayStr(), done: nd, celebrated:false };
+  }
   // v3.46.0 B4 修复：任何世代只要 dex 实际集齐就补记 completedBooks（原来只补 gen1，
   // 其他世代在云端并集后可能出现「实际集齐但标记缺失」，书架卡在“收集中 N/N”）。
   // gen1 额外兼容极老版本的 allComplete 标记。
@@ -3006,6 +3018,8 @@ function mergeCloudIntoState(cloud){
     for (const g in state.achStreakDate) if ((state.achStreakDate[g]||"") > (ad[g]||"")) ad[g] = state.achStreakDate[g];
     base.achStreakDate = ad;
   }
+  // 8) v3.49.0 模块配置：跟随云端（家长配置随账号走，多设备一致）；云端无配置则保留本地（normalize 会补 fixed）
+  if (cloud.taskModules && Array.isArray(cloud.taskModules) && cloud.taskModules.length) base.taskModules = cloud.taskModules;
   state = base;
   rebuildCheckinLog(state);
   normalizeState(state);
@@ -3079,7 +3093,7 @@ function rebuildCheckinLog(s){
   if (!s.checkinLog || typeof s.checkinLog !== "object") s.checkinLog = {};
   const d = s.daily.date;
   if (d && typeof s.checkinLog[d] !== "number"){
-    const cnt = TASKS.filter(t => s.daily.done[t.key]).length;
+    const cnt = taskListOf(s).filter(t => s.daily.done[t.key]).length;   // v3.49.0：按动态模块表统计
     if (cnt > 0) s.checkinLog[d] = cnt;
   }
 }
@@ -3093,7 +3107,8 @@ function storageWorks(){
 function checkDailyReset(){
   const t = todayStr();
   if (state.daily.date !== t){
-    state.daily = { date: t, done: { pinyin:false, math:false, english:false, hanzi:false, poem:false, writing:false }, celebrated:false };
+    const nd = {}; taskList().forEach(m => nd[m.key] = false);   // v3.49.0：按当前模块表动态生成
+    state.daily = { date: t, done: nd, celebrated:false };
     state.adventureDate = ""; state.adventureCount = 0; // 冒险次数随日期重置
     if (state.razLastDate){
       const last = new Date(state.razLastDate + "T00:00:00");
@@ -3450,16 +3465,33 @@ const TASKS = [
   { key:"english", cls:"english", icon:"📖", name:"英语 RAZ", desc:"今日阅读打卡" },
   { key:"writing", cls:"writing", icon:"✏️", name:"写字练习", desc:"今日练字打卡" }
 ];
+/* v3.49.0：模块管理——TASKS 仍是默认模块表；state.taskModules 为家长可编辑的动态配置。
+   kind=fixed（答题引擎模块：不可删/改名，仅可排序）| check（打卡模块：可增删改名排序）。
+   taskList() 供运行时读取当前模块列表；taskListOf(s) 供 loadState 阶段（state 未初始化）使用。 */
+const FIXED_TASK_KEYS = ["pinyin","math","hanzi","poem"];
+const CHECK_TASK_ICONS = ["📚","📝","🎨","🧮","🎵","🎯","🏃","🌙","🎓","⚽","🧩","🌱"];
+const MAX_CHECK_TASKS = 8;   // 打卡类模块上限（含 RAZ/写字），避免主页卡片过密
+function defaultModules(){ return TASKS.map(t => ({ key:t.key, cls:t.cls, icon:t.icon, name:t.name, desc:t.desc, kind: FIXED_TASK_KEYS.includes(t.key) ? "fixed" : "check" })); }
+function taskListOf(s){ return (s && Array.isArray(s.taskModules) && s.taskModules.length) ? s.taskModules : TASKS; }
+function taskList(){ return taskListOf(state); }
+function kindOf(t){ return t && t.kind ? t.kind : (FIXED_TASK_KEYS.includes(t.key) ? "fixed" : "check"); }
+/* 生成不冲突的自定义模块 key：custom_1、custom_2 … */
+function nextCustomKey(){
+  let n = 1; const ks = new Set((state.taskModules||[]).map(m=>m.key));
+  while (ks.has("custom_" + n)) n++;
+  return "custom_" + n;
+}
 /* state 初始化必须位于 TASKS 之后：loadState→rebuildCheckinLog 依赖 TASKS 常量，
    提前执行会触发 TDZ ReferenceError，被 catch 吞掉后存档被当成空档（v3.44.7） */
 let state = loadState();
 if (state.name === "小宝"){ state.name = "苏打"; saveState(); }   // 默认名字由「小宝」改为「苏打」（仅影响仍用旧默认名的存档）
 function renderTasks(){
   const g = $("#taskGrid"); g.innerHTML = "";
-  const doneCount = TASKS.filter(t => state.daily.done[t.key]).length;
+  const tl = taskList();   // v3.49.0：动态模块表
+  const doneCount = tl.filter(t => state.daily.done[t.key]).length;
   $("#dateLine").innerHTML = `<span class="ico">📅</span><span>${new Date().toLocaleDateString("zh-CN",{year:"numeric",month:"long",day:"numeric",weekday:"long"})}</span>`;
-  $("#progressLine").textContent = doneCount === TASKS.length ? "🎉 今日任务全部完成！你真棒！" : `今日进度 ${doneCount}/${TASKS.length}，完成任务获得精灵球 ⚡`;
-  TASKS.forEach(t => {
+  $("#progressLine").textContent = doneCount === tl.length ? "🎉 今日任务全部完成！你真棒！" : `今日进度 ${doneCount}/${tl.length}，完成任务获得精灵球 ⚡`;
+  tl.forEach(t => {
     const done = state.daily.done[t.key];
     const card = document.createElement("div");
     card.className = `task-card ${t.cls}` + (done ? " done" : "");
@@ -3477,14 +3509,14 @@ function completeTask(key){
   try { state.stat.modDone[key] = (state.stat.modDone[key]||0) + 1; } catch(e){}   // 学习报告：模块累计完成次数 +1
   if (!state.checkinLog || typeof state.checkinLog !== "object") state.checkinLog = {};   // 兜底：确保打卡记录对象存在
   // 记录当天打卡情况：当天已完成任务数（用于日历展示）
-  try { const t = todayStr(); const c = TASKS.filter(x => state.daily.done[x.key]).length; state.checkinLog[t] = c; } catch(e){}
+  try { const t = todayStr(); const c = taskList().filter(x => state.daily.done[x.key]).length; state.checkinLog[t] = c; } catch(e){}
   try { saveState(); } catch(e){}
   // 先同步刷新所有相关界面（无论下方动画/语音是否异常，计数、任务卡、收服标签都立即可见）
   try { renderTasks(); renderHeader(); renderDex(); renderBalls(); } catch(e){}
   try { gainBall(1); } catch(e){ showBugBanner("gainBall: " + (e && (e.stack||e.message) || e)); }
   try { if (state.partnerId) partnerSay(pick(["太棒了！又靠近新伙伴一步！","又收集到一只，伙伴越来越多啦！⭐","你做到啦，我好开心！","继续加油，图鉴就靠你啦！"],1)[0]); } catch(e){}
   try { checkAchievements(); } catch(e){}
-  const allDone = TASKS.every(t => state.daily.done[t.key]);
+  const allDone = taskList().every(t => state.daily.done[t.key]);   // v3.49.0：动态模块全勤
   if (allDone && !state.daily.celebrated){
     state.daily.celebrated = true; try { saveState(); } catch(e){}
     try { onAllTasksDone(); } catch(e){} // 连续全勤统计 + 大师球
@@ -3524,6 +3556,18 @@ function openModule(key){
   if (key==="writing") return writingTask();
   if (key==="hanzi") return hanziTask();
   if (key==="poem") return poemHome();
+  // v3.49.0：自定义打卡模块（家长在设置里新增的 check 类）
+  const t = taskList().find(x => x.key === key);
+  if (t && kindOf(t) === "check") return checkinTask(t);
+}
+/* v3.49.0：通用打卡模块弹窗——与 RAZ/写字相同的「确认打卡」交互（无连续打卡字段，保持简单） */
+function checkinTask(t){
+  const done = state.daily.done[t.key];
+  openDialog(`<h2 style="color:#3D8EE8">${t.icon} ${t.name}</h2><div style="font-size:24px;color:#8a6d5c">今天完成 ${t.name} 了吗？<br>完成了就来打卡领精灵球！</div>
+    <button id="ckBigBtn" class="big-round-btn theme-blue ${done?'done-btn':''}" ${done?'disabled':''}>${done?"✔<br>今日已打卡":"今日已完成<br>" + t.name + "！"}</button>`);
+  if (!done){ $("#ckBigBtn").addEventListener("click", ()=>{ sfx.click(); openDialog(`<h2 style="color:#3D8EE8">确认打卡</h2><div style="font-size:28px;margin:14px 0">今天真的完成了吗？${t.icon}</div><button class="big-btn blue" id="ckYes">完成啦！✔</button><button class="big-btn yellow" id="ckNo">还没有</button>`);
+    $("#ckYes").addEventListener("click", ()=>{ closeDialog(); completeTask(t.key); setTimeout(()=>openDialog(`<h2 style="color:#3D8EE8">🎉 打卡成功！</h2><div style="font-size:64px">${t.icon}</div><div style="font-size:28px;margin:10px 0">奖励 1 个精灵球！</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好耶！</button>`),1000); });
+    $("#ckNo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); }); }); }
 }
 
 /* ===== 数字键盘（数学闯关 runQuiz 与冒险对战共用）=====
@@ -4106,6 +4150,10 @@ function openSettings(sub){
         <button class="big-btn set-mod" data-m="poem">📜 古诗小舟<small>12 学期分级</small></button>
       </div>
       <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
+        <div style="font-size:22px;color:#9b8676;margin-bottom:10px">🧩 打卡模块管理</div>
+        <button class="big-btn" id="modMgrBtn" style="width:100%;min-width:0">🧩 管理今日打卡模块<small>增加 / 排序 / 改名 / 删除</small></button>
+      </div>
+      <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
         <div style="font-size:22px;color:#9b8676;margin-bottom:10px">📊 学习数据</div>
         <button class="big-btn" id="reportBtn2" style="width:100%;min-width:0">📊 查看学习报告</button>
       </div>
@@ -4144,6 +4192,8 @@ function openSettings(sub){
     if (bb) bb.addEventListener("click", ()=>{ sfx.click(); openBackup(); });
     const rb = document.getElementById("reportBtn2");
     if (rb) rb.addEventListener("click", ()=>{ sfx.click(); openReport(); });
+    const mmb = document.getElementById("modMgrBtn");
+    if (mmb) mmb.addEventListener("click", ()=>{ sfx.click(); openModuleManager(); });
     $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
     const acctLogin = document.getElementById("acctLogin");
     if (acctLogin) acctLogin.addEventListener("click", ()=>{ sfx.click(); showLoginDialog(()=>openSettings()); });
@@ -4162,6 +4212,86 @@ function openSettings(sub){
   if (sub==="math"){ renderMathSettings(); return; }
   if (sub==="hanzi"){ renderHanziSettings(); return; }
   if (sub==="poem"){ renderPoemSettings(); return; }
+}
+/* v3.49.0：打卡模块管理——家长可对打卡类模块增删改名排序；答题模块仅可排序（不可删改）。
+   所有操作即时保存并刷新任务区；自定义模块 key 用 custom_N，避免与答题模块冲突。 */
+function openModuleManager(){
+  if (!Array.isArray(state.taskModules) || state.taskModules.length === 0) state.taskModules = defaultModules();   // 新用户路径兜底
+  let mmScroll = 0;   // v3.49.1：跨弹窗重渲染保持列表滚动位置，排序/改名/添加后不跳回顶部
+  function render(){
+    const cur = document.getElementById("mmList");
+    if (cur && cur.scrollTop) mmScroll = cur.scrollTop;
+    const rows = state.taskModules.map((t,i)=>{
+      const kind = kindOf(t);
+      const canEdit = kind === "check";
+      return `<div class="mod-row" style="display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid #f0e6d8">
+        <span style="font-size:26px">${t.icon||"📌"}</span>
+        <div style="flex:1;text-align:left;min-width:0"><div style="font-size:20px;font-weight:700;color:#5b4a3a">${(t.name||"").replace(/"/g,"&quot;")}</div>
+          <div style="font-size:13px;color:${kind==="fixed"?"#b9a98f":"#3F9D3F"}">${kind==="fixed"?"答题模块 · 不可删改":"打卡模块"}</div></div>
+        <button class="mini-btn" data-act="up" data-i="${i}" ${i===0?"disabled":""} title="上移">▲</button>
+        <button class="mini-btn" data-act="down" data-i="${i}" ${i===state.taskModules.length-1?"disabled":""} title="下移">▼</button>
+        ${canEdit?`<button class="mini-btn" data-act="rename" data-i="${i}" title="改名">✏️</button><button class="mini-btn" data-act="del" data-i="${i}" title="删除">🗑</button>`:""}
+      </div>`;
+    }).join("");
+    openDialog(`<h2 style="color:#F58A1F">🧩 打卡模块管理</h2>
+      <div style="font-size:16px;color:#9b8676;margin:4px 0 10px;line-height:1.6">管理今日打卡模块：▲▼ 排序、✏️ 改名、🗑 删除、＋ 新增。<br>答题模块（拼音・数学・识字・古诗）不可删改，只能排序。</div>
+      <div id="mmList" style="max-height:46vh;overflow:auto;border:2px solid #f0e6d8;border-radius:12px;padding:4px 12px">${rows}</div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+        <button class="big-btn blue" id="mmAdd" style="flex:1">＋ 添加打卡模块</button>
+        <button class="big-btn" id="mmClose" style="flex:1">完成</button>
+      </div>`);
+    document.querySelectorAll(".mod-row [data-act]").forEach(b=>b.addEventListener("click",()=>{
+      const act = b.dataset.act, i = +b.dataset.i; sfx.click();
+      if (act==="up" && i>0){ const a=state.taskModules[i-1], c=state.taskModules[i]; state.taskModules[i-1]=c; state.taskModules[i]=a; saveAndRerender(); }
+      if (act==="down" && i<state.taskModules.length-1){ const a=state.taskModules[i+1], c=state.taskModules[i]; state.taskModules[i+1]=c; state.taskModules[i]=a; saveAndRerender(); }
+      if (act==="rename") renameModule(i);
+      if (act==="del") delModule(i);
+    }));
+    $("#mmAdd").addEventListener("click",()=>{ sfx.click(); addModule(); });
+    $("#mmClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); renderTasks(); });
+    const ml = document.getElementById("mmList");
+    if (ml && mmScroll) ml.scrollTop = mmScroll;   // v3.49.1：恢复滚动位置
+  }
+  function saveAndRerender(){ saveState(); renderTasks(); render(); }
+  function addModule(){
+    openDialog(`<h2 style="color:#3D8EE8">＋ 添加打卡模块</h2>
+      <div style="font-size:20px;color:#8a6d5c;margin:8px 0">给它起个名字（如「阅读」「跳绳」）</div>
+      <input id="mmName" maxlength="8" placeholder="最多 8 个字" style="width:240px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;font-family:inherit">
+      <div style="font-size:20px;color:#8a6d5c;margin:14px 0 6px">选个图标</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;justify-items:center">
+        ${CHECK_TASK_ICONS.map(ic=>`<button class="mini-btn mm-ic" data-ic="${ic}" style="font-size:26px;padding:8px 12px">${ic}</button>`).join("")}
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:14px">
+        <button class="big-btn" id="mmOk">添加</button><button class="big-btn gray" id="mmCancel">取消</button>
+      </div>`);
+    let chosen = CHECK_TASK_ICONS[0];
+    document.querySelectorAll(".mm-ic").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); chosen = b.dataset.ic; document.querySelectorAll(".mm-ic").forEach(x=>x.style.outline="none"); b.style.outline="3px solid #3D8EE8"; }));
+    $("#mmOk").addEventListener("click",()=>{
+      const name = ($("#mmName").value||"").trim().slice(0,8);
+      if (!name){ toast("请先输入模块名称"); return; }
+      const cnt = state.taskModules.filter(m=>kindOf(m)==="check").length;
+      if (cnt >= MAX_CHECK_TASKS){ toast("打卡模块最多 " + MAX_CHECK_TASKS + " 个，先删掉一些再添加吧"); return; }
+      state.taskModules.push({ key: nextCustomKey(), cls:"check", icon: chosen, name, desc:"今日打卡", kind:"check" });
+      saveState(); renderTasks(); render();   // v3.49.1：内部重渲染，保持滚动位置
+    });
+    $("#mmCancel").addEventListener("click",()=>{ sfx.click(); render(); });
+  }
+  function renameModule(i){
+    const t = state.taskModules[i];
+    openDialog(`<h2 style="color:#3D8EE8">✏️ 修改名称</h2>
+      <input id="mmRename" value="${(t.name||"").replace(/"/g,"&quot;")}" maxlength="8" style="width:240px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;font-family:inherit">
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:14px"><button class="big-btn" id="mmRenameOk">保存</button><button class="big-btn gray" id="mmRenameNo">取消</button></div>`);
+    $("#mmRenameOk").addEventListener("click",()=>{ const nm=($("#mmRename").value||"").trim().slice(0,8); if(nm){ t.name=nm; saveState(); renderTasks(); } render(); });
+    $("#mmRenameNo").addEventListener("click",()=>{ sfx.click(); render(); });
+  }
+  function delModule(i){
+    const t = state.taskModules[i];
+    if (!confirm(`确定删除「${t.name}」吗？\n删除后今天不再显示该打卡任务；历史打卡与统计保留但不再展示。`)) return;
+    state.taskModules.splice(i,1);
+    delete state.daily.done[t.key];   // 清理当日孤儿标记
+    saveState(); renderTasks(); render();   // v3.49.1：内部重渲染，保持滚动位置
+  }
+  render();
 }
 function bindSettingsTTS(){
   const ttsWorker = $("#ttsWorker"), ttsStatus = $("#ttsStatus");
@@ -4727,11 +4857,12 @@ function ballInfoToast(type){
   const isMaster = type==="master";
   let msg;
   if (isMaster){
-    const done = TASKS.filter(t=>state.daily.done[t.key]).length;
+    const tl = taskList();   // v3.49.0：动态模块表
+    const done = tl.filter(t=>state.daily.done[t.key]).length;
     const streak = Math.min(state.allCompleteStreak||0, 7);
     msg = `🟣 <b>大师球还不够哦！</b><br>
 🔥 已连续打卡 <b style="color:#F58A1F">${streak} / 7</b> 天<br>
-📚 今天已完成 <b>${done} / ${TASKS.length}</b> 个任务<br>
+📚 今天已完成 <b>${done} / ${tl.length}</b> 个任务<br>
 <span style="font-size:21px;color:#e9d9c9">连续 7 天每天完成全部任务，就能获得大师球！</span>`;
   } else {
     msg = "🔵 <b>超级球获取方法</b>：解锁成就时奖励（如初次邂逅、集齐 50/100/151 只、各系大师等）。<br>超级球可<b>必定收服到一只从未收集过</b>的宝可梦！";
@@ -4967,7 +5098,7 @@ function openGacha(ballType){
   if (ballType==="master" && state.masterBalls<=0) return noBallDialog("大师球");
   if (ballType==="super" && state.superBalls<=0) return noBallDialog("超级球");
   if (ballType==="normal"){
-    const X = TASKS.filter(t=>state.daily.done[t.key]).length;   // 今天已完成任务数
+    const X = taskList().filter(t=>state.daily.done[t.key]).length;   // 今天已完成任务数（v3.49.0 动态模块）
     const Y = X;                                                 // 每个任务奖励 1 个精灵球
     openDialog(`<div style="position:relative"><button style="position:absolute;top:-8px;right:-8px;width:44px;height:44px;border-radius:50%;background:var(--poke-yellow);border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:5;line-height:1" onclick="document.querySelector('#dialogClose').click()">✖</button>
       <h2 style="color:var(--poke-red)">🎁 收服时间到！</h2>
@@ -4998,11 +5129,12 @@ function noBallDialog(name){
   let tip = "去连续完成学习或完成成就来获取吧！";
   if (name==="精灵球") tip = "完成今日学习任务就能获得精灵球哦！";
   else if (name==="大师球"){
-    const done = TASKS.filter(t=>state.daily.done[t.key]).length;
+    const tl = taskList();   // v3.49.0：动态模块表
+    const done = tl.filter(t=>state.daily.done[t.key]).length;
     const streak = Math.min(state.allCompleteStreak||0, 7);
     tip = `大师球需要<b>连续 7 天全勤</b>才能获得哦！<br>
 🔥 已连续打卡 <b style="color:#F58A1F">${streak} / 7</b> 天<br>
-📚 今天已完成 <b>${done} / ${TASKS.length}</b> 个任务<br>
+📚 今天已完成 <b>${done} / ${tl.length}</b> 个任务<br>
 <span style="font-size:21px;color:#9b8676">每天完成全部任务，连续 7 天就能拿大师球！</span>`;
   }
   openDialog(`<h2 style="color:var(--poke-red)">${name}不够啦！</h2><div style="font-size:64px;margin:10px 0">💪</div><div style="font-size:25px;line-height:1.85;text-align:left">${tip}</div><button class="big-btn" onclick="document.querySelector('#dialogClose').click()">好的</button>`);
@@ -5444,7 +5576,7 @@ function timeHello(){
   return "晚上好";
 }
 function partnerName(){ return state.partnerId ? POKEMON[state.partnerId-1] : "伙伴"; }
-function allTasksDone(){ return TASKS.every(t => state.daily.done[t.key]); }
+function allTasksDone(){ return taskList().every(t => state.daily.done[t.key]); }
 function positionBubble(b, w){
   const r = w.getBoundingClientRect();
   const bw = b.offsetWidth || 220, bh = b.offsetHeight || 80, gap = 14;
@@ -5833,7 +5965,7 @@ function openReport(){
   const keys = Object.keys(state.checkinLog||{}).filter(k=> (state.checkinLog[k]||0) > 0);
   const since = d => { const c = new Date(); c.setDate(c.getDate()-d); return keys.filter(k => new Date(k+"T00:00:00") >= c).length; };
   const totalDays = keys.length, weekDays = since(7), monthDays = since(30);
-  const MODS = [["pinyin","🔤 拼音乐园"],["math","🔢 数学闯关"],["english","📖 英语 RAZ"],["hanzi","✍️ 识字达人"],["poem","📜 古诗小舟"],["writing","✏️ 写字练习"]];
+  const MODS = taskList().map(t => [t.key, (t.icon||"") + " " + t.name]);   // v3.49.0：按动态模块表生成报告行
   const doneRows = MODS.map(([k,nm])=>`<div class="report-row"><span>${nm}</span><b>${state.stat.modDone[k]||0} 次</b></div>`).join("");
   const accRows = MODS.map(([k,nm])=>{
     const t = state.stat.modTotal[k]||0, r = state.stat.modRight[k]||0;
@@ -5977,7 +6109,7 @@ $("#testReset").addEventListener("click", ()=>{
 $("#testAddSuper").addEventListener("click", ()=>{ sfx.click(); state.superBalls++; saveState(); renderBalls(); toast("已 +1 超级球 🔵（共 "+state.superBalls+"）"); });
 $("#testAddMaster").addEventListener("click", ()=>{ sfx.click(); state.masterBalls++; saveState(); renderBalls(); toast("已 +1 大师球 🟣（共 "+state.masterBalls+"）"); });
 $("#testResetDay").addEventListener("click", ()=>{
-  if (!confirm("确定要重置本日任务吗？\n今日的 " + TASKS.length + " 个学习任务与「去冒险」次数将清空，\n但精灵球 / 图鉴 / 进化 / 成就 会保留。")) return;
+  if (!confirm("确定要重置本日任务吗？\n今日的 " + taskList().length + " 个学习任务与「去冒险」次数将清空，\n但精灵球 / 图鉴 / 进化 / 成就 会保留。")) return;
   sfx.click();
   const t = todayStr();
   state.daily = { date: t, done: { pinyin:false, math:false, english:false, hanzi:false, poem:false, writing:false }, celebrated:false };
@@ -6039,7 +6171,7 @@ function renderCalendar(){
     let cls = "cal-cell"; let mark = ""; let title = "当天未完成任务";
     if (isToday) cls += " today";
     if (typeof log === "number"){
-      if (log >= TASKS.length){ cls += " done"; mark = "✓"; title = "当天 " + TASKS.length + " 个任务全部完成 🎉"; }
+      if (log >= taskList().length){ cls += " done"; mark = "✓"; title = "当天 " + taskList().length + " 个任务全部完成 🎉"; }
       else if (log > 0){ cls += " part"; mark = String(log); title = `当天完成 ${log} 个任务`; }
     }
     if (isFuture) cls += " future";
@@ -6053,7 +6185,7 @@ function renderCalendar(){
       <button class="big-btn blue" id="calNext" style="min-width:44px">›</button>
     </div>
     <div class="cal-grid">${head}${cells}</div>
-    <div style="font-size:13px;color:#9b8676;margin-top:6px;text-align:center">🟢 完成全部 ${TASKS.length} 个任务　🟠 完成部分（数字=完成个数）　未来日期不可打卡</div>
+    <div style="font-size:13px;color:#9b8676;margin-top:6px;text-align:center">🟢 完成全部 ${taskList().length} 个任务　🟠 完成部分（数字=完成个数）　未来日期不可打卡</div>
     <button class="big-btn" id="calClose" style="margin-top:8px">关闭</button>`);
   $("#calPrev").addEventListener("click", ()=>{ sfx.click(); calView.m--; if (calView.m<0){ calView.m=11; calView.y--; } renderCalendar(); });
   $("#calNext").addEventListener("click", ()=>{ sfx.click(); calView.m++; if (calView.m>11){ calView.m=0; calView.y++; } renderCalendar(); });
@@ -6074,10 +6206,10 @@ function welcomeIfNeeded(){
   const t = todayStr();
   if (state.lastVisit !== t){
     if (!stateLoadFailed){ state.lastVisit = t; saveState(); }   // v3.44.8：读取失败时只更新内存、绝不把空档写回覆盖真档
-    const doneCount = TASKS.filter(x => state.daily.done[x.key]).length;
+    const doneCount = taskList().filter(x => state.daily.done[x.key]).length;   // v3.49.0：动态模块表
     openDialog(`<h2 style="color:var(--poke-red)">你好呀，${state.name}！👋</h2>
       <div style="font-size:64px;margin:6px 0">🌿<img src="${spriteUrl(906)}" alt="新叶喵" style="width:92px;height:92px;image-rendering:auto;object-fit:contain;vertical-align:middle">🌿</div>
-      <div style="font-size:28px;line-height:1.6">新的一天开始啦！<br>今天有 <b style="color:var(--poke-red)">${TASKS.length-doneCount} 个</b>学习任务等着你，<br>完成任务就能得到精灵球，<br>去收服新的宝可梦吧！</div>
+      <div style="font-size:28px;line-height:1.6">新的一天开始啦！<br>今天有 <b style="color:var(--poke-red)">${taskList().length-doneCount} 个</b>学习任务等着你，<br>完成任务就能得到精灵球，<br>去收服新的宝可梦吧！</div>
       <button class="big-btn" id="welcomeGo">出发！🚀</button>`, {closable:false});
     $("#welcomeGo").addEventListener("click", ()=>{ sfx.click(); closeDialog(); speak(`${state.name}，${timeHello()}！新的宝可梦冒险开始啦！`); if (state.partnerId) setTimeout(()=>partnerSay(timeGreetingLine()), 600); });
   }
