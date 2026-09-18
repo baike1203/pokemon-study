@@ -21,13 +21,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
+      # v3.49.4 fix：移除 android-actions/setup-android@v3 —— GitHub 强制 Actions 迁移 Node 24 后该 action 在
+      # Setup Android SDK 步骤直接崩溃（9/17 起连续构建失败）。ubuntu runner 预装 Android SDK，无需该 action，
+      # 直接用 $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager 安装所需组件。
       - name: Accept licenses & install required SDK
         run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null 2>&1 || true
+          "$SDKM" "platforms;android-34" "build-tools;34.0.0"
           echo "=== SDK check ==="
           echo "ANDROID_HOME=$ANDROID_HOME"
           ls "$ANDROID_HOME/platforms/" 2>/dev/null || echo "NO PLATFORMS"
