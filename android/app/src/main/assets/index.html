@@ -936,6 +936,9 @@ header{
 .task-card.hanzi::before  { background: linear-gradient(180deg,#8FD48F,#4CAF5A); }
 .task-card.poem::before   { background: linear-gradient(180deg,#B79BEF,#8A6BD6); }
 .task-card.writing::before{ background: linear-gradient(180deg,#D9A867,#B9833F); }
+/* v3.49.5：自定义打卡模块（cls=check）——奶油纸感背景 + 色板竖线（--bar-a/--bar-b 由 renderTasks 按模块顺序注入） */
+.task-card.check { background: linear-gradient(160deg,#FFFDF9 20%,#FBF6EC); }
+.task-card.check::before{ background: linear-gradient(180deg, var(--bar-a,#FFB84D), var(--bar-b,#F08C00)); }
 .task-card .name{ text-shadow: none; color: #4A433E; }
 .task-card .desc{ text-shadow: none; color: var(--pk-ink-soft); }
 /* 完成态：柔和描边 + 打勾弹入动效 */
@@ -2782,7 +2785,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.49.4";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.49.5";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -3504,6 +3507,8 @@ if (state.name === "小宝"){ state.name = "苏打"; saveState(); }   // 默认�
 function renderTasks(){
   const g = $("#taskGrid"); g.innerHTML = "";
   const tl = taskList();   // v3.49.0：动态模块表
+  const CHECK_BAR_COLORS = [["#6FD8D8","#2FB6B6"],["#F48FB1","#E05A9E"],["#FF8FB0","#F0618C"],["#FFC46B","#F59F2E"],["#7FB0F5","#4C7FE0"],["#8FD48F","#4CAF5A"],["#B79BEF","#8A6BD6"],["#D9A867","#B9833F"]];   // v3.49.5：自定义模块竖线色板（轮换，最多 8 个不重复）
+  let checkIdx = 0;
   const doneCount = tl.filter(t => state.daily.done[t.key]).length;
   $("#dateLine").innerHTML = `<span class="ico">📅</span><span>${new Date().toLocaleDateString("zh-CN",{year:"numeric",month:"long",day:"numeric",weekday:"long"})}</span>`;
   $("#progressLine").textContent = doneCount === tl.length ? "🎉 今日任务全部完成！你真棒！" : `今日进度 ${doneCount}/${tl.length}，完成任务获得精灵球 ⚡`;
@@ -3511,6 +3516,7 @@ function renderTasks(){
     const done = state.daily.done[t.key];
     const card = document.createElement("div");
     card.className = `task-card ${t.cls}` + (done ? " done" : "");
+    if (t.cls === "check") { const c = CHECK_BAR_COLORS[checkIdx % CHECK_BAR_COLORS.length]; card.style.setProperty("--bar-a", c[0]); card.style.setProperty("--bar-b", c[1]); checkIdx++; }   // v3.49.5：自定义模块分配彩色竖线
     const revN = t.key === "hanzi" && !done ? hanziReviewCount() : 0;
     const escT = s => (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");   // v3.49.2：小标题为可编辑输入，渲染统一转义
     const descText = done ? "🎉今日任务完成" : escT(t.desc||"");
