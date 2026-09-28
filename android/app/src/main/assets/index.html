@@ -2785,7 +2785,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.49.5";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.50.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2877,8 +2877,9 @@ function normalizeState(s){
   if (!Array.isArray(s.taskModules) || s.taskModules.length === 0) s.taskModules = defaultModules();
   else {
     const keep = s.taskModules.filter(m => m && typeof m === "object");
+    keep.forEach(m => { if (m.enabled == null) m.enabled = true; });   // v3.50.0：旧数据/云端无 enabled 字段默认开启
     const has = k => keep.some(m => m.key === k);
-    FIXED_TASK_KEYS.forEach(k => { if (!has(k)){ const t = TASKS.find(x => x.key === k); if (t) keep.push({ key:t.key, cls:t.cls, icon:t.icon, name:t.name, desc:t.desc, kind:"fixed" }); } });
+    FIXED_TASK_KEYS.forEach(k => { if (!has(k)){ const t = TASKS.find(x => x.key === k); if (t) keep.push({ key:t.key, cls:t.cls, icon:t.icon, name:t.name, desc:t.desc, kind:"fixed", enabled:true }); } });
     s.taskModules = keep;
   }
   // 兜底：daily 缺失 / 为 null 时补默认（按当前模块表动态生成 key；防止 60 秒定时器读 state.daily.date 报错，云端/导入/旧档都可能缺）
@@ -3490,8 +3491,8 @@ const TASKS = [
 const FIXED_TASK_KEYS = ["pinyin","math","hanzi","poem"];
 const CHECK_TASK_ICONS = ["📚","📝","🎨","🧮","🎵","🎯","🏃","🌙","🎓","⚽","🧩","🌱"];
 const MAX_CHECK_TASKS = 8;   // 打卡类模块上限（含 RAZ/写字），避免主页卡片过密
-function defaultModules(){ return TASKS.map(t => ({ key:t.key, cls:t.cls, icon:t.icon, name:t.name, desc:t.desc, kind: FIXED_TASK_KEYS.includes(t.key) ? "fixed" : "check" })); }
-function taskListOf(s){ return (s && Array.isArray(s.taskModules) && s.taskModules.length) ? s.taskModules : TASKS; }
+function defaultModules(){ return TASKS.map(t => ({ key:t.key, cls:t.cls, icon:t.icon, name:t.name, desc:t.desc, kind: FIXED_TASK_KEYS.includes(t.key) ? "fixed" : "check", enabled:true })); }   // v3.50.0：enabled 默认开启
+function taskListOf(s){ if (s && Array.isArray(s.taskModules) && s.taskModules.length){ const act = s.taskModules.filter(m => m.enabled !== false); return act.length ? act : s.taskModules; } return TASKS; }   // v3.50.0：隐藏模块不进今日任务；全隐藏时回退全量防止首页空白
 function taskList(){ return taskListOf(state); }
 function kindOf(t){ return t && t.kind ? t.kind : (FIXED_TASK_KEYS.includes(t.key) ? "fixed" : "check"); }
 /* 生成不冲突的自定义模块 key：custom_1、custom_2 … */
@@ -4251,16 +4252,17 @@ function openModuleManager(){
       const canEdit = kind === "check";
       return `<div class="mod-row" style="display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid #f0e6d8">
         <span style="font-size:26px">${t.icon||"📌"}</span>
-        <div style="flex:1;text-align:left;min-width:0"><div style="font-size:20px;font-weight:700;color:#5b4a3a">${escT(t.name)}</div>
+        <div style="flex:1;text-align:left;min-width:0"><div style="font-size:20px;font-weight:700;color:${t.enabled===false?"#c0b3a3":"#5b4a3a"}">${escT(t.name)}</div>
           ${t.desc?`<div style="font-size:13px;color:#b9a98f">${escT(t.desc)}</div>`:""}
-          <div style="font-size:13px;color:${kind==="fixed"?"#b9a98f":"#3F9D3F"}">${kind==="fixed"?"答题模块 · 不可删改":"打卡模块"}</div></div>
+          <div style="font-size:13px;color:${kind==="fixed"?"#b9a98f":"#3F9D3F"}">${kind==="fixed"?"答题模块 · 可开关":"打卡模块"}</div></div>
         <button class="mini-btn" data-act="up" data-i="${i}" ${i===0?"disabled":""} title="上移">▲</button>
         <button class="mini-btn" data-act="down" data-i="${i}" ${i===state.taskModules.length-1?"disabled":""} title="下移">▼</button>
+        ${kind==="fixed"?`<button class="mini-btn" data-act="toggle" data-i="${i}" title="${t.enabled===false?"点击重新开启":"点击隐藏"}">${t.enabled===false?"🔘 已隐藏":"🟢 开启"}</button>`:""}
         ${canEdit?`<button class="mini-btn" data-act="rename" data-i="${i}" title="改名">✏️</button><button class="mini-btn" data-act="del" data-i="${i}" title="删除">🗑</button>`:""}
-      </div>`;
+      </div>`;   // v3.50.0：固定模块可开关（隐藏后不进今日任务，历史保留）
     }).join("");
     openDialog(`<h2 style="color:#F58A1F">🧩 打卡模块管理</h2>
-      <div style="font-size:16px;color:#9b8676;margin:4px 0 10px;line-height:1.6">管理今日打卡模块：▲▼ 排序、✏️ 改名、🗑 删除、＋ 新增。<br>答题模块（拼音・数学・识字・古诗）不可删改，只能排序。</div>
+      <div style="font-size:16px;color:#9b8676;margin:4px 0 10px;line-height:1.6">管理今日打卡模块：▲▼ 排序、🟢 开关、✏️ 改名、🗑 删除、＋ 新增。<br>答题模块（拼音・数学・识字・古诗）可开关、不可改名删除；隐藏后历史记录保留，随时可重新开启。</div>
       <div id="mmList" style="max-height:46vh;overflow:auto;border:2px solid #f0e6d8;border-radius:12px;padding:4px 12px">${rows}</div>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
         <button class="big-btn blue" id="mmAdd" style="flex:1">＋ 添加打卡模块</button>
@@ -4272,6 +4274,16 @@ function openModuleManager(){
       if (act==="down" && i<state.taskModules.length-1){ const a=state.taskModules[i+1], c=state.taskModules[i]; state.taskModules[i+1]=c; state.taskModules[i]=a; saveAndRerender(); }
       if (act==="rename") renameModule(i);
       if (act==="del") delModule(i);
+      if (act==="toggle"){   // v3.50.0：固定模块开关，至少保留 1 个启用模块
+        const t = state.taskModules[i];
+        if (t.enabled !== false){
+          const onCount = state.taskModules.filter(m => m.enabled !== false).length;
+          if (onCount <= 1){ toast("至少保留 1 个打卡模块"); return; }
+          if (!confirm(`确定隐藏「${t.name}」吗？\n隐藏后今日任务不再显示、不再打卡；历史记录与统计保留，随时可重新开启。`)) return;
+          t.enabled = false; delete state.daily.done[t.key];
+        } else { t.enabled = true; }
+        saveAndRerender();
+      }
     }));
     $("#mmAdd").addEventListener("click",()=>{ sfx.click(); addModule(); });
     $("#mmClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); renderTasks(); });
