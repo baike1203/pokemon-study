@@ -2785,7 +2785,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.50.0";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.50.1";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -2908,6 +2908,12 @@ function normalizeState(s){
     s.achStreak.gen1 = s.allCompleteStreak;
     if (!s.achStreakDate.gen1) s.achStreakDate.gen1 = s.lastAllCompleteDate || "";
   }
+  // v3.50.1：兜底 stat / evoStage / evoForm——导入或云端数据若为 null/异常类型，
+  // Object.assign(defaultState(), data) 会用 null 覆盖默认值，导致学习报告崩溃、进化记录静默失效
+  if (!s.stat || typeof s.stat !== "object") s.stat = { modDone:{}, modRight:{}, modTotal:{} };
+  else ["modDone","modRight","modTotal"].forEach(sec => { if (!s.stat[sec] || typeof s.stat[sec] !== "object") s.stat[sec] = {}; });
+  if (!s.evoStage || typeof s.evoStage !== "object") s.evoStage = {};
+  if (!s.evoForm || typeof s.evoForm !== "object") s.evoForm = {};
   return s;
 }
 function loadState(){
