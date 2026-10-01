@@ -2785,7 +2785,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.50.2";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.50.3";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -6054,6 +6054,15 @@ function openReport(){
         <div class="weak-row"><span class="weak-nm">${w.nm}<span class="weak-pct">正确率 ${w.pct}%</span></span>
         <button class="mini-btn" onclick="closeDialog();openModule('${w.k}')">去练习</button></div>`).join("")}</div>`
     : `<div class="report-weak">💡 暂无薄弱项：先做几道题，我就能告诉你啦～</div>`;
+  // v3.50.3：收集进度总览——总计 + 所有有过收集的世代（当前进行中的世代即使 0 只也显示）
+  const totalGot = state.dex.length;
+  const totalCap = BOOK_ORDER.reduce((s,g)=>s+bookCapacity(g),0);
+  const genRows = BOOK_ORDER.filter(g => bookDexCount(g) > 0 || g === state.activeBook).map(g => {
+    const got = bookDexCount(g), cap = bookCapacity(g);
+    const mark = isBookComplete(g) ? `<span style="color:#3F9D3F;font-size:14px">✅ 已集齐</span>`
+               : (g === state.activeBook ? `<span style="color:#F58A1F;font-size:14px">📖 进行中</span>` : "");
+    return `<div class="report-row"><span>${BOOKS[g].title}${mark}</span><b>${got} / ${cap}</b></div>`;
+  }).join("");
   openDialog(`<h2 style="color:var(--poke-blue)">📊 学习报告</h2>
     <div class="report-sec"><h3>📅 打卡天数</h3>
       <div class="report-row"><span>累计打卡</span><b>${totalDays} 天</b></div>
@@ -6068,7 +6077,10 @@ function openReport(){
     <div class="report-sec"><h3>✅ 各模块完成次数</h3>${doneRows}</div>
     <div class="report-sec"><h3>🎯 答题正确率</h3>${accRows}</div>
     ${weakHTML}
-    <div class="report-sec"><h3>⭐ 收集进度</h3><div class="report-row"><span>当前图鉴（${BOOKS[state.activeBook].title}）</span><b>${bookDexCount(state.activeBook)} / ${bookCapacity(state.activeBook)}</b></div></div>
+    <div class="report-sec"><h3>⭐ 收集进度</h3>
+      <div class="report-row" style="background:#FFF3DE;border-radius:10px"><span style="font-weight:700">全部图鉴合计</span><b style="color:#F58A1F;font-size:20px">${totalGot} / ${totalCap} 只</b></div>
+      ${genRows}
+    </div>
     <button class="big-btn yellow" onclick="document.querySelector('#dialogClose').click()">关闭</button>`, { dialogClass:"" });
 }
 /* 护眼休息提醒：连续使用 20 分钟后弹出（点「休息一下」后重新计时） */
