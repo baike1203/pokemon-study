@@ -231,10 +231,19 @@ public class MainActivity extends Activity {
                 writeSave(json, filename, true);   // 手动导出：成功弹完整位置提示
             }
 
-            /** 自动备份：固定文件名 + 静默写入（成功不弹 Toast 打扰孩子；失败仍提示） */
+            /** 自动备份：3 槽位轮换文件名 + 静默写入（成功不弹 Toast 打扰孩子；失败仍提示） */
             @JavascriptInterface
             public void autoBackupSave(String json) {
-                writeSave(json, "pokemon-study-auto-backup.json", false);
+                writeSave(json, nextAutoBackupName(), false);
+            }
+
+            /** v3.50.2：自动备份槽位轮换——-1/-2/-3 三个固定槽位轮流写入，每槽位复用同一真实文件覆盖，
+                既保留「不产生 (N) 后缀新文件」的能力，又防止坏档覆盖掉唯一备份。 */
+            private String nextAutoBackupName() {
+                SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                int slot = sp.getInt("poke_backup_slot", 0) % 3 + 1;   // 1→2→3→1 循环
+                sp.edit().putInt("poke_backup_slot", slot).apply();
+                return "pokemon-study-auto-backup-" + slot + ".json";
             }
 
             private void writeSave(String json, String filename, boolean showToastOnSuccess) {
@@ -244,9 +253,21 @@ public class MainActivity extends Activity {
                     // 手动导出用时间戳文件名（天然唯一）：直接新建，不走覆盖追踪，避免两类文件名互相串台。
                     boolean isAutoBackup = filename.startsWith("pokemon-study-auto-backup");
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        // Android 11+ 用 MediaStore；自动备份靠 SP 记住真实文件名反复覆盖，避免 (N) 后缀越堆越多。
+                        // Android 11+ 用 MediaStore；自动备份靠 SP 记住每槽位的真实文件名反复覆盖，避免 (N) 后缀越堆越多。
                         SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-                        String actual = isAutoBackup ? sp.getString("poke_actual_backup", null) : null;
+                        // v3.50.2：槽位轮换——从文件名解析槽位号，每槽位独立记录真实文件名；
+                        // 槽位 1 首次沿用旧版单文件键 poke_actual_backup（直接复用旧文件，避免「旧文件 + 3 个新文件」变 4 个）。
+                        int slot = 1;
+                        if (isAutoBackup){
+                            String s = filename.substring("pokemon-study-auto-backup".length());
+                            int dot = s.indexOf('.');
+                            String num = (dot > 0 ? s.substring(0, dot) : s).replace("-", "");
+                            try { slot = Integer.parseInt(num); } catch (Exception e) { slot = 1; }
+                        }
+                        String actualKey = "poke_actual_backup_" + slot;
+                        String actual = sp.getString(actualKey, null);
+                        if (isAutoBackup && actual == null && slot == 1) actual = sp.getString("poke_actual_backup", null);   // 旧版单文件迁移
+                        if (isAutoBackup && actual != null) sp.edit().putString(actualKey, actual).apply();   // 迁移值固化到新键
                         Uri target = null;
                         if (actual != null) {
                             try (Cursor c = getContentResolver().query(
@@ -278,7 +299,7 @@ public class MainActivity extends Activity {
                                     new String[]{String.valueOf(ContentUris.parseId(target))}, null)) {
                                 if (c != null && c.moveToFirst()) {
                                     actual = c.getString(c.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME));
-                                    if (isAutoBackup) sp.edit().putString("poke_actual_backup", actual).apply();
+                                    if (isAutoBackup) sp.edit().putString(actualKey, actual).apply();
                                 }
                             }
                         }
@@ -286,9 +307,9 @@ public class MainActivity extends Activity {
                             os.write(json.getBytes(StandardCharsets.UTF_8));
                         }
                         if (isAutoBackup) {
-                            // 仅自动备份清理「同名基底」的历史孤儿，避免越堆越多
-                            int dot = filename.lastIndexOf('.');
-                            String base = dot > 0 ? filename.substring(0, dot) : filename;
+                            // v3.50.2：仅清理「当前槽位」同名基底的历史孤儿（如 -1 与 -1 (1)），
+                            // LIKE 按槽位前缀匹配，避免误删其它槽位的备份文件
+                            String base = "pokemon-study-auto-backup-" + slot;
                             try (Cursor c = getContentResolver().query(
                                     MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                                     new String[]{MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME},
