@@ -3,6 +3,9 @@
 <head data-page-node-id="5uYZLzKOhP0CX5k2gHhirb">
 <meta charset="UTF-8" data-page-node-id="ocdZPIY6nxXL4K6AYh7RrE">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" data-page-node-id="WLLt4q4pZ0neAkGAT9JjDU">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#3A8DDE">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" data-page-node-id="PezDnMLXJD07LPmJmNJM7o">
 <meta http-equiv="Pragma" content="no-cache" data-page-node-id="HWP1lw2XfQHqywU5vr9BjQ">
 <meta http-equiv="Expires" content="0" data-page-node-id="hgzGpARG525zxWA9PVXXq2">
@@ -2785,7 +2788,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.50.3";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.50.4";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -6323,6 +6326,10 @@ window.addEventListener("beforeunload", ()=>{
 });
 // 防页面恢复(bfcache)：从缓存还原的页面会带着上次开着的弹窗，这里强制整页刷新，杜绝“杀后台重启仍卡住旧弹窗”
 window.addEventListener("pageshow", (e)=>{ if (e.persisted){ window.location.reload(); } });
+</script>
+<script>
+// PWA：注册 Service Worker（满足「可安装」；HTML 导航由 SW 放行，不影响 APK 断网回退内置副本）
+if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function () {}); }); }
 </script>
 </body>
 </html>
