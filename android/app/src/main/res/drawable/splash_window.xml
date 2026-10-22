@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 冷启动窗口背景（Android 11 及以下走这里）。
+     注意：logo 这个 item 必须显式给 android:width/height + android:gravity="center"，
+     否则 bitmap 会被拉伸铺满整屏（这是 layer-list 最常见的坑）。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item>
+        <color android:color="@color/splash_bg" />
+    </item>
+
+    <item
+        android:width="120dp"
+        android:height="120dp"
+        android:gravity="center"
+        android:drawable="@mipmap/ic_splash_ball" />
+
+</layer-list>

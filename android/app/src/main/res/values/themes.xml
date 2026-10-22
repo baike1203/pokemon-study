@@ -5,5 +5,19 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <!-- ① 冷启动窗口背景（Android 11 及以下走这里）。
+             进程 fork → Application → onCreate 之间屏幕归系统窗口管，Java 代码管不到，
+             只能靠 windowBackground 消除黑/白闪。 -->
+        <item name="android:windowBackground">@drawable/splash_window</item>
+
+        <!-- ② Android 12+ 系统强制 SplashScreen：targetSdk 34 必生效。
+             不配就是「默认底色 + launcher 图标被圆形遮罩切掉四角」，还会和应用内启动页叠成两层。
+             以下为 framework 属性（API 31+），低版本设备自动忽略，无需 values-v31。 -->
+        <item name="android:windowSplashScreenBackground">@color/splash_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_splash_ball</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/splash_bg</item>
+        <!-- 系统 splash 不额外延时（上限 1000ms），尽快交给应用内启动页，避免两层各停一次 -->
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
     </style>
 </resources>

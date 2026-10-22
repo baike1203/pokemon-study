@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 方案 A「温暖糖果」：底色与 App 内首页完全同源（#FFF7E6），
+         启动页 → 首页是同色淡出，不跳色。 -->
+    <color name="splash_bg">#FFF7E6</color>
+    <color name="splash_title">#7A4E1E</color>
+    <color name="splash_subtitle">#B08A55</color>
+</resources>

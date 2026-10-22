@@ -9,6 +9,18 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.view.Gravity;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.graphics.Typeface;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+import android.util.TypedValue;
 import android.content.ContentUris;
 import android.database.Cursor;
 import android.provider.DocumentsContract;
@@ -52,13 +64,32 @@ public class MainActivity extends Activity {
     private boolean mainLoaded = false;
     private ValueCallback<Uri[]> mFilePathCallback;
 
+    // ---------- 应用内启动页 ----------
+    private View splashView;                 // 启动页根布局
+    private View splashBall;                 // 精灵球（呼吸动画作用对象）
+    private TextView splashStatus;           // 可变状态文案
+    private ObjectAnimator breathX, breathY; // 呼吸动画，淡出时要 cancel，避免泄漏
+    private final Handler splashHandler = new Handler(Looper.getMainLooper());
+    private long splashStartAt;              // 启动页出现时刻 → 用于补足最短展示时长
+    private boolean splashHidden = false;
+    private boolean offlineTried = false;    // 是否已切过内置离线副本
+
+    private static final long SPLASH_MIN_MS = 600;    // 最短展示：缓存秒开时别一闪而过
+    private static final long SLOW_HINT_MS  = 6000;   // 6 秒未就绪 → 提示网络慢
+    private static final long OFFLINE_MS    = 12000;  // 12 秒未就绪 → 强制切离线，别让孩子无限等
+    private static final int  SPLASH_BALL_DP = 120;   // 精灵球直径（与 splash_window.xml 保持一致）
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         hideSystemUI();
 
+        float density = getResources().getDisplayMetrics().density;
+        int unit = Math.max(1, (int) (density + 0.5f));          // 1dp ≈ 几 px
+        int ballPx = (int) (SPLASH_BALL_DP * density + 0.5f);
+
         FrameLayout root = new FrameLayout(this);
-        int bg = Color.parseColor("#FFF6E9");   // 柔糖果色底，避免冷启动黑屏
+        int bg = Color.parseColor("#FFF7E6");   // 方案 A：与 App 内首页同色，淡出时不跳色
         root.setBackgroundColor(bg);
 
         webView = new WebView(this);
@@ -67,18 +98,84 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams.MATCH_PARENT);
         root.addView(webView, lp);
 
-        // 原生加载遮罩：冷启动/断网回退前显示，页面就绪后隐藏，避免一片黑
-        final TextView splash = new TextView(this);
-        splash.setText("⚡ 宝可梦学习工作台\n\n加载中…");
-        splash.setGravity(android.view.Gravity.CENTER);
-        splash.setTextColor(Color.parseColor("#8A6D3B"));
-        splash.setTextSize(24);
+        // ---- 应用内启动页 ----
+        // 用 RelativeLayout 让精灵球「精确居中」：与 splash_window.xml 里的球位置完全一致，
+        // 否则从冷启动窗口切到应用内时，球会往上跳一下。
+        RelativeLayout splash = new RelativeLayout(this);
         splash.setBackgroundColor(bg);
+
+        ImageView ball = new ImageView(this);
+        ball.setId(1);
+        ball.setImageResource(R.mipmap.ic_splash_ball);
+        ball.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        ball.setLayerType(View.LAYER_TYPE_HARDWARE, null);   // 缩放动画走硬件层，更顺滑
+        RelativeLayout.LayoutParams blp = new RelativeLayout.LayoutParams(ballPx, ballPx);
+        blp.addRule(RelativeLayout.CENTER_IN_PARENT);
+        splash.addView(ball, blp);
+        splashBall = ball;
+
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        TextView title = new TextView(this);
+        title.setText("宝可梦学习工作台");
+        title.setTextColor(Color.parseColor("#7A4E1E"));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setGravity(Gravity.CENTER);
+        texts.addView(title);
+
+        splashStatus = new TextView(this);
+        splashStatus.setText("⚡ 正在准备今天的冒险…");
+        splashStatus.setTextColor(Color.parseColor("#B08A55"));
+        splashStatus.setTextSize(TypedValue.COMPLEX_UNIT_SP, 21);
+        splashStatus.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams stlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        stlp.topMargin = 16 * unit;
+        texts.addView(splashStatus, stlp);
+
+        RelativeLayout.LayoutParams tlp = new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+        tlp.addRule(RelativeLayout.CENTER_HORIZONTAL);
+        tlp.addRule(RelativeLayout.BELOW, 1);
+        tlp.topMargin = 30 * unit;
+        splash.addView(texts, tlp);
+
         FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT);
         root.addView(splash, slp);
         setContentView(root);
+        splashView = splash;
+
+        // 精灵球呼吸：1.0 ↔ 1.07，1.4 秒一来回，缓入缓出。
+        // 不用进度条——真实加载时长未知，假进度条反而让孩子等得焦躁。
+        breathX = ObjectAnimator.ofFloat(ball, View.SCALE_X, 1.0f, 1.07f);
+        breathY = ObjectAnimator.ofFloat(ball, View.SCALE_Y, 1.0f, 1.07f);
+        AccelerateDecelerateInterpolator ease = new AccelerateDecelerateInterpolator();
+        for (ObjectAnimator a : new ObjectAnimator[]{breathX, breathY}) {
+            a.setDuration(1400);
+            a.setRepeatCount(ValueAnimator.INFINITE);
+            a.setRepeatMode(ValueAnimator.REVERSE);
+            a.setInterpolator(ease);
+            a.start();
+        }
+
+        splashStartAt = SystemClock.elapsedRealtime();
+        splashHandler.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (splashHidden) return;
+                splashStatus.setText("网络有点慢，再等一下…");
+            }
+        }, SLOW_HINT_MS);
+        splashHandler.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (splashHidden) return;
+                goOffline();
+            }
+        }, OFFLINE_MS);
 
         WebSettings ws = webView.getSettings();
         ws.setJavaScriptEnabled(true);
@@ -98,13 +195,13 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 mainLoaded = true;
-                splash.setVisibility(View.GONE);
+                hideSplash();
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
                 if (!mainLoaded && req.isForMainFrame()) {
-                    webView.loadUrl("file:///android_asset/index.html");
+                    goOffline();
                 }
             }
 
@@ -404,6 +501,50 @@ public class MainActivity extends Activity {
         if (hasFocus) {
             hideSystemUI();
         }
+    }
+
+    /**
+     * 隐藏启动页：补足最短展示时长（避免缓存秒开时一闪而过），
+     * 再 250ms 淡出 + 轻微放大，替代原来的硬切 GONE。
+     */
+    private void hideSplash() {
+        if (splashHidden) return;
+        splashHidden = true;
+        long shown = SystemClock.elapsedRealtime() - splashStartAt;
+        long delay = Math.max(0, SPLASH_MIN_MS - shown);
+        splashHandler.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (breathX != null) breathX.cancel();
+                if (breathY != null) breathY.cancel();
+                if (splashBall != null) {
+                    splashBall.setScaleX(1f);
+                    splashBall.setScaleY(1f);   // 复位，避免从呼吸的中间值继续放大时回跳
+                }
+                if (splashView == null) return;
+                splashView.animate()
+                        .alpha(0f)
+                        .scaleX(1.04f)
+                        .scaleY(1.04f)
+                        .setDuration(250)
+                        .setInterpolator(new AccelerateDecelerateInterpolator())
+                        .withEndAction(new Runnable() {
+                            @Override public void run() {
+                                if (splashView != null && splashView.getParent() instanceof FrameLayout) {
+                                    ((FrameLayout) splashView.getParent()).removeView(splashView);
+                                    splashView = null;
+                                }
+                            }
+                        }).start();
+            }
+        }, delay);
+    }
+
+    /** 切到内置离线副本（assets/index.html），并更新启动页文案让等待有交代 */
+    private void goOffline() {
+        if (offlineTried) return;
+        offlineTried = true;
+        if (splashStatus != null) splashStatus.setText("正在打开离线模式…");
+        webView.loadUrl("file:///android_asset/index.html");
     }
 
     private void hideSystemUI() {
