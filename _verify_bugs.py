@@ -22,7 +22,7 @@ import io, re, json, subprocess, random
 from pypinyin import lazy_pinyin, Style
 
 HTML = 'E:/WorkBuddy/pokemon-study-site/index.html'
-NODE = r'C:\Users\Beekay\.workbuddy\binaries\node\versions\22.22.2-2\node.exe'
+NODE = r'C:\Users\Beekay\.workbuddy\binaries\node\versions\22.22.2-6\node.exe'
 
 t = io.open(HTML, encoding='utf-8').read()
 
