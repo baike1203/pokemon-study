@@ -6,6 +6,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#3A8DDE">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" data-page-node-id="PezDnMLXJD07LPmJmNJM7o">
 <meta http-equiv="Pragma" content="no-cache" data-page-node-id="HWP1lw2XfQHqywU5vr9BjQ">
 <meta http-equiv="Expires" content="0" data-page-node-id="hgzGpARG525zxWA9PVXXq2">
@@ -2788,7 +2791,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.50.4";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.50.5";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
