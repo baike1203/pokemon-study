@@ -6332,7 +6332,7 @@ window.addEventListener("pageshow", (e)=>{ if (e.persisted){ window.location.rel
 </script>
 <script>
 // PWA：注册 Service Worker（满足「可安装」；HTML 导航由 SW 放行，不影响 APK 断网回退内置副本）
-if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function () {}); }); }
+if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(function () {}); }); }
 </script>
 </body>
 </html>
