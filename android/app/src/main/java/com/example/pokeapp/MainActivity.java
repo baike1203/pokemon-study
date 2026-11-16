@@ -1,13 +1,16 @@
 package com.example.pokeapp;
 
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.View;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
@@ -24,6 +27,7 @@ import android.util.TypedValue;
 import android.content.ContentUris;
 import android.database.Cursor;
 import android.provider.DocumentsContract;
+import android.provider.Settings;
 import android.provider.MediaStore;
 import android.content.SharedPreferences;
 import android.webkit.JavascriptInterface;
@@ -479,6 +483,104 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 showToast("自动导入失败，请改用选择文件：" + e.getMessage());
             }
+        }
+
+        /* ==================== v3.50.7：App 自更新 ==================== */
+
+        /** 返回本机 APK 版本，形如 {"code":3,"name":"v3.50.5"}；网页据此判断是否要提示更新 */
+        @JavascriptInterface
+        public String getAppInfo() {
+            try {
+                android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+                long code = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                        ? pi.getLongVersionCode() : pi.versionCode;
+                JSONObject o = new JSONObject();
+                o.put("code", (int) code);
+                o.put("name", pi.versionName == null ? "" : pi.versionName);
+                return o.toString();
+            } catch (Exception e) {
+                return "{}";
+            }
+        }
+
+        /**
+         * 下载并唤起系统安装器（网页「一键更新」按钮调用）。
+         *
+         * 走 DownloadManager 而不是「自己开线程 + FileProvider」，原因：
+         *  1) 本工程没有任何 dependencies（无 androidx），拿不到 FileProvider，
+         *     而 Android 7+ 把 file:// Uri 传给其他应用会直接抛 FileUriExposedException；
+         *  2) DownloadManager 自带通知栏进度、断点续传，且返回可直接授予读权限的 content:// Uri。
+         */
+        @JavascriptInterface
+        public void installApkUpdate(final String url) {
+            if (url == null || !(url.startsWith("https://") || url.startsWith("http://"))) {
+                showToast("更新地址无效");
+                return;
+            }
+            try {
+                DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                if (dm == null) { showToast("系统下载服务不可用"); return; }
+
+                DownloadManager.Request req = new DownloadManager.Request(Uri.parse(url));
+                req.setTitle("精灵学院 更新包");
+                req.setDescription("正在下载新版本，完成后会自动弹出安装");
+                req.setMimeType("application/vnd.android.package-archive");
+                req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "poke-study-update.apk");
+
+                final long id = dm.enqueue(req);
+                showToast("开始下载更新包…");
+
+                // 轮询而不是监听广播：targetSdk 33+ 注册系统广播必须显式指定 RECEIVER_EXPORTED，
+                // 各 ROM 行为还不一致，轮询最省心（只在一个后台线程里，开销可忽略）。
+                new Thread(() -> {
+                    for (int i = 0; i < 600; i++) {          // 约 8 分钟上限
+                        try { Thread.sleep(800); } catch (InterruptedException e) { return; }
+                        int status = -1;
+                        try (Cursor c = dm.query(new DownloadManager.Query().setFilterById(id))) {
+                            if (c != null && c.moveToFirst()) {
+                                status = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                            }
+                        } catch (Exception ignored) { }
+                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                            Uri uri = dm.getUriForDownloadedFile(id);
+                            if (uri == null) { showToast("下载完成但取不到文件"); return; }
+                            launchInstaller(uri);
+                            return;
+                        }
+                        if (status == DownloadManager.STATUS_FAILED) {
+                            showToast("下载失败，请检查平板网络后重试");
+                            return;
+                        }
+                    }
+                    showToast("下载超时，请稍后重试");
+                }).start();
+            } catch (Exception e) {
+                showToast("启动更新失败：" + e.getClass().getSimpleName());
+            }
+        }
+
+        /** 唤起系统安装器；Android 8+ 需先拿到「安装未知应用」授权 */
+        private void launchInstaller(final Uri apkUri) {
+            runOnUiThread(() -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                        && !getPackageManager().canRequestPackageInstalls()) {
+                    showToast("请允许「精灵学院」安装应用，然后回来再点一次更新");
+                    try {
+                        startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                Uri.parse("package:" + getPackageName())));
+                    } catch (Exception ignored) { }
+                    return;
+                }
+                Intent it = new Intent(Intent.ACTION_VIEW);
+                it.setDataAndType(apkUri, "application/vnd.android.package-archive");
+                it.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                try {
+                    startActivity(it);
+                } catch (Exception e) {
+                    showToast("没有可用的安装器：" + e.getClass().getSimpleName());
+                }
+            });
         }
 
         private void showToast(final String msg) {

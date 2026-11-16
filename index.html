@@ -2792,6 +2792,14 @@ function clearStoredToken(){
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
 const APP_VERSION = "v3.50.5";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+/* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
+   规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
+   否则会误报「有新版本」，让孩子白下一次 APK。 */
+const APP_BUILD = 3;
+/* APK 下载直链：指向 GitHub Release 的固定 asset（每次 CI 构建覆盖同一文件）。
+   选 Release 而不是仓库文件/Pages，是因为 .git 已 187MB，再塞二进制会失控；
+   而 artifact 需要登录 GitHub 才能下，WebView 拿不到。 */
+const APK_DOWNLOAD_URL = "https://github.com/baike1203/pokemon-study/releases/latest/download/poke-study.apk";
 function todayStr(){ const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 
@@ -4175,6 +4183,83 @@ function accountBlockHTML(){
     <button class="big-btn blue" id="acctLogin" style="width:100%;margin-top:10px">🔐 登录 / 注册账号</button>
   </div>`;
 }
+/* ==================== App 版本 / 一键更新（v3.50.7） ====================
+   判断依据只有一个：线上网页里的 APP_BUILD vs 本机 APK 的 versionCode。
+   网页是线上实时加载的，所以「检查更新」不需要发任何请求 —— 打开设置就已经是最新信息。 */
+
+/* 读取本机 APK 版本；浏览器环境返回 isApk=false */
+function nativeAppInfo(){
+  if (!window.PokeBridge) return { isApk:false, code:0, name:"" };
+  let code = 0, name = "早期外壳";
+  try{
+    if (window.PokeBridge.getAppInfo){
+      const o = JSON.parse(window.PokeBridge.getAppInfo() || "{}");
+      if (o && typeof o.code === "number"){ code = o.code; name = o.name || ""; }
+    }
+  }catch(e){ /* 旧壳没有 getAppInfo，或返回值异常：按 0 处理，提示可更新 */ }
+  return { isApk:true, code, name };
+}
+/* 本机是否具备「一键下载 + 唤起安装器」的原生能力（v3.50.7 起的外壳才有） */
+function canOneTapUpdate(){
+  return !!(window.PokeBridge && window.PokeBridge.installApkUpdate);
+}
+/* 复制文本：优先 clipboard API，WebView 下回退 execCommand */
+function copyText(t, okMsg){
+  const ok = ()=> toast(okMsg || "已复制");
+  const fallback = ()=>{
+    const ta = document.createElement("textarea");
+    ta.value = t;
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand("copy"); ok(); }
+    catch(e){ toast("复制失败，请长按地址手动复制"); }
+    document.body.removeChild(ta);
+  };
+  try{
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(ok).catch(fallback);
+      return;
+    }
+  }catch(e){ /* 落到 fallback */ }
+  fallback();
+}
+/* 家长设置里的「App 版本」卡片 */
+function updateBlockHTML(){
+  const info = nativeAppInfo();
+  const need = info.isApk && info.code < APP_BUILD;
+  const cur = info.name ? (info.name + "（构建 " + info.code + "）") : ("构建 " + info.code);
+
+  if (!info.isApk){
+    return `<div style="font-size:16px;color:#7a6a58;line-height:1.7">
+      当前是 <b>浏览器 / 网页版</b>，打开即最新，不用安装。<br>
+      <span style="color:#a8988a;font-size:15px">想在平板上当 App 用：用平板浏览器打开本页 → 菜单里「安装应用 / 添加到主屏幕」。</span>
+    </div>`;
+  }
+
+  if (need){
+    const head = `<div style="font-size:16px;color:#5b4a3a;line-height:1.7;margin-bottom:10px">
+      本机 <b>${cur}</b><br>线上最新 <b style="color:#F58A1F">${APP_VERSION}（构建 ${APP_BUILD}）</b>
+    </div>`;
+    if (canOneTapUpdate()){
+      return head
+        + `<button class="big-btn" id="apkUpdate" style="width:100%;min-width:0">📲 一键更新到 ${APP_VERSION}</button>
+           <div style="font-size:14px;color:#a8988a;margin-top:8px;line-height:1.6">
+             下载完会自动弹出安装，点「安装」即可。覆盖安装，进度不会丢。
+           </div>`;
+    }
+    return head
+      + `<div style="font-size:15px;color:#8a6d3b;line-height:1.65;background:#FFF7E6;border:1px solid #FFE0A3;border-radius:12px;padding:10px 12px;margin-bottom:10px">
+           本机是早期版本的外壳，还没有「一键更新」。<br><b>手动装一次这一版，以后就能直接一键更新了。</b>
+         </div>
+         <button class="big-btn blue" id="apkCopyUrl" style="width:100%;min-width:0">📋 复制新版下载地址</button>`;
+  }
+
+  return `<div style="font-size:16px;color:#3F9D3F;line-height:1.7">
+      ✅ 已是最新　<b>${cur}</b>
+    </div>`;
+}
+
 function openSettings(sub){
   if (!sub){
     openDialog(`<h2 style="color:#F58A1F">⚙️ 家长设置</h2>
@@ -4221,6 +4306,10 @@ function openSettings(sub){
           <button class="switch ${state.testMode?'on':''}" id="testSwitch" role="switch" aria-checked="${state.testMode}"><span class="knob"></span></button>
         </div>
       </div>
+      <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
+        <div style="font-size:22px;color:#9b8676;margin-bottom:10px">📲 App 版本</div>
+        ${updateBlockHTML()}
+      </div>
       <div style="margin-top:14px;text-align:center;font-size:15px;color:#bbab98">当前版本：${APP_VERSION}</div>
       <div style="margin-top:14px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`, { dialogClass: "set-dialog" });
     document.querySelectorAll(".set-mod").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); openSettings(b.dataset.m); }));
@@ -4231,6 +4320,20 @@ function openSettings(sub){
     if (rb) rb.addEventListener("click", ()=>{ sfx.click(); openReport(); });
     const mmb = document.getElementById("modMgrBtn");
     if (mmb) mmb.addEventListener("click", ()=>{ sfx.click(); openModuleManager(); });
+    // App 自更新：一键更新 / 复制下载地址
+    // 提示统一交给原生 Toast，网页端不重复弹，避免一次点击出现两条提示。
+    const upBtn = document.getElementById("apkUpdate");
+    if (upBtn) upBtn.addEventListener("click", ()=>{
+      sfx.click();
+      try{
+        window.PokeBridge.installApkUpdate(APK_DOWNLOAD_URL);
+        upBtn.disabled = true;
+        upBtn.textContent = "⏳ 正在下载…";
+        setTimeout(()=>{ if (upBtn.isConnected){ upBtn.disabled = false; upBtn.textContent = "📲 一键更新到 " + APP_VERSION; } }, 6000);
+      }catch(e){ toast("启动更新失败，请重试"); }
+    });
+    const cpBtn = document.getElementById("apkCopyUrl");
+    if (cpBtn) cpBtn.addEventListener("click", ()=>{ sfx.click(); copyText(APK_DOWNLOAD_URL, "地址已复制，粘贴到平板浏览器打开"); });
     $("#setClose").addEventListener("click",()=>{ sfx.click(); closeDialog(); });
     const acctLogin = document.getElementById("acctLogin");
     if (acctLogin) acctLogin.addEventListener("click", ()=>{ sfx.click(); showLoginDialog(()=>openSettings()); });

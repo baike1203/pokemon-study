@@ -16,6 +16,20 @@ try {
 def verName = webVer.startsWith('v') ? webVer.substring(1) : webVer
 logger.lifecycle("APK versionName = ${verName}（来源：assets/index.html）")
 
+// versionCode 也自动跟随：读 assets/index.html 的 APP_BUILD。
+// 它是「本机 APK 要不要提示更新」的唯一依据，网页端用同一个常量做比较，
+// 两边从一处取值，不会出现「提示有新版但装上去还是旧的」。
+def webBuild = 3
+try {
+    def mb = new File(projectDir, 'src/main/assets/index.html').getText('UTF-8') =~ /const APP_BUILD = (\d+)/
+    if (mb.find()) {
+        webBuild = mb.group(1) as int
+    }
+} catch (Exception ignored) {
+    logger.lifecycle("⚠️ 未能从 assets/index.html 读取 APP_BUILD，versionCode 回落为 ${webBuild}")
+}
+logger.lifecycle("APK versionCode = ${webBuild}（来源：assets/index.html）")
+
 android {
     namespace 'com.example.pokeapp'
     compileSdk 34
@@ -41,7 +55,7 @@ android {
         applicationId 'com.example.pokeapp'
         minSdk 24
         targetSdk 34
-        versionCode 2
+        versionCode webBuild
         versionName verName
     }
 

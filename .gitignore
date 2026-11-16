@@ -25,3 +25,6 @@ scripts/__pycache__/
 
 # 修订前本地回退备份（不发布）
 /_backup/
+
+# CI 发布到 Release 用的临时文件（构建产物，不进仓库）
+/poke-study.apk

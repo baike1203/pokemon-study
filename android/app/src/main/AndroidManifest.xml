@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- v3.50.7：App 内一键更新需要此权限才能唤起安装器（Android 8+ 还会让用户在系统设置里授权一次） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Android 10 以下走传统 File API 写 Download 需要此权限；Android 11+（scoped storage）忽略它，文件仍可经 MediaStore 创建 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
 

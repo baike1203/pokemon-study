@@ -1,8 +1,15 @@
 name: Build APK
 
+# 只跟 master：它是部署分支，双推时必有一次；原先 `on: push:` 无分支限制，
+# 推 main + master 会重复构建两份（浪费 runner，且两个 job 抢同一个 release）。
 on:
   push:
+    branches: [master]
   workflow_dispatch:
+
+# 发布到 Release 需要写权限（内置 GITHUB_TOKEN 默认只读）
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -61,3 +68,38 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 30
           if-no-files-found: warn
+
+      # ── 发布到 GitHub Release ────────────────────────────────────────────
+      # 目的：给 App 内「一键更新」提供一个匿名可下载的固定直链。
+      # artifact 下载需要登录 GitHub，WebView 拿不到；Release asset 不需要。
+      #
+      # 直链（永远指向最新构建）：
+      #   https://github.com/baike1203/pokemon-study/releases/latest/download/poke-study.apk
+      #
+      # 用一个固定 tag `apk-latest`，每次覆盖同名 asset，发布历史不会堆积。
+      - name: Prepare release APK
+        if: success()
+        run: |
+          SRC=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          if [ -z "$SRC" ]; then echo "❌ 没找到 APK"; exit 1; fi
+          cp "$SRC" poke-study.apk
+          echo "=== 待发布 ==="
+          ls -lh poke-study.apk
+          echo "sha256=$(sha256sum poke-study.apk | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "size=$(stat -c%s poke-study.apk)" >> "$GITHUB_ENV"
+
+      - name: Publish to Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: 精灵学院 APK（最新构建）
+          body: |
+            自动构建于 ${{ github.sha }}（${{ github.event.head_commit.message }}）
+
+            - 版本号取自 `assets/index.html` 的 `APP_VERSION`
+            - 签名固定（android/keystore/pokestudy.p12），可直接覆盖安装
+            - 直链：https://github.com/baike1203/pokemon-study/releases/latest/download/poke-study.apk
+          files: poke-study.apk
+          overwrite_files: true
+          make_latest: true
