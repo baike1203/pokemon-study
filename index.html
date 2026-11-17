@@ -2791,7 +2791,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.50.9";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.50.10";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -4805,18 +4805,18 @@ function buildHanziQ(type, bank, lv, i, forceChar){
   const e = forceChar ? (bank.find(x => x[0] === forceChar) || pick(bank,1)[0]) : pick(bank,1)[0];
   const [c, py, word] = e;
   if (type==="emoji"){
-    /* 任务⑤兜底：抽到的字没有 emoji → 改抽一个有图字出题，不让孩子裸看文字猜；
-       整库都无图 → 退化成看拼音选字。复习池强制字没图时同理走拼音题。 */
+    /* 任务⑤兜底：抽到的字没有 emoji → 改抽一个有图字出题，不让孩子裸看文字猜。
+       有图字占比过低的字库（一下 405 字里只有 20 字配了图）不出盲图题，直接改看拼音选字，
+       否则一场 10 题会反复考同一小撮图。复习池强制字没图时同理走拼音题。 */
+    const withEm = bank.filter(x => emojiFor(x[0]));
+    if (withEm.length < 30) return buildHanziQ("pinyin", bank, lv, i, forceChar);
     let e2 = e;
-    if (forceChar && !emojiFor(c)){
-      return buildHanziQ("pinyin", bank, lv, i, forceChar);
-    }
-    if (!forceChar && !emojiFor(c)){
-      const withEm = bank.filter(x => emojiFor(x[0]));
-      if (!withEm.length) return buildHanziQ("pinyin", bank, lv, i);
+    if (!emojiFor(c)){
+      if (forceChar) return buildHanziQ("pinyin", bank, lv, i, forceChar);
       e2 = pick(withEm,1)[0];
     }
-    const em = emojiFor(c), ce = e2[0], we = e2[2];
+    const ce = e2[0], we = e2[2], em = emojiFor(ce);
+    /* 曾是 emojiFor(c)：重抽有图字时 c 仍是那个无图字 → em 为空，题干变成「 这个字是？」，孩子只能瞎猜。 */
     const wrongs = randomDistractors(ce, bank, 3);
     return { id:"h"+i, hanziChar:ce, prompt:`${em} 这个字是？`, speakText:`${ce}，${we}`, speakOnShow:true, options:shuffle([ce,...wrongs]), answer:ce };
   }
