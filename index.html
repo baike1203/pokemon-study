@@ -1395,8 +1395,8 @@ const POKEMON = [
 ];
 
 /* 精灵图：Pokémon HOME 3D 渲染图（PokeAPI，清晰立体）。 */
-// 151 张已预处理为静态文件 assets/sprites/home/{id}.png，部署后走 Cloudflare 静态 CDN（自动边缘缓存，秒开）。
-// 相比之前的 /api/sprite Function 代理：免去 151 个并发请求排队 + 函数实时转发延迟，图鉴加载从 ~10s 降到瞬间。
+// 1025 张（+9 张闪光形态）已预处理为静态文件 assets/sprites/home/{id}.png，部署后走 Cloudflare 静态 CDN（自动边缘缓存，秒开）。
+// 相比之前的 /api/sprite Function 代理：免去上百个并发请求排队 + 函数实时转发延迟，图鉴加载从 ~10s 降到瞬间。
 // 若部署平台不打包 assets（如某些静态托管），改用直连即可：
 //   const spriteUrl = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${id}.png`;
 const SPRITES = [];
@@ -6201,12 +6201,12 @@ function renderAchievements(){
 function openBackup(){
   const loggedIn = cloudLoggedIn();
   const cloudInfo = loggedIn
-    ? `<div style="font-size:15px;color:#3F9D3F;background:#F2FAF2;border-radius:10px;padding:8px 10px;margin-bottom:8px">✅ 已用账号 <b>${getStoredUser()}</b> 登录，进度实时同步到 Cloudflare 云端：<b>换平板 / 重装 / 清缓存</b>都不丢。本地下载目录的备份文件 <b>pokemon-study-auto-backup.json</b> 仍作双保险。</div>`
+    ? `<div style="font-size:15px;color:#3F9D3F;background:#F2FAF2;border-radius:10px;padding:8px 10px;margin-bottom:8px">✅ 已用账号 <b>${getStoredUser()}</b> 登录，进度实时同步到 Cloudflare 云端：<b>换平板 / 重装 / 清缓存</b>都不丢。本地下载目录的自动备份 <b>auto-backup-1/-2/-3.json</b>（保留最近 3 份）仍作双保险。</div>`
     : `<div style="font-size:15px;color:#3F9D3F;background:#F2FAF2;border-radius:10px;padding:8px 10px;margin-bottom:8px">✅ 可登录账号把进度同步到云端：<b>换平板 / 重装 / 清缓存</b>都不丢，朋友各自建号互不干扰。本地备份文件仍作双保险。</div>`;
   openDialog(`<h2 style="color:var(--poke-blue)">💾 进度备份</h2>
     <div style="font-size:20px;color:#9b8676;margin-bottom:8px">导出：平板 APK 会保存到「下载 / Download」文件夹；电脑浏览器保存到默认下载目录。导入：选择文件后点导入进度。</div>
     ${cloudInfo}
-    ${window.PokeBridge ? `<div style="font-size:15px;color:#7a6a58;background:#FFF7E8;border-radius:10px;padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:14px"><div>📥 自动备份到平板「下载」文件夹<br><span style="font-size:13px;color:#bbb">进度变化时自动保存（文件名含 auto-backup，始终 1 个文件）</span></div><button class="switch ${state.autoBackup !== false ? 'on':''}" id="autoBkSwitch" role="switch" aria-checked="${state.autoBackup !== false}"><span class="knob"></span></button></div>` : ""}
+    ${window.PokeBridge ? `<div style="font-size:15px;color:#7a6a58;background:#FFF7E8;border-radius:10px;padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:14px"><div>📥 自动备份到平板「下载」文件夹<br><span style="font-size:13px;color:#bbb">进度变化时自动保存（3 个槽位轮换，保留最近 3 份）</span></div><button class="switch ${state.autoBackup !== false ? 'on':''}" id="autoBkSwitch" role="switch" aria-checked="${state.autoBackup !== false}"><span class="knob"></span></button></div>` : ""}
     <button class="big-btn blue" id="expBtn">⬇️ 下载进度文件</button>
     <hr style="margin:14px 0;border:none;border-top:2px dashed #e3d8c2">
     <div style="margin-top:10px"><button class="big-btn" id="impBtn">⬆️ 导入进度</button><input type="file" id="impFile" accept="application/json,.json" style="margin-top:10px;font-size:18px"></div>`);
