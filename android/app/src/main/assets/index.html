@@ -2791,7 +2791,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.50.8";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.50.9";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -4187,6 +4187,56 @@ function accountBlockHTML(){
    判断依据只有一个：线上网页里的 APP_BUILD vs 本机 APK 的 versionCode。
    网页是线上实时加载的，所以「检查更新」不需要发任何请求 —— 打开设置就已经是最新信息。 */
 
+/* ---- PWA 安装（v3.50.9）----
+   beforeinstallprompt 只在页面加载早期触发一次，必须在这里就接住；
+   等用户点开设置面板再绑监听，事件早过去了，按钮永远唤不起安装框。
+   preventDefault() 也是必须的：不拦的话 Edge 会自己弹一次并把事件消费掉，
+   之后按钮再调 prompt() 就无效了。 */
+let _pwaPrompt = null;
+let _pwaInstalled = false;
+try{
+  window.addEventListener("beforeinstallprompt", function(e){
+    e.preventDefault();
+    _pwaPrompt = e;
+  });
+  window.addEventListener("appinstalled", function(){
+    _pwaInstalled = true;
+    _pwaPrompt = null;
+    // 设置面板还开着就重建一次，让它立刻变成「已经装好了」
+    try{ if (document.getElementById("pwaInstall")) openSettings(); }catch(e){}
+  });
+}catch(e){ /* 极老浏览器没有这两个事件，忽略即可 */ }
+
+/* 当前是否已经以「应用」方式运行（独立窗口 / 主屏图标 / 无地址栏）。
+   用 display-mode: browser 反向判断 —— 普通标签页里它才匹配；
+   F11 全屏不改变 display-mode，所以不会误判成已安装。 */
+function isStandaloneMode(){
+  if (_pwaInstalled) return true;
+  try{
+    if (window.navigator && window.navigator.standalone === true) return true;   // iOS 主屏
+    if (!window.matchMedia) return false;
+    return !window.matchMedia("(display-mode: browser)").matches;
+  }catch(e){ return false; }
+}
+
+/* 没有安装事件时的分平台手动步骤（iOS 根本不发 beforeinstallprompt） */
+function pwaManualHelpHTML(){
+  const ua = navigator.userAgent || "";
+  const ios = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && "ontouchend" in document);
+  const android = /Android/i.test(ua);
+  if (ios){
+    return `在 <b>Safari</b> 里：点底部「分享」按钮 → 往下找「添加到主屏幕」→ 右上角「添加」。<br>
+      <span style="color:#a8988a">微信 / QQ 内置浏览器不支持，需要先用 Safari 打开本页。</span>`;
+  }
+  if (android){
+    return `在 <b>Chrome / Edge</b> 里：点右上角 <b>⋮</b> 菜单 →「安装应用」或「添加到主屏幕」。<br>
+      <span style="color:#a8988a">菜单里没有这一项的话，刷新一次页面再看。</span>`;
+  }
+  return `在 <b>Edge / Chrome</b> 里：点地址栏右侧的<b>安装图标</b>（显示器带向下箭头，可能收在 <b>»</b> 里），<br>
+    或者菜单 <b>⋮</b> →「应用」→「将此站点作为应用安装」。<br>
+    <span style="color:#a8988a">两处都没有的话刷新一次页面 —— 首次要靠 Service Worker 装好，浏览器才认为可安装。</span>`;
+}
+
 /* 读取本机 APK 版本；浏览器环境返回 isApk=false */
 function nativeAppInfo(){
   if (!window.PokeBridge) return { isApk:false, code:0, name:"" };
@@ -4231,16 +4281,20 @@ function updateBlockHTML(){
   const cur = info.name ? (info.name + "（构建 " + info.code + "）") : ("构建 " + info.code);
 
   if (!info.isApk){
+    const standalone = isStandaloneMode();
     return `<div style="font-size:16px;color:#7a6a58;line-height:1.7">
       当前是 <b>浏览器 / 网页版</b>，打开即最新，不用安装。<br>
-      <span style="color:#a8988a;font-size:15px">想在平板上当 App 用：安卓下载安装包；其它系统用浏览器菜单里「安装应用 / 添加到主屏幕」。</span>
+      <span style="color:#a8988a;font-size:15px">想更像个 App：安装成应用 → 独立窗口、没有地址栏；安卓机型还可以装 APK。</span>
     </div>
+    ${ standalone
+      ? `<div style="margin-top:12px;text-align:center;font-size:15px;color:#3F9D3F;background:#F1F9F1;border:1px solid #CFE9CF;border-radius:12px;padding:10px 12px">✅ 已经装好了，现在就是以应用方式打开的</div>`
+      : `<button class="big-btn yellow" id="pwaInstall" style="width:100%;min-width:0;margin:12px 0 0">📱 安装成应用</button>` }
     <a class="big-btn blue" id="apkDownload" href="${APK_DOWNLOAD_URL}" download="poke-study-${APP_VERSION}.apk"
-       style="width:100%;min-width:0;text-align:center;text-decoration:none;margin:12px 0 0">⬇️ 下载安卓安装包</a>
+       style="width:100%;min-width:0;text-align:center;text-decoration:none;margin:10px 0 0">⬇️ 下载安卓安装包</a>
     <button class="big-btn" id="apkCopyUrl" style="width:100%;min-width:0;margin:8px 0 0;background:linear-gradient(180deg,#d8d2c8,#bcb6ac);box-shadow:0 5px 0 #9a948a">📋 复制下载地址</button>
     <div style="font-size:14px;color:#a8988a;margin-top:10px;line-height:1.7;text-align:center">
       安装包：构建 ${APP_BUILD} · 约 340 KB<br>
-      装到平板上有三点网页版没有：进度自动备份、断网也能打开、真全屏无地址栏
+      装 APK 才多出这三点：进度自动备份、断网也能打开、真全屏无地址栏
     </div>`;
   }
 
@@ -4338,6 +4392,30 @@ function openSettings(sub){
         upBtn.textContent = "⏳ 正在下载…";
         setTimeout(()=>{ if (upBtn.isConnected){ upBtn.disabled = false; upBtn.textContent = "📲 一键更新到 " + APP_VERSION; } }, 6000);
       }catch(e){ toast("启动更新失败，请重试"); }
+    });
+    // PWA：有安装事件就唤起系统安装框；没有就在按钮下方原地展开手动步骤
+    const pwaBtn = document.getElementById("pwaInstall");
+    if (pwaBtn) pwaBtn.addEventListener("click", ()=>{
+      sfx.click();
+      if (_pwaPrompt){
+        try{
+          _pwaPrompt.prompt();
+          _pwaPrompt.userChoice.then((r)=>{
+            if (r && r.outcome === "accepted") toast("正在安装，装好后从桌面打开");
+            else toast("已取消，随时可以再点这里");
+            _pwaPrompt = null;   // prompt 只能调一次，用完必须清掉
+          }).catch(()=>{ _pwaPrompt = null; });
+        }catch(e){ toast("唤起安装失败，试试浏览器菜单里的「安装应用」"); }
+        return;
+      }
+      // 拿不到安装事件（iOS / 被抑制 / SW 未就绪）：原地展开说明，不覆盖设置面板
+      const shown = document.getElementById("pwaInstallTip");
+      if (shown){ shown.remove(); return; }
+      const tip = document.createElement("div");
+      tip.id = "pwaInstallTip";
+      tip.style.cssText = "margin-top:10px;font-size:15px;color:#7a6a58;line-height:1.85;background:#FFF9F0;border:1px solid #F3D9AE;border-radius:12px;padding:10px 12px";
+      tip.innerHTML = pwaManualHelpHTML();
+      pwaBtn.insertAdjacentElement("afterend", tip);
     });
     // 浏览器 / 网页版：直接下载安卓安装包（不 preventDefault，交给浏览器自己下）
     const dlBtn = document.getElementById("apkDownload");
