@@ -4792,6 +4792,30 @@ function confuseDistractors(c, n, bank){
   }
   return out.slice(0,n);
 }
+function pyDistinctDistractors(c, py, bank, n){
+  /* 看拼音选字专用：干扰项除与答案不同音，还要彼此不同音。
+     难度3「清/青/晴/请」同框时清与青都读 qīng，等于白送一个选项位；
+     一组拼音只留一个字。形近字优先（休/体、渴/喝 这类视觉混淆才是主要考点），再随机补。 */
+  const usedPy = new Set([py]), out = [];
+  const take = (ch) => {
+    const rec = bank.find(x => x[0] === ch);
+    if (!rec || usedPy.has(rec[1]) || out.includes(ch)) return;
+    usedPy.add(rec[1]); out.push(ch);
+  };
+  for (const w of confuseGroup(c)){ if (out.length >= n) return out.slice(0,n); take(w); }
+  let pool = bank.map(x => x[0]).filter(x => x !== c);
+  while (out.length < n && pool.length){
+    const w = pick(pool,1)[0];
+    take(w);
+    pool = pool.filter(x => x !== w);
+  }
+  /* 极端：该库拼音种类不足 n+1 种 → 允许重复音，但绝不少选项 */
+  if (out.length < n){
+    let p2 = bank.map(x => x[0]).filter(x => x !== c && !out.includes(x));
+    while (out.length < n && p2.length){ const w = pick(p2,1)[0]; out.push(w); p2 = p2.filter(x => x !== w); }
+  }
+  return out.slice(0,n);
+}
 function blankPhrase(c, word){
   /* 挖掉词语里【所有】出现的目标字。
      原来只挖第一个（indexOf 只找首个匹配），叠词会漏：「爸爸」→「___爸」，答案字仍留在题干里。
@@ -4822,18 +4846,10 @@ function buildHanziQ(type, bank, lv, i, forceChar){
   }
   if (type==="pinyin"){
     /* 组词必然包含目标字（「妈」→「妈妈」），把它放进 sub 等于把答案打在屏幕上，所以这里只给拼音。
-       代价：同音字会让题目无解（做/作/坐/座 都读 zuò），因此干扰项必须排除所有与答案同拼音的字。
+       代价：同音字会让题目无解（做/作/坐/座 都读 zuò），因此干扰项必须排除所有与答案同拼音的字，
+       并且彼此也不同音（清/青 都读 qīng，同框等于浪费一个干扰位）。
        喇叭仍会读「妈，妈妈」——那是孩子主动点的求助通道，且听了仍需从 4 个字形里认出目标字，不算白送。 */
-    const samePy = new Set(bank.filter(x => x[1] === py).map(x => x[0]));
-    let wrongs = confuseDistractors(c, 3, bank).filter(w => !samePy.has(w));
-    if (wrongs.length < 3){
-      let pool = bank.map(x => x[0]).filter(x => x !== c && !samePy.has(x) && !wrongs.includes(x));
-      while (wrongs.length < 3 && pool.length){ const w = pick(pool,1)[0]; wrongs.push(w); pool = pool.filter(x => x !== w); }
-    }
-    if (wrongs.length < 3){                       // 极端兜底：宁可容忍同音歧义，也不能少选项
-      let pool = bank.map(x => x[0]).filter(x => x !== c && !wrongs.includes(x));
-      while (wrongs.length < 3 && pool.length){ const w = pick(pool,1)[0]; wrongs.push(w); pool = pool.filter(x => x !== w); }
-    }
+    const wrongs = pyDistinctDistractors(c, py, bank, 3);
     return { id:"h"+i, hanziChar:c, prompt:py, promptClass:"small", sub:"选出正确的汉字", speakText:`${c}，${word}`, speakOnShow:false, options:shuffle([c,...wrongs]), answer:c };
   }
   if (type==="word"){
@@ -5600,9 +5616,10 @@ function makeHanziQ(){
     return { prompt:zi, sub:`组词：${word}｜它的拼音是哪个？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([py,...w]), answer:py };
   }
   /* 看拼音选字：组词必然包含目标字（「妈」→「妈妈」），放进 sub 等于把答案打在屏幕上，去掉。
-     干扰项同时排除同音字，否则 做/作/坐/座 都读 zuò 时题目无解。 */
-  const w=pick([...new Set(HANZI.filter(h=>h[0]!==zi&&h[1]!==py).map(h=>h[0]))],3);
-  return { prompt:py, promptClass:"small", sub:"是哪个汉字？", speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...w]), answer:zi };
+     干扰项既要排除与答案同音（做/作/坐/座 都读 zuò 时题目无解），彼此也不能同音（清/青 同框浪费选项位）。 */
+  const usedPy=new Set([py]), cs=[];
+  for (const h of shuffle(HANZI)){ if(cs.length>=3) break; if(h[0]===zi||usedPy.has(h[1])) continue; usedPy.add(h[1]); cs.push(h[0]); }
+  return { prompt:py, promptClass:"small", sub:"是哪个汉字？", speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...cs]), answer:zi };
 }
 /* 冒险可出的模块 + 出题函数；并按学习报告正确率计算薄弱模块（正确率最低者优先） */
 function adventurePoolWithRate(){

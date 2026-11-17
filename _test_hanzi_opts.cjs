@@ -58,9 +58,9 @@ function grabDecl(name) {
   throw new Error('decl not found: ' + name);
 }
 
-const NAMES = ['pick', 'shuffle', 'EMOJI_FOR', 'HANZI_LEVELS', 'HANZI_CONFUSE',
-  'emojiFor', 'confuseGroup', 'randomDistractors', 'confuseDistractors',
-  'blankPhrase', 'replaceChar', 'buildHanziQ'];
+const NAMES = ['pick', 'shuffle', 'EMOJI_FOR', 'HANZI_LEVELS', 'HANZI_CONFUSE', 'HANZI',
+  'emojiFor', 'confuseGroup', 'randomDistractors', 'confuseDistractors', 'pyDistinctDistractors',
+  'blankPhrase', 'replaceChar', 'buildHanziQ', 'makeHanziQ'];
 
 const code = NAMES.map(grabDecl).join('\n;\n');
 (0, eval)(code);
@@ -109,13 +109,14 @@ for (const lvKey of Object.keys(HL)) {
         // 选项数不为 4
         if (opts.length !== 4) { stats[key].bad++; problems.push([key, 'OPT_COUNT=' + opts.length, q]); }
       }
-      // emoji 题：题干必须有真图，且图必须属于答案字
+      // emoji 题：必须是「有图的题」或「合法退化为看拼音选字」，图必须属于答案字
       if (type === 'emoji') {
         if (q.prompt.trim() === '这个字是？') { stats[key].bad++; problems.push([key, 'EMPTY_PROMPT', q]); }
-        else {
+        else if (q.prompt.includes('这个字是？')) {
           const em = globalThis.emojiFor(q.answer);
           if (!em || !q.prompt.startsWith(em)) { stats[key].bad++; problems.push([key, 'EMOJI_MISMATCH', q]); }
-        }
+        } else if (q.sub === '选出正确的汉字') { /* 合法退化：该难度有图字不足 30 个 */ }
+        else { stats[key].bad++; problems.push([key, 'UNKNOWN_EMOJI_BRANCH', q]); }
       }
       // 填空题：题干挖空后是否仍含答案字（等于送答案）
       if (type === 'confuse' || type === 'fill') {
@@ -124,6 +125,28 @@ for (const lvKey of Object.keys(HL)) {
       }
     }
   }
+}
+
+/* ---- 冒险对战：HANZI 老表 + makeHanziQ 独立回归 ---- */
+{
+  let bad = 0, dup = 0, cnt = 0, samples = [];
+  for (let r = 0; r < 5000; r++) {
+    const q = globalThis.makeHanziQ();
+    const opts = q.options, ans = q.answer;
+    if (new Set(opts).size !== opts.length) dup++;
+    if (/[\u4e00-\u9fa5]/.test(q.prompt)) continue;   // 看字选拼音：选项是拼音，另判
+    cnt++;
+    if (opts.length !== 4) { bad++; samples.push(`选项数=${opts.length} [${opts}]`); continue; }
+    const pyOf = o => { const h = globalThis.HANZI.find(x => x[0] === o); return h ? h[1] : null; };
+    const pys = opts.map(pyOf).filter(Boolean);
+    if (new Set(pys).size !== pys.length) {
+      bad++;
+      if (samples.length < 5) samples.push(`题干[${q.prompt}] 选项[${opts.join(' ')}] 答案[${ans}] 读音[${pys.join('/')}]`);
+    }
+  }
+  console.log(`\n=== 冒险对战 makeHanziQ（看拼音选字 ${cnt} 题 / 共 5000 轮）===`);
+  console.log(`答案同音或干扰互相同音 = ${bad}   选项重复 = ${dup}`);
+  samples.forEach(s => console.log('  · ' + s));
 }
 
 console.log('=== 统计（每题 3000 轮）===');
