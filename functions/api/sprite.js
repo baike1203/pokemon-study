@@ -2,6 +2,10 @@
 // 作用：在自己域名下直接代理 PokeAPI HOME 3D 渲染图，
 //       免去第三方公共代理(ghproxy)跑路风险，并走 Cloudflare 边缘缓存加速。
 // 用法：GET /api/sprite?id=25  ->  返回 image/png
+//
+// ⚠️ 已废弃（DEPRECATED）：精灵图已全部本地化为静态文件 assets/sprites/home/{id}.png，
+//    前端不再调用本接口（直连反而慢：上百个并发请求要排队）。文件暂时保留，
+//    只为兼容可能仍在缓存中的旧版页面；新代码请勿再引用 /api/sprite。
 
 const POKEAPI_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home";
 
