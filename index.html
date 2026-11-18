@@ -385,6 +385,13 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .feedback-line { font-size: 30px; min-height: 46px; margin-top: 14px; font-weight: bold; }
 .feedback-line.good { color: #3F9D3F; }
 .feedback-line.bad { color: #D95A62; }
+/* v3.51.1 答错解析：跟在正确答案后面，字号降一档、去掉粗体，一屏内读完 */
+.quiz-explain { font-size: 22px; font-weight: normal; line-height: 1.5; color: #6A5847; margin-top: 8px; }
+/* v3.51.1 立体图形计数：手绘 SVG 堆积图（禁用 emoji，篮球/罐头会教错概念） */
+.shape-fig { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  background: #FFFDF8; border: 3px solid #EADFCF; border-radius: 18px; padding: 8px; margin: 4px 0 10px; }
+.shape-fig svg { display: block; }
+.quiz-question.shape { font-size: 36px; letter-spacing: 1px; min-height: 0; margin: 6px 0; }
 /* ===== 拼音键盘（拼音乐园「拼一拼」模式）=====
     竖排布局，从上到下跟「读一个字」的顺序一致：题目字 → 部件显示框 → 键盘区 → 声调/功能键。
     键盘区按部件分三块并排，从左到右 = 声母 | 介母 | 韵母，跟拼读顺序一致，三块各配一色一眼分得清；
@@ -2797,7 +2804,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.51.0";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.51.1";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -3877,13 +3884,14 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
         const gb = $("#btnGuide"); if (gb) gb.style.display = "none";
         gz.style.display = "block";
         startMathGuide(gz, q.guide, ()=>myToken===quizToken, ()=>{ if (myToken===quizToken) show(); });
-        fb.textContent = "别灰心～一步一步看演示（点「下一步」翻页），看完点「✅ 我学会了」再考你一次！"; fb.className="feedback-line bad";
+        fb.innerHTML = "别灰心～一步一步看演示（点「下一步」翻页），看完点「✅ 我学会了」再考你一次！" + (q.explain?`<div class="quiz-explain">💡 ${q.explain}</div>`:""); fb.className="feedback-line bad";
       } else {
-        fb.textContent = `正确答案是「${q.answer}」${q.reveal?`（${q.reveal}）`:""}，这道题等会儿再试一次！`; fb.className="feedback-line bad";
+        fb.innerHTML = `正确答案是「${q.answer}」${q.reveal?`（${q.reveal}）`:""}，这道题等会儿再试一次！` + (q.explain?`<div class="quiz-explain">💡 ${q.explain}</div>`:""); fb.className="feedback-line bad";
       }
       if (firstWrong && onAnswer) onAnswer(q, false);   // 首答错才回调（重试不再扣）
       attemptedFirst.add(q.id); queue.push(queue.shift());
-      if (!needRelearn) setTimeout(()=>{ if(myToken===quizToken) show(); }, 1600);
+      /* 有解析时多留 1.6 秒给孩子读完，否则解析形同虚设 */
+      if (!needRelearn) setTimeout(()=>{ if(myToken===quizToken) show(); }, q.explain?3200:1600);
     }
   }
   function finish(){ if (myToken !== quizToken) return; detachKeys(); const acc=Math.round(firstTryRight/total*100); if (moduleKey) recordAccuracy(moduleKey, firstTryRight, total); onFinish(acc); }
@@ -4630,7 +4638,7 @@ function renderMathSettings(){
       <button class="big-btn set-diff ${cur==="g1"?"active":""}" data-d="g1">🎒 一年级专项<small>进位加 ・ 退位减 ・ 凑十法 ・ 比多少</small></button>
       <button class="big-btn set-diff ${cur==="10"?"active":""}" data-d="10">➕➖ 10 以内加减法</button>
       <button class="big-btn set-diff ${cur==="20"?"active":""}" data-d="20">➕➖ 20 以内加减法</button>
-      <button class="big-btn set-diff ${cur==="g1exam"?"active":""}" data-d="g1exam">📝 一年级试卷专练<small>十位个位 ・ 比大小 ・ 括号填数 ・ 找规律</small></button>
+      <button class="big-btn set-diff ${cur==="g1exam"?"active":""}" data-d="g1exam">📝 一年级试卷专练<small>十位个位 ・ 比大小 ・ 括号填数 ・ 图形计数</small></button>
       <button class="big-btn set-diff ${cur==="mul"?"active":""}" data-d="mul">✖️ 99 乘法口诀</button>
       <button class="big-btn set-diff ${cur==="div"?"active":""}" data-d="div">➗ 表内除法</button>
     </div>
@@ -4747,6 +4755,47 @@ function chineseQuiz(){
 }
 
 /* 一年级试卷专练（数学，v3.51）：贴着真实卷子的高频可判分题型，全部生成式，零题库风险。 */
+/* 立体图形计数（v3.51.1）：手绘内联 SVG，不用 emoji —— 篮球/罐头会把「球/圆柱」教错。
+   四种形体是部编一上「认识图形（一）」的标准教具：长方体、正方体、圆柱、球。 */
+const SHAPE_KINDS = [
+  { key:"cube",     name:"正方体" },
+  { key:"cuboid",   name:"长方体" },
+  { key:"sphere",   name:"球" },
+  { key:"cylinder", name:"圆柱" }
+];
+function shapeSvg(kind){
+  const s = {
+    cube:     { top:"#A9D6F5", face:"#7FB8E8", side:"#5C9FD4", line:"#3D7FB8",
+      body:'<path d="M30 6 52 18 30 30 8 18Z" fill="{top}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'+
+           '<path d="M8 18 30 30 30 54 8 42Z" fill="{face}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'+
+           '<path d="M52 18 30 30 30 54 52 42Z" fill="{side}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>' },
+    cuboid:   { top:"#FFD9AE", face:"#F2A65A", side:"#D98438", line:"#B96A27",
+      body:'<path d="M8 18 44 10 54 18 18 26Z" fill="{top}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'+
+           '<path d="M8 18 18 26 18 44 8 36Z" fill="{side}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'+
+           '<path d="M18 26 54 18 54 36 18 44Z" fill="{face}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>' },
+    sphere:   { top:"#86D6A5", face:"#86D6A5", side:"#5CBF88", line:"#3E9E68",
+      body:'<circle cx="30" cy="30" r="22" fill="{face}" stroke="{line}" stroke-width="2"/>'+
+           '<path d="M14 20a20 20 0 0 1 14-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85"/>'+
+           '<path d="M12 32a18 18 0 0 0 8 14" fill="none" stroke="{side}" stroke-width="2" opacity=".7"/>' },
+    cylinder: { top:"#D6C9F5", face:"#B9A3E8", side:"#9C86DA", line:"#7A62C4",
+      body:'<path d="M12 16v28a18 7 0 0 0 36 0V16Z" fill="{face}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'+
+           '<ellipse cx="30" cy="16" rx="18" ry="7" fill="{top}" stroke="{line}" stroke-width="2"/>' }
+  }[kind];
+  if (!s) return "";
+  return `<svg viewBox="0 0 60 60" width="52" height="52" data-kind="${kind}" aria-hidden="true">${s.body.replace(/\{(\w+)\}/g,(_,k)=>s[k])}</svg>`;
+}
+function makeShapeCountQ(i){
+  const two = pick(SHAPE_KINDS,2);
+  const counts = [rnd(1,4), rnd(1,4)];
+  if (counts[0]===counts[1]) counts[1] = counts[0]===4 ? 2 : counts[0]+1;   // 两种数量不同，避免数混
+  const target = rnd(0,1);
+  const cells=[]; for (let t=0;t<2;t++) for (let n=0;n<counts[t];n++) cells.push(two[t].key);
+  shuffle(cells);
+  const fig = `<div class="shape-fig">${cells.map(k=>shapeSvg(k)).join("")}</div>`;
+  return { id:"ex_g"+i, prompt:`${fig}<div class="shape-q">图中有几个${two[target].name}？</div>`,
+    promptClass:"shape", sub:"立体图形：一种一种分开数", answerMode:"input", answer:counts[target],
+    explain:`图里有 ${counts[0]} 个${two[0].name}、${counts[1]} 个${two[1].name}，所以${two[target].name}有 ${counts[target]} 个。` };
+}
 function mathQuizG1Exam(){
   const questions = [];
   /* ① 十位个位 2 题 */
@@ -4765,18 +4814,20 @@ function mathQuizG1Exam(){
     const total = rnd(6,10), part = rnd(1,total-1);
     questions.push({ id:"ex_c"+k, prompt:`（  ）+ ${part} = ${total}`, sub:"括号里填几", answerMode:"input", answer:total-part });
   }
-  /* ④ 找规律 2 题：控制末项 ≤ 20，一年级上范围 */
-  for (let k=0;k<2;k++){
+  /* ④ 找规律 1 题：控制末项 ≤ 20，一年级上范围（让位给图形计数） */
+  {
     const step = rnd(1,4), start = rnd(1,3);
     const seq = [start, start+step, start+2*step, start+3*step];
-    questions.push({ id:"ex_d"+k, prompt:`${seq.join("，")}，（  ）`, sub:"找规律填下一个数", answerMode:"input", answer:start+4*step });
+    questions.push({ id:"ex_d0", prompt:`${seq.join("，")}，（  ）`, sub:"找规律填下一个数", answerMode:"input", answer:start+4*step });
   }
   /* ⑤ 排队问题 1 题：别忘了算上自己 */
   {
     const before=rnd(3,7), after=rnd(2,6);
     questions.push({ id:"ex_e", prompt:`小朋友排队，小明前面有 ${before} 人，后面有 ${after} 人，一共有几人？`, promptClass:"small", sub:"排队问题：别忘了算上小明自己", answerMode:"input", answer:before+after+1 });
   }
-  /* ⑥ 进位加 1 题 */
+  /* ⑥ 立体图形计数 1 题：手绘 SVG，数字键盘作答（v3.51.1） */
+  questions.push(makeShapeCountQ(0));
+  /* ⑦ 进位加 1 题 */
   {
     const a=rnd(5,9), b=rnd(11-a,9);
     questions.push({ id:"ex_f", prompt:`${a} + ${b} = ?`, sub:"进位加法", answerMode:"input", answer:a+b, guide:carryGuideOf(a,b) });

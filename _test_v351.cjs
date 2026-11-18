@@ -44,7 +44,7 @@ function sfx(){}
   'rnd', 'pick', 'shuffle', 'carryGuideOf',
   'SHENGMU', 'YUNMU', 'ZHENGTI',
   'YW_SM_CONFUSE', 'YW_YM_CONFUSE', 'YW_IDIOMS', 'YW_MINUS_STROKE',
-  'chineseQuiz', 'mathQuizG1Exam'
+  'chineseQuiz', 'SHAPE_KINDS', 'shapeSvg', 'makeShapeCountQ', 'mathQuizG1Exam'
 ].map(grab).join('\n;\n'));
 
 let fail = 0;
@@ -138,6 +138,14 @@ for (let r = 0; r < ROUNDS; r++) {
       check(Number(q.answer) === +m[1] + +m[2] + 1, '排队问题答案错: ' + q.prompt);
     } else if ((m = /^(\d+) \+ (\d+) = \?$/.exec(q.prompt))) {
       check(Number(q.answer) === +m[1] + +m[2], '进位加答案错: ' + q.prompt);
+    } else if (q.id && q.id.indexOf("ex_g") === 0) {
+      /* v3.51.1 立体图形计数：数 SVG 中目标形体的 data-kind 数量 = 答案 */
+      const kinds = [...q.prompt.matchAll(/data-kind="(\w+)"/g)].map(x => x[1]);
+      const target = /所以(.+?)有 (\d+) 个/.exec(q.explain || "");
+      const NAME = { cube:"正方体", cuboid:"长方体", sphere:"球", cylinder:"圆柱" };
+      const key = target && Object.keys(NAME).find(k => NAME[k] === target[1]);
+      check(!!key && kinds.filter(k => k === key).length === Number(q.answer),
+        '图形计数答案错: ' + q.explain);
     } else {
       check(false, '未识别的数学题型: ' + q.prompt);
     }
