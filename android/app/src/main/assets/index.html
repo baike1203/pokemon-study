@@ -183,10 +183,13 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .set-mod, .set-diff { text-align:center; }
 .set-mod small, .set-diff small { display:block; font-size:16px; font-weight:normal; opacity:.85; margin-top:3px; }
 
-.task-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+/* v3.51：改成 flex 居中换行——7 个模块时 grid 的 auto-fit 会排成 5+2 导致右侧大片空白；
+   flex + justify-content:center 让每一行的卡片都水平居中，5+2 / 4+3 / 3+3+1 都不会偏在一侧 */
+.task-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
 
 /* 任务卡片 */
 .task-card {
+  flex: 0 1 calc(20% - 16px); min-width: 200px; max-width: 300px;
   border-radius: 34px; padding: 24px 18px; text-align: center; color: #fff;
   cursor: pointer; position: relative; min-height: 200px;
   box-shadow: 0 12px 26px rgba(120,90,70,.18);
@@ -204,6 +207,7 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .task-card.hanzi   { background: linear-gradient(160deg, var(--card-green-a),  var(--card-green-b)); }
 .task-card.poem    { background: linear-gradient(160deg, var(--card-purple-a), var(--card-purple-b)); }
 .task-card.writing { background: linear-gradient(160deg, var(--card-brown-a),  var(--card-brown-b)); }
+.task-card.chinese { background: linear-gradient(160deg, #DFF6F2, #A9E4D8); }
 .task-card.done { box-shadow: inset 0 0 0 4px rgba(255,255,255,.45), 0 12px 26px rgba(120,90,70,.18); cursor: default; }
 .task-card.done:active { transform: none; }
 .task-card.done::after {
@@ -381,6 +385,13 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .feedback-line { font-size: 30px; min-height: 46px; margin-top: 14px; font-weight: bold; }
 .feedback-line.good { color: #3F9D3F; }
 .feedback-line.bad { color: #D95A62; }
+/* v3.51.1 答错解析：跟在正确答案后面，字号降一档、去掉粗体，一屏内读完 */
+.quiz-explain { font-size: 22px; font-weight: normal; line-height: 1.5; color: #6A5847; margin-top: 8px; }
+/* v3.51.1 立体图形计数：手绘 SVG 堆积图（禁用 emoji，篮球/罐头会教错概念） */
+.shape-fig { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  background: #FFFDF8; border: 3px solid #EADFCF; border-radius: 18px; padding: 8px; margin: 4px 0 10px; }
+.shape-fig svg { display: block; }
+.quiz-question.shape { font-size: 36px; letter-spacing: 1px; min-height: 0; margin: 6px 0; }
 /* ===== 拼音键盘（拼音乐园「拼一拼」模式）=====
     竖排布局，从上到下跟「读一个字」的顺序一致：题目字 → 部件显示框 → 键盘区 → 声调/功能键。
     键盘区按部件分三块并排，从左到右 = 声母 | 介母 | 韵母，跟拼读顺序一致，三块各配一色一眼分得清；
@@ -932,6 +943,7 @@ header{
 .task-card.hanzi  { background: linear-gradient(160deg,#FFFDF9 20%,#F0FAF0); }
 .task-card.poem   { background: linear-gradient(160deg,#FFFDF9 20%,#F5F1FC); }
 .task-card.writing{ background: linear-gradient(160deg,#FFFDF9 20%,#FBF1E4); }
+.task-card.chinese{ background: linear-gradient(160deg,#FFFDF9 20%,#EAF7F3); }
 .task-card::before{
   content:""; position:absolute; left:-2px; top:16%; bottom:16%; width:7px;
   border-radius: 0 7px 7px 0;
@@ -942,6 +954,7 @@ header{
 .task-card.hanzi::before  { background: linear-gradient(180deg,#8FD48F,#4CAF5A); }
 .task-card.poem::before   { background: linear-gradient(180deg,#B79BEF,#8A6BD6); }
 .task-card.writing::before{ background: linear-gradient(180deg,#D9A867,#B9833F); }
+.task-card.chinese::before{ background: linear-gradient(180deg,#6FD8C4,#2FB69C); }
 /* v3.49.5：自定义打卡模块（cls=check）——奶油纸感背景 + 色板竖线（--bar-a/--bar-b 由 renderTasks 按模块顺序注入） */
 .task-card.check { background: linear-gradient(160deg,#FFFDF9 20%,#FBF6EC); }
 .task-card.check::before{ background: linear-gradient(180deg, var(--bar-a,#FFB84D), var(--bar-b,#F08C00)); }
@@ -1395,8 +1408,8 @@ const POKEMON = [
 ];
 
 /* 精灵图：Pokémon HOME 3D 渲染图（PokeAPI，清晰立体）。 */
-// 151 张已预处理为静态文件 assets/sprites/home/{id}.png，部署后走 Cloudflare 静态 CDN（自动边缘缓存，秒开）。
-// 相比之前的 /api/sprite Function 代理：免去 151 个并发请求排队 + 函数实时转发延迟，图鉴加载从 ~10s 降到瞬间。
+// 1025 张（+9 张闪光形态）已预处理为静态文件 assets/sprites/home/{id}.png，部署后走 Cloudflare 静态 CDN（自动边缘缓存，秒开）。
+// 相比之前的 /api/sprite Function 代理：免去上百个并发请求排队 + 函数实时转发延迟，图鉴加载从 ~10s 降到瞬间。
 // 若部署平台不打包 assets（如某些静态托管），改用直连即可：
 //   const spriteUrl = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${id}.png`;
 const SPRITES = [];
@@ -1407,7 +1420,7 @@ const spriteUrl = id => `assets/sprites/home/${id}.png`;
    伊布为分支进化 [133, [134,135,136]]，进化时随机进化成一只。 */
 /* ---------- 第一世代进化链（数据来源：PokeAPI pokemon-species evolves_from_species 字段） ----------
    每个数组是一条进化链，第一个编号是基础形态。
-   共 51 条链 + 16 只独立不进化的宝可梦 = 151 只。
+   共 54 条链（覆盖 126 个编号）+ 25 只独立不进化的宝可梦 = 151 只。
    特殊：伊布(#133) 为分支进化，数组第二项为分支列表 [134,135,136]。 */
 const EVO_CHAINS = [
   /* 三段进化 */
@@ -2791,7 +2804,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.50.9";   // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.51.4";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -2832,7 +2845,7 @@ function defaultState(){
     hanziDiff: "0",         // 识字达人难度（家长设置分级）：0~5 对应 预备班/一上/一下/二上/二下/三及以上
     hanziReview: {},        // 识字错字复习池：{ 字: 连对次数 }，首答错进池、连对 3 次移出
     poemDiff: "0",          // 古诗小舟难度（家长设置分级）：0~11 对应 一年级上~六年级下 共 12 学期
-    testMode: false,        // 测试模式（家长设置内开启：APK 端原生校验密码 / 浏览器 ?dev=1；开启后首页显示测试按钮条）
+    testMode: false,        // 测试模式（家长设置内开启：APK 走原生校验 / 浏览器走同一明文口令；开启后首页显示测试按钮条）
     ttsWorker: "",           // 云端中文语音 Worker 地址（Edge-TTS 中转，留空=不启用；填 https://xxx.workers.dev）
     autoBackup: true,        // 平板 APK 自动备份开关（仅 APK 内有意义；默认开启，保持原“自动落盘”行为）
     checkinLog: {},         // 打卡记录：{ "YYYY-MM-DD": 当天完成任务数 }，用于日历展示打卡情况
@@ -2885,6 +2898,7 @@ function doAutoBackup(){
 function normalizeState(s){
   if (!s || typeof s !== "object") s = defaultState();
   if (!s.activeBook) s.activeBook = "gen1";
+  if (s.mathDiff === "50" || s.mathDiff === "100") s.mathDiff = "20";   // v3.51：撤掉 50/100 档，老存档迁到 20
   if (!s.completedBooks || typeof s.completedBooks !== "object") s.completedBooks = {};
   if (!s.activeAchBook) s.activeAchBook = "gen1";
   // v3.49.0：模块管理——无配置/空配置用默认 6 个；fixed 答题模块永远补齐（防误删/导入缺失）；打卡模块尊重家长删除
@@ -3501,6 +3515,7 @@ const TASKS = [
   { key:"pinyin",  cls:"pinyin",  icon:"🔤", name:"拼音乐园", desc:"选音节 ・ 自己拼读 10 题" },
   { key:"math",    cls:"math",    icon:"🔢", name:"数学闯关", desc:"键盘输入答案 · 10 题" },
   { key:"hanzi",   cls:"hanzi",   icon:"✍️", name:"识字达人", desc:"认一认 10 个汉字" },
+  { key:"chinese", cls:"chinese", icon:"📚", name:"语文", desc:"一年级试卷专练 ・ 10 题" },
   { key:"poem",    cls:"poem",    icon:"📜", name:"古诗小舟", desc:"背一背填一填" },
   { key:"english", cls:"english", icon:"📖", name:"英语 RAZ", desc:"今日阅读打卡" },
   { key:"writing", cls:"writing", icon:"✏️", name:"写字练习", desc:"今日练字打卡" }
@@ -3508,7 +3523,7 @@ const TASKS = [
 /* v3.49.0：模块管理——TASKS 仍是默认模块表；state.taskModules 为家长可编辑的动态配置。
    kind=fixed（答题引擎模块：不可删/改名，仅可排序）| check（打卡模块：可增删改名排序）。
    taskList() 供运行时读取当前模块列表；taskListOf(s) 供 loadState 阶段（state 未初始化）使用。 */
-const FIXED_TASK_KEYS = ["pinyin","math","hanzi","poem"];
+const FIXED_TASK_KEYS = ["pinyin","math","hanzi","poem","chinese"];
 const CHECK_TASK_ICONS = ["📚","📝","🎨","🧮","🎵","🎯","🏃","🌙","🎓","⚽","🧩","🌱"];
 const MAX_CHECK_TASKS = 8;   // 打卡类模块上限（含 RAZ/写字），避免主页卡片过密
 function defaultModules(){ return TASKS.map(t => ({ key:t.key, cls:t.cls, icon:t.icon, name:t.name, desc:t.desc, kind: FIXED_TASK_KEYS.includes(t.key) ? "fixed" : "check", enabled:true })); }   // v3.50.0：enabled 默认开启
@@ -3601,6 +3616,7 @@ function openModule(key){
   if (key==="writing") return writingTask();
   if (key==="hanzi") return hanziTask();
   if (key==="poem") return poemHome();
+  if (key==="chinese") return chineseQuiz();
   // v3.49.0：自定义打卡模块（家长在设置里新增的 check 类）
   const t = taskList().find(x => x.key === key);
   if (t && kindOf(t) === "check") return checkinTask(t);
@@ -3868,13 +3884,14 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
         const gb = $("#btnGuide"); if (gb) gb.style.display = "none";
         gz.style.display = "block";
         startMathGuide(gz, q.guide, ()=>myToken===quizToken, ()=>{ if (myToken===quizToken) show(); });
-        fb.textContent = "别灰心～一步一步看演示（点「下一步」翻页），看完点「✅ 我学会了」再考你一次！"; fb.className="feedback-line bad";
+        fb.innerHTML = "别灰心～一步一步看演示（点「下一步」翻页），看完点「✅ 我学会了」再考你一次！" + (q.explain?`<div class="quiz-explain">💡 ${q.explain}</div>`:""); fb.className="feedback-line bad";
       } else {
-        fb.textContent = `正确答案是「${q.answer}」${q.reveal?`（${q.reveal}）`:""}，这道题等会儿再试一次！`; fb.className="feedback-line bad";
+        fb.innerHTML = `正确答案是「${q.answer}」${q.reveal?`（${q.reveal}）`:""}，这道题等会儿再试一次！` + (q.explain?`<div class="quiz-explain">💡 ${q.explain}</div>`:""); fb.className="feedback-line bad";
       }
       if (firstWrong && onAnswer) onAnswer(q, false);   // 首答错才回调（重试不再扣）
       attemptedFirst.add(q.id); queue.push(queue.shift());
-      if (!needRelearn) setTimeout(()=>{ if(myToken===quizToken) show(); }, 1600);
+      /* 有解析时多留 1.6 秒给孩子读完，否则解析形同虚设 */
+      if (!needRelearn) setTimeout(()=>{ if(myToken===quizToken) show(); }, q.explain?3200:1600);
     }
   }
   function finish(){ if (myToken !== quizToken) return; detachKeys(); const acc=Math.round(firstTryRight/total*100); if (moduleKey) recordAccuracy(moduleKey, firstTryRight, total); onFinish(acc); }
@@ -4328,7 +4345,7 @@ function openSettings(sub){
       ${accountBlockHTML()}
       <div class="set-modules">
         <button class="big-btn set-mod" data-m="pinyin">🔤 拼音乐园<small>选一选 / 拼一拼 两种玩法</small></button>
-        <button class="big-btn set-mod" data-m="math">🔢 数学闯关<small>一年级专项 + 加减乘除 7 档</small></button>
+        <button class="big-btn set-mod" data-m="math">🔢 数学闯关<small>10 / 20 / 试卷专练 / 乘除</small></button>
         <button class="big-btn set-mod" data-m="hanzi">✍️ 识字达人<small>6 级字库分级</small></button>
         <button class="big-btn set-mod" data-m="poem">📜 古诗小舟<small>12 学期分级</small></button>
       </div>
@@ -4361,7 +4378,7 @@ function openSettings(sub){
           <div style="font-size:13px;color:#bbb;margin-top:4px">若自动播放没声音，可点上面这个播放器手动播放</div>
         </div>
       </div>
-      <div style="margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
+      <div id="testModeRow" style="display:none;margin-top:18px;border-top:2px dashed #e6d7c3;padding-top:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px">
           <div style="font-size:22px;color:#9b8676">🛠 测试模式</div>
           <button class="switch ${state.testMode?'on':''}" id="testSwitch" role="switch" aria-checked="${state.testMode}"><span class="knob"></span></button>
@@ -4374,7 +4391,7 @@ function openSettings(sub){
       <div style="margin-top:14px;text-align:center;font-size:15px;color:#bbab98">当前版本：${APP_VERSION}</div>
       <div style="margin-top:14px;display:flex;gap:12px;justify-content:center"><button class="big-btn blue" id="setClose">完成</button></div>`, { dialogClass: "set-dialog" });
     document.querySelectorAll(".set-mod").forEach(b=>b.addEventListener("click",()=>{ sfx.click(); openSettings(b.dataset.m); }));
-    bindSettingsTTS(); bindSettingsTest();
+    bindSettingsTTS(); bindSettingsTest(); applyTestSwitchVisibility();
     const bb = document.getElementById("backupBtn2");
     if (bb) bb.addEventListener("click", ()=>{ sfx.click(); openBackup(); });
     const rb = document.getElementById("reportBtn2");
@@ -4472,7 +4489,7 @@ function openModuleManager(){
       </div>`;   // v3.50.0：固定模块可开关（隐藏后不进今日任务，历史保留）
     }).join("");
     openDialog(`<h2 style="color:#F58A1F">🧩 打卡模块管理</h2>
-      <div style="font-size:16px;color:#9b8676;margin:4px 0 10px;line-height:1.6">管理今日打卡模块：▲▼ 排序、🟢 开关、✏️ 改名、🗑 删除、＋ 新增。<br>答题模块（拼音・数学・识字・古诗）可开关、不可改名删除；隐藏后历史记录保留，随时可重新开启。</div>
+      <div style="font-size:16px;color:#9b8676;margin:4px 0 10px;line-height:1.6">管理今日打卡模块：▲▼ 排序、🟢 开关、✏️ 改名、🗑 删除、＋ 新增。<br>答题模块（拼音・数学・识字・古诗・语文）可开关、不可改名删除；隐藏后历史记录保留，随时可重新开启。</div>
       <div id="mmList" style="max-height:46vh;overflow:auto;border:2px solid #f0e6d8;border-radius:12px;padding:4px 12px">${rows}</div>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
         <button class="big-btn blue" id="mmAdd" style="flex:1">＋ 添加打卡模块</button>
@@ -4551,47 +4568,67 @@ function openModuleManager(){
   }
   render();
 }
+/* v3.51.4：测试模式入口默认隐藏。连点「云端中文语音 → 保存」5 次才露出开关；
+   关闭测试模式后立即重新隐藏并上锁。两次点击间隔超过 8 秒则重新计数。 */
+let testSwitchUnlocked = false;
+let ttsSaveClicks = 0, ttsSaveLastAt = 0;
+function applyTestSwitchVisibility(){
+  const row = document.getElementById("testModeRow");
+  /* 已开启时保持可见，否则用户重新打开页面后会找不到开关，没法关掉测试模式 */
+  if (row) row.style.display = (testSwitchUnlocked || state.testMode) ? "" : "none";
+}
 function bindSettingsTTS(){
   const ttsWorker = $("#ttsWorker"), ttsStatus = $("#ttsStatus");
   function saveCloud(){ state.ttsWorker = (ttsWorker.value||"").trim().replace(/\/+$/,""); saveState(); const tw=document.getElementById("ttsWarn"); if(tw) tw.style.display="none"; }
-  $("#ttsSave").addEventListener("click", ()=>{ sfx.click(); saveCloud(); ttsStatus.textContent="✅ 已保存，朗读将使用云端语音"; });
+  $("#ttsSave").addEventListener("click", ()=>{
+    sfx.click(); saveCloud(); ttsStatus.textContent="✅ 已保存，朗读将使用云端语音";
+    const now = Date.now();
+    if (now - ttsSaveLastAt > 8000) ttsSaveClicks = 0;
+    ttsSaveLastAt = now;
+    if (++ttsSaveClicks >= 5){
+      ttsSaveClicks = 0;
+      testSwitchUnlocked = true;
+      applyTestSwitchVisibility();
+    }
+  });
   $("#ttsTest").addEventListener("click", ()=>{ sfx.click(); saveCloud(); ttsStatus.textContent="🔊 正在试听…"; speakWorker("你好，我是你的学习伙伴，我们一起加油！",0.9, (err)=>{ ttsStatus.textContent="❌ "+err; }, (info)=>{ ttsStatus.textContent=info; }, (blob)=>{ const man=document.getElementById("ttsManual"); if(man){ man.src=URL.createObjectURL(blob); man.style.display="block"; } }); });
 }
+/* v3.51.3：恢复「所有环境都要输密码」——浏览器不再有 ?dev=1 免密通道。
+   密码与 APK 原生校验保持一致（112233）；源码可见，属于便利性设定，不是安全边界。 */
+const TEST_MODE_PWD = "112233";
 function bindSettingsTest(){
   const testSwitch = $("#testSwitch"); if (!testSwitch) return;
-  // v3.48.0：密码已移出前端——APK（新版壳）走 PokeBridge.verifyTestCode 原生校验；
-  // 电脑浏览器调试走 URL ?dev=1 开发通道（免密，仅开发环境）；两者都不满足则提示，不再校验任何前端明文密码。
-  const hasNativeVerify = !!(window.PokeBridge && window.PokeBridge.verifyTestCode);
-  const isDevChannel = new URLSearchParams(location.search).has("dev");
   testSwitch.addEventListener("click", ()=>{
     sfx.click();
     if (!state.testMode){
-      if (hasNativeVerify){
-        openDialog(`<h2 style="color:var(--poke-red)">🛠 测试模式</h2>
-          <div style="font-size:20px;color:#5b4a3a;margin:8px 0">请输入测试模式密码：</div>
-          <input type="password" id="testPwdInput" placeholder="输入密码" style="width:200px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;box-sizing:border-box">
-          <button class="big-btn" id="testPwdOk">确认</button>
-          <button class="big-btn gray" id="testPwdCancel" style="margin-top:6px">取消</button>`, {closable:false});
-        const inp = $("#testPwdInput");
-        const okBtn = $("#testPwdOk");
-        const cancelBtn = $("#testPwdCancel");
-        if (inp){ inp.focus(); inp.addEventListener("keydown",(e)=>{ if (e.key==="Enter"){ e.preventDefault(); okBtn.click(); } }); }
-        if (okBtn) okBtn.onclick = ()=>{
-          const pwd = inp ? inp.value : "";
-          closeDialog();
-          let ok = false;
+      openDialog(`<h2 style="color:var(--poke-red)">🛠 测试模式</h2>
+        <div style="font-size:20px;color:#5b4a3a;margin:8px 0">请输入测试模式密码：</div>
+        <input type="password" id="testPwdInput" placeholder="输入密码" style="width:200px;font-size:22px;padding:10px 14px;border:2px solid #ddd;border-radius:12px;text-align:center;outline:none;box-sizing:border-box">
+        <button class="big-btn" id="testPwdOk">确认</button>
+        <button class="big-btn gray" id="testPwdCancel" style="margin-top:6px">取消</button>`, {closable:false});
+      const inp = $("#testPwdInput");
+      const okBtn = $("#testPwdOk");
+      const cancelBtn = $("#testPwdCancel");
+      if (inp){ inp.focus(); inp.addEventListener("keydown",(e)=>{ if (e.key==="Enter"){ e.preventDefault(); okBtn.click(); } }); }
+      if (okBtn) okBtn.onclick = ()=>{
+        const pwd = inp ? inp.value : "";
+        closeDialog();
+        let ok = false;
+        /* APK 仍走原生校验（密码不落前端）；浏览器回落到同一明文口令。 */
+        if (window.PokeBridge && window.PokeBridge.verifyTestCode){
           try { ok = !!window.PokeBridge.verifyTestCode(pwd); } catch(e){ ok = false; }
-          if (!ok){ toast("密码错误，无法开启测试模式"); return; }
-          state.testMode=true; saveState(); applyTestMode(); testSwitch.classList.add("on"); testSwitch.setAttribute("aria-checked","true"); toast("测试模式已开启 🛠");
-        };
-        if (cancelBtn) cancelBtn.onclick = ()=>{ sfx.click(); closeDialog(); };
-      } else if (isDevChannel){
-        // 浏览器开发通道（URL 带 ?dev=1）：免密开启，方便电脑上调试
+        } else {
+          ok = (pwd === TEST_MODE_PWD);
+        }
+        if (!ok){ toast("密码错误，无法开启测试模式"); return; }
         state.testMode=true; saveState(); applyTestMode(); testSwitch.classList.add("on"); testSwitch.setAttribute("aria-checked","true"); toast("测试模式已开启 🛠");
-      } else {
-        toast("测试模式仅在 APK 内可用（需新版 APK），浏览器调试请访问时加 ?dev=1");
-      }
-    } else { state.testMode=false; saveState(); applyTestMode(); testSwitch.classList.remove("on"); testSwitch.setAttribute("aria-checked","false"); toast("测试模式已关闭"); }
+      };
+      if (cancelBtn) cancelBtn.onclick = ()=>{ sfx.click(); closeDialog(); };
+    } else {
+      state.testMode=false; saveState(); applyTestMode(); testSwitch.classList.remove("on"); testSwitch.setAttribute("aria-checked","false"); toast("测试模式已关闭");
+      /* 关闭即上锁并立即隐藏，下次要再连点 5 次「保存」才露出 */
+      testSwitchUnlocked=false; ttsSaveClicks=0; applyTestSwitchVisibility();
+    }
   });
 }
 /* 拼音乐园玩法：
@@ -4614,15 +4651,14 @@ function renderPinyinSettings(){
 }
 function renderMathSettings(){
   const cur = state.mathDiff||"10";
-  const names = {10:"10 以内加减法",20:"20 以内加减法",50:"50 以内加减法",100:"100 以内加减法",mul:"99 乘法口诀",div:"表内除法",g1:"一年级专项"};
+  const names = {10:"10 以内加减法",20:"20 以内加减法",mul:"99 乘法口诀",div:"表内除法",g1:"一年级专项",g1exam:"一年级试卷专练"};
   openDialog(`<h2 style="color:#F58A1F">🔢 数学闯关 · 难度</h2>
     <button class="big-btn yellow" id="setBack" style="min-width:120px;margin-bottom:8px">← 返回</button>
     <div class="py-tabs" style="flex-direction:column;align-items:stretch;gap:14px">
       <button class="big-btn set-diff ${cur==="g1"?"active":""}" data-d="g1">🎒 一年级专项<small>进位加 ・ 退位减 ・ 凑十法 ・ 比多少</small></button>
       <button class="big-btn set-diff ${cur==="10"?"active":""}" data-d="10">➕➖ 10 以内加减法</button>
       <button class="big-btn set-diff ${cur==="20"?"active":""}" data-d="20">➕➖ 20 以内加减法</button>
-      <button class="big-btn set-diff ${cur==="50"?"active":""}" data-d="50">➕➖ 50 以内加减法</button>
-      <button class="big-btn set-diff ${cur==="100"?"active":""}" data-d="100">➕➖ 100 以内加减法</button>
+      <button class="big-btn set-diff ${cur==="g1exam"?"active":""}" data-d="g1exam">📝 一年级试卷专练<small>十位个位 ・ 比大小 ・ 括号填数 ・ 图形计数</small></button>
       <button class="big-btn set-diff ${cur==="mul"?"active":""}" data-d="mul">✖️ 99 乘法口诀</button>
       <button class="big-btn set-diff ${cur==="div"?"active":""}" data-d="div">➗ 表内除法</button>
     </div>
@@ -4661,25 +4697,217 @@ function applyTestMode(){
   const bar = document.getElementById("testBar");
   if (bar) bar.style.display = state.testMode ? "flex" : "none";
 }
+/* ===== 语文 · 一年级试卷专练（v3.51）=====
+   独立答题模块 key="chinese"，与拼音乐园/识字达人/古诗小舟并存，家长在模块管理里按进度开关。
+   只取确定数据：SHENGMU/YUNMU/ZHENGTI 三张教学表 + 人工核对过的静态小题库。
+   笔画笔顺、课文填空需要权威数据源，等核对后再加。 */
+const YW_SM_CONFUSE = [
+  { ch:"玻", opts:["b","d","p","q"], answer:"b" },
+  { ch:"得", opts:["d","b","t","p"], answer:"d" },
+  { ch:"坡", opts:["p","q","b","f"], answer:"p" },
+  { ch:"特", opts:["t","f","d","l"], answer:"t" },
+  { ch:"讷", opts:["n","l","m","h"], answer:"n" },
+  { ch:"勒", opts:["l","n","r","i"], answer:"l" },
+  { ch:"知", opts:["zh","z","ch","sh"], answer:"zh" },
+  { ch:"资", opts:["z","zh","c","s"], answer:"z" },
+  { ch:"吃", opts:["ch","c","zh","sh"], answer:"ch" },
+  { ch:"雌", opts:["c","ch","z","s"], answer:"c" },
+  { ch:"诗", opts:["sh","s","zh","ch"], answer:"sh" },
+  { ch:"思", opts:["s","sh","c","z"], answer:"s" }
+];
+const YW_YM_CONFUSE = [
+  { ch:"优", opts:["iu","ui","ie","ei"], answer:"iu" },
+  { ch:"威", opts:["ui","iu","ei","ie"], answer:"ui" },
+  { ch:"耶", opts:["ie","ei","iu","ui"], answer:"ie" },
+  { ch:"爱", opts:["ai","ei","ao","ou"], answer:"ai" },
+  { ch:"昂", opts:["ang","an","eng","en"], answer:"ang" },
+  { ch:"安", opts:["an","ang","en","eng"], answer:"an" },
+  { ch:"鹰", opts:["ing","in","eng","en"], answer:"ing" },
+  { ch:"因", opts:["in","ing","en","eng"], answer:"in" }
+];
+const YW_IDIOMS = [
+  { q:"一（ ）一样", opts:["模","摸","膜","漠"], answer:"模" },
+  { q:"三（ ）六臂", opts:["头","投","透","抖"], answer:"头" },
+  { q:"五（ ）六色", opts:["颜","言","沿","盐"], answer:"颜" },
+  { q:"七（ ）八下", opts:["上","尚","让","止"], answer:"上" },
+  { q:"十（ ）十美", opts:["全","权","泉","圈"], answer:"全" },
+  { q:"（ ）牛一毛", opts:["九","久","酒","韭"], answer:"九" },
+  { q:"四面（ ）方", opts:["八","发","法","罚"], answer:"八" },
+  { q:"一（ ）一意", opts:["心","新","辛","欣"], answer:"心" }
+];
+const YW_MINUS_STROKE = [
+  { q:"「大」减一笔变成什么字？", opts:["人","天","太","犬"], answer:"人" },
+  { q:"「目」减一笔变成什么字？", opts:["日","月","口","白"], answer:"日" },
+  { q:"「三」减一笔变成什么字？", opts:["二","一","干","土"], answer:"二" },
+  { q:"「禾」减一笔变成什么字？", opts:["木","米","未","本"], answer:"木" },
+  { q:"「本」减一笔变成什么字？", opts:["木","禾","未","末"], answer:"木" },
+  { q:"「太」减一笔变成什么字？", opts:["大","犬","天","人"], answer:"大" },
+  { q:"「天」减一笔变成什么字？", opts:["大","太","人","夫"], answer:"大" },
+  { q:"「田」减一笔变成什么字？", opts:["日","目","由","甲"], answer:"日" }
+];
+function chineseQuiz(){
+  const qs = [];
+  /* ① 音节分类 2 题：给一个音节，判断属于声母/韵母/整体认读哪一类 */
+  const cats = [{n:"声母",a:SHENGMU},{n:"韵母",a:YUNMU},{n:"整体认读音节",a:ZHENGTI}];
+  for (let k=0;k<2;k++){
+    const c = pick(cats,1)[0], item = pick(c.a,1)[0];
+    qs.push({ id:"ywc"+k, prompt:`「${item[0]}」属于哪一类？`, sub:`例字：${item[1]}`,
+      speakText:item[1], options:shuffle(cats.map(x=>x.n)), answer:c.n });
+  }
+  /* ② 声母辨析 2 题：形近/平翘舌声母，配例字朗读 */
+  pick(YW_SM_CONFUSE,2).forEach((o,k)=>qs.push({ id:"yws"+k,
+    prompt:`哪个是「${o.ch}」的声母？`, sub:"听一听，选声母", speakText:o.ch,
+    options:shuffle([...o.opts]), answer:o.answer }));
+  /* ③ 韵母辨析 2 题：ui/iu、ei/ie、前鼻/后鼻 */
+  pick(YW_YM_CONFUSE,2).forEach((o,k)=>qs.push({ id:"ywm"+k,
+    prompt:`哪个是「${o.ch}」的韵母？`, sub:"听一听，选韵母", speakText:o.ch,
+    options:shuffle([...o.opts]), answer:o.answer }));
+  /* ④ 四字词语填空 2 题：同音字干扰是刻意的，靠词语语境定答案 */
+  pick(YW_IDIOMS,2).forEach((o,k)=>qs.push({ id:"ywi"+k,
+    prompt:o.q, sub:"选一个字，组成四字词语", options:shuffle([...o.opts]), answer:o.answer }));
+  /* ⑤ 减一笔 2 题：减一笔的结果唯一，避免「加一笔」多解争议 */
+  pick(YW_MINUS_STROKE,2).forEach((o,k)=>qs.push({ id:"ywd"+k,
+    prompt:o.q, sub:"减一笔", options:shuffle([...o.opts]), answer:o.answer }));
+  shuffle(qs);
+  runQuiz({ title:"📚 语文 · 一年级试卷专练", color:"#2FB69C", questions:qs, moduleKey:"chinese",
+    onFinish(acc){ openDialog(`<h2 style="color:#2FB69C">🎉 语文闯关成功！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">${acc>=80?"🏆":"💪"}</div><div style="font-size:26px;margin:10px 0">${acc>=80?"语文小达人！":"继续加油，明天会更棒！"}奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('chinese')">收下精灵球 ⚡</button>`, {closable:false}); }
+  });
+}
+
+/* 一年级试卷专练（数学，v3.51）：贴着真实卷子的高频可判分题型，全部生成式，零题库风险。 */
+/* 立体图形计数（v3.51.1）：手绘内联 SVG，不用 emoji —— 篮球/罐头会把「球/圆柱」教错。
+   四种形体是部编一上「认识图形（一）」的标准教具：长方体、正方体、圆柱、球。 */
+const SHAPE_KINDS = [
+  { key:"cube",     name:"正方体" },
+  { key:"cuboid",   name:"长方体" },
+  { key:"sphere",   name:"球" },
+  { key:"cylinder", name:"圆柱" }
+];
+function shapeSvg(kind){
+  const s = {
+    cube:     { top:"#A9D6F5", face:"#7FB8E8", side:"#5C9FD4", line:"#3D7FB8",
+      body:'<path d="M30 6 52 18 30 30 8 18Z" fill="{top}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'+
+           '<path d="M8 18 30 30 30 54 8 42Z" fill="{face}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'+
+           '<path d="M52 18 30 30 30 54 52 42Z" fill="{side}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>' },
+    cuboid:   { top:"#FFD9AE", face:"#F2A65A", side:"#D98438", line:"#B96A27",
+      body:'<path d="M8 18 44 10 54 18 18 26Z" fill="{top}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'+
+           '<path d="M8 18 18 26 18 44 8 36Z" fill="{side}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'+
+           '<path d="M18 26 54 18 54 36 18 44Z" fill="{face}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>' },
+    sphere:   { top:"#86D6A5", face:"#86D6A5", side:"#5CBF88", line:"#3E9E68",
+      body:'<circle cx="30" cy="30" r="22" fill="{face}" stroke="{line}" stroke-width="2"/>'+
+           '<path d="M14 20a20 20 0 0 1 14-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85"/>'+
+           '<path d="M12 32a18 18 0 0 0 8 14" fill="none" stroke="{side}" stroke-width="2" opacity=".7"/>' },
+    cylinder: { top:"#D6C9F5", face:"#B9A3E8", side:"#9C86DA", line:"#7A62C4",
+      body:'<path d="M12 16v28a18 7 0 0 0 36 0V16Z" fill="{face}" stroke="{line}" stroke-width="2" stroke-linejoin="round"/>'+
+           '<ellipse cx="30" cy="16" rx="18" ry="7" fill="{top}" stroke="{line}" stroke-width="2"/>' }
+  }[kind];
+  if (!s) return "";
+  return `<svg viewBox="0 0 60 60" width="52" height="52" data-kind="${kind}" aria-hidden="true">${s.body.replace(/\{(\w+)\}/g,(_,k)=>s[k])}</svg>`;
+}
+function makeShapeCountQ(i){
+  const two = pick(SHAPE_KINDS,2);
+  const counts = [rnd(1,4), rnd(1,4)];
+  if (counts[0]===counts[1]) counts[1] = counts[0]===4 ? 2 : counts[0]+1;   // 两种数量不同，避免数混
+  const target = rnd(0,1);
+  const cells=[]; for (let t=0;t<2;t++) for (let n=0;n<counts[t];n++) cells.push(two[t].key);
+  shuffle(cells);
+  const fig = `<div class="shape-fig">${cells.map(k=>shapeSvg(k)).join("")}</div>`;
+  return { id:"ex_g"+i, prompt:`${fig}<div class="shape-q">图中有几个${two[target].name}？</div>`,
+    promptClass:"shape", sub:"立体图形：一种一种分开数", answerMode:"input", answer:counts[target],
+    explain:`图里有 ${counts[0]} 个${two[0].name}、${counts[1]} 个${two[1].name}，所以${two[target].name}有 ${counts[target]} 个。` };
+}
+function mathQuizG1Exam(){
+  const questions = [];
+  const usedPrompt = new Set();
+  /* v3.51.2：同一场内题干去重 —— 原来「十位个位 / 比大小 / 括号填数」各出 2 题，
+     随机数撞车时约 14% 的场次会出现两道一模一样的题。抽到重复就重抽。 */
+  function addQ(q){
+    if (usedPrompt.has(q.prompt)) return false;
+    usedPrompt.add(q.prompt); questions.push(q); return true;
+  }
+  /* ① 十位个位 2 题 */
+  for (let k=0;k<2;k++){
+    let q;
+    do {
+      const ones = rnd(1,9), n = 10 + ones;
+      q = { id:"ex_a"+k, prompt:`1 个十和 ${ones} 个一合起来是几？`, sub:"数的组成", answerMode:"input", answer:n };
+    } while(!addQ(q));
+  }
+  /* ② 算式比大小 2 题（三选一，不用数字键盘） */
+  for (let k=0;k<2;k++){
+    let q;
+    do {
+      const a=rnd(2,9), b=rnd(2,9), c=rnd(2,9), d=rnd(2,9);
+      const L=a+b, R=c+d, ans = L>R?">" : L<R?"<" : "=";
+      q = { id:"ex_b"+k, prompt:`${a} + ${b}　○　${c} + ${d}`, sub:"比大小：选 >、< 或 =", options:[">","<","="], answer:ans };
+    } while(!addQ(q));
+  }
+  /* ③ 括号填数 2 题 */
+  for (let k=0;k<2;k++){
+    let q;
+    do {
+      const total = rnd(6,10), part = rnd(1,total-1);
+      q = { id:"ex_c"+k, prompt:`（  ）+ ${part} = ${total}`, sub:"括号里填几", answerMode:"input", answer:total-part };
+    } while(!addQ(q));
+  }
+  /* ④ 找规律 1 题：控制末项 ≤ 20，一年级上范围（让位给图形计数） */
+  {
+    const step = rnd(1,4), start = rnd(1,3);
+    const seq = [start, start+step, start+2*step, start+3*step];
+    questions.push({ id:"ex_d0", prompt:`${seq.join("，")}，（  ）`, sub:"找规律填下一个数", answerMode:"input", answer:start+4*step });
+  }
+  /* ⑤ 排队问题 1 题：别忘了算上自己 */
+  {
+    const before=rnd(3,7), after=rnd(2,6);
+    questions.push({ id:"ex_e", prompt:`小朋友排队，小明前面有 ${before} 人，后面有 ${after} 人，一共有几人？`, promptClass:"small", sub:"排队问题：别忘了算上小明自己", answerMode:"input", answer:before+after+1 });
+  }
+  /* ⑥ 立体图形计数 1 题：手绘 SVG，数字键盘作答（v3.51.1） */
+  questions.push(makeShapeCountQ(0));
+  /* ⑦ 进位加 1 题 */
+  {
+    const a=rnd(5,9), b=rnd(11-a,9);
+    questions.push({ id:"ex_f", prompt:`${a} + ${b} = ?`, sub:"进位加法", answerMode:"input", answer:a+b, guide:carryGuideOf(a,b) });
+  }
+  shuffle(questions);
+  runQuiz({ title:"📝 数学 · 一年级试卷专练", color:"#F58A1F", questions, moduleKey:"math",
+    onFinish(acc){ openDialog(`<h2 style="color:#F58A1F">🎉 数学闯关成功！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">${acc>=80?"🏆":"💪"}</div><div style="font-size:26px;margin:10px 0">${acc>=80?"简直是数学小天才！":"继续加油，明天会更棒！"}奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('math')">收下精灵球 ⚡</button>`, {closable:false}); }
+  });
+}
+
 /* 一年级专项（v3.41）：按部编一年级上/下的核心知识点出题，而非单纯放大数值范围。
    覆盖：10 以内数的分解与组成、20 以内进位加、20 以内退位减、凑十法、比多少。 */
 function mathQuizG1(){
   const questions = [];
+  const usedPrompt = new Set();
+  /* v3.51.2：同一场内题干去重。进位加 3 题 / 退位减 3 题最容易撞车（约 25% 场次有重复）。 */
+  function addQ(q){
+    if (usedPrompt.has(q.prompt)) return false;
+    usedPrompt.add(q.prompt); questions.push(q); return true;
+  }
   /* 数学答案都是数字 → 一律 answerMode:"input"，用数字键盘输入，不给 ABCD 选项（避免蒙对） */
   // ① 10 以内数的分解与组成（2 题）：（  ）和 4 组成 9
   for (let k=0;k<2;k++){
-    const total = rnd(6,10), part = rnd(1,total-1), ans = total - part;
-    questions.push({ id:"g1a"+k, prompt:`（  ）和 ${part} 组成 ${total}`, sub:"数的组成", answerMode:"input", answer:ans });
+    let q;
+    do {
+      const total = rnd(6,10), part = rnd(1,total-1), ans = total - part;
+      q = { id:"g1a"+k, prompt:`（  ）和 ${part} 组成 ${total}`, sub:"数的组成", answerMode:"input", answer:ans };
+    } while(!addQ(q));
   }
   // ② 20 以内进位加法（3 题）：个位相加满十，如 9 + 6（和恒在 11~18，必有进位）
   for (let k=0;k<3;k++){
-    const a = rnd(5,9), b = rnd(11-a,9), ans = a + b;
-    questions.push({ id:"g1b"+k, prompt:`${a} + ${b} = ?`, sub:"进位加法", answerMode:"input", answer:ans, guide:carryGuideOf(a,b) });
+    let q;
+    do {
+      const a = rnd(5,9), b = rnd(11-a,9), ans = a + b;
+      q = { id:"g1b"+k, prompt:`${a} + ${b} = ?`, sub:"进位加法", answerMode:"input", answer:ans, guide:carryGuideOf(a,b) };
+    } while(!addQ(q));
   }
   // ③ 20 以内退位减法（3 题）：个位不够减，如 13 − 8（被减数个位恒小于减数，必退位）
   for (let k=0;k<3;k++){
-    const a = rnd(11,18), ones = a % 10, b = rnd(ones+1,9), ans = a - b;
-    questions.push({ id:"g1c"+k, prompt:`${a} − ${b} = ?`, sub:"退位减法", answerMode:"input", answer:ans, guide:borrowGuideOf(a,b) });
+    let q;
+    do {
+      const a = rnd(11,18), ones = a % 10, b = rnd(ones+1,9), ans = a - b;
+      q = { id:"g1c"+k, prompt:`${a} − ${b} = ?`, sub:"退位减法", answerMode:"input", answer:ans, guide:borrowGuideOf(a,b) };
+    } while(!addQ(q));
   }
   // ④ 凑十法（1 题）：9 + 5 = 10 + （  ），答案是从 5 里分出 1 之后剩下的 4
   {
@@ -4700,8 +4928,9 @@ function mathQuizG1(){
 /* 按难度生成 10 道数学题 */
 function mathQuiz(diff){
   if (diff === "g1") return mathQuizG1();       // 一年级专项走独立出题器
-  const names={10:"10 以内",20:"20 以内",50:"50 以内",100:"100 以内",mul:"99 乘法",div:"表内除法"};
-  const cap={10:10,20:20,50:50,100:100}[diff] || 0;
+  if (diff === "g1exam") return mathQuizG1Exam();   // v3.51：一年级试卷专练
+  const names={10:"10 以内",20:"20 以内",mul:"99 乘法",div:"表内除法"};
+  const cap={10:10,20:20}[diff] || 0;
   const questions=[]; const used=new Set();
   while(questions.length<10){
     let a,b,op,ans,guide=null;
@@ -4792,6 +5021,30 @@ function confuseDistractors(c, n, bank){
   }
   return out.slice(0,n);
 }
+function pyDistinctDistractors(c, py, bank, n){
+  /* 看拼音选字专用：干扰项除与答案不同音，还要彼此不同音。
+     难度3「清/青/晴/请」同框时清与青都读 qīng，等于白送一个选项位；
+     一组拼音只留一个字。形近字优先（休/体、渴/喝 这类视觉混淆才是主要考点），再随机补。 */
+  const usedPy = new Set([py]), out = [];
+  const take = (ch) => {
+    const rec = bank.find(x => x[0] === ch);
+    if (!rec || usedPy.has(rec[1]) || out.includes(ch)) return;
+    usedPy.add(rec[1]); out.push(ch);
+  };
+  for (const w of confuseGroup(c)){ if (out.length >= n) return out.slice(0,n); take(w); }
+  let pool = bank.map(x => x[0]).filter(x => x !== c);
+  while (out.length < n && pool.length){
+    const w = pick(pool,1)[0];
+    take(w);
+    pool = pool.filter(x => x !== w);
+  }
+  /* 极端：该库拼音种类不足 n+1 种 → 允许重复音，但绝不少选项 */
+  if (out.length < n){
+    let p2 = bank.map(x => x[0]).filter(x => x !== c && !out.includes(x));
+    while (out.length < n && p2.length){ const w = pick(p2,1)[0]; out.push(w); p2 = p2.filter(x => x !== w); }
+  }
+  return out.slice(0,n);
+}
 function blankPhrase(c, word){
   /* 挖掉词语里【所有】出现的目标字。
      原来只挖第一个（indexOf 只找首个匹配），叠词会漏：「爸爸」→「___爸」，答案字仍留在题干里。
@@ -4805,35 +5058,27 @@ function buildHanziQ(type, bank, lv, i, forceChar){
   const e = forceChar ? (bank.find(x => x[0] === forceChar) || pick(bank,1)[0]) : pick(bank,1)[0];
   const [c, py, word] = e;
   if (type==="emoji"){
-    /* 任务⑤兜底：抽到的字没有 emoji → 改抽一个有图字出题，不让孩子裸看文字猜；
-       整库都无图 → 退化成看拼音选字。复习池强制字没图时同理走拼音题。 */
+    /* 任务⑤兜底：抽到的字没有 emoji → 改抽一个有图字出题，不让孩子裸看文字猜。
+       有图字占比过低的字库（一下 405 字里只有 20 字配了图）不出盲图题，直接改看拼音选字，
+       否则一场 10 题会反复考同一小撮图。复习池强制字没图时同理走拼音题。 */
+    const withEm = bank.filter(x => emojiFor(x[0]));
+    if (withEm.length < 30) return buildHanziQ("pinyin", bank, lv, i, forceChar);
     let e2 = e;
-    if (forceChar && !emojiFor(c)){
-      return buildHanziQ("pinyin", bank, lv, i, forceChar);
-    }
-    if (!forceChar && !emojiFor(c)){
-      const withEm = bank.filter(x => emojiFor(x[0]));
-      if (!withEm.length) return buildHanziQ("pinyin", bank, lv, i);
+    if (!emojiFor(c)){
+      if (forceChar) return buildHanziQ("pinyin", bank, lv, i, forceChar);
       e2 = pick(withEm,1)[0];
     }
-    const em = emojiFor(c), ce = e2[0], we = e2[2];
+    const ce = e2[0], we = e2[2], em = emojiFor(ce);
+    /* 曾是 emojiFor(c)：重抽有图字时 c 仍是那个无图字 → em 为空，题干变成「 这个字是？」，孩子只能瞎猜。 */
     const wrongs = randomDistractors(ce, bank, 3);
     return { id:"h"+i, hanziChar:ce, prompt:`${em} 这个字是？`, speakText:`${ce}，${we}`, speakOnShow:true, options:shuffle([ce,...wrongs]), answer:ce };
   }
   if (type==="pinyin"){
     /* 组词必然包含目标字（「妈」→「妈妈」），把它放进 sub 等于把答案打在屏幕上，所以这里只给拼音。
-       代价：同音字会让题目无解（做/作/坐/座 都读 zuò），因此干扰项必须排除所有与答案同拼音的字。
+       代价：同音字会让题目无解（做/作/坐/座 都读 zuò），因此干扰项必须排除所有与答案同拼音的字，
+       并且彼此也不同音（清/青 都读 qīng，同框等于浪费一个干扰位）。
        喇叭仍会读「妈，妈妈」——那是孩子主动点的求助通道，且听了仍需从 4 个字形里认出目标字，不算白送。 */
-    const samePy = new Set(bank.filter(x => x[1] === py).map(x => x[0]));
-    let wrongs = confuseDistractors(c, 3, bank).filter(w => !samePy.has(w));
-    if (wrongs.length < 3){
-      let pool = bank.map(x => x[0]).filter(x => x !== c && !samePy.has(x) && !wrongs.includes(x));
-      while (wrongs.length < 3 && pool.length){ const w = pick(pool,1)[0]; wrongs.push(w); pool = pool.filter(x => x !== w); }
-    }
-    if (wrongs.length < 3){                       // 极端兜底：宁可容忍同音歧义，也不能少选项
-      let pool = bank.map(x => x[0]).filter(x => x !== c && !wrongs.includes(x));
-      while (wrongs.length < 3 && pool.length){ const w = pick(pool,1)[0]; wrongs.push(w); pool = pool.filter(x => x !== w); }
-    }
+    const wrongs = pyDistinctDistractors(c, py, bank, 3);
     return { id:"h"+i, hanziChar:c, prompt:py, promptClass:"small", sub:"选出正确的汉字", speakText:`${c}，${word}`, speakOnShow:false, options:shuffle([c,...wrongs]), answer:c };
   }
   if (type==="word"){
@@ -5600,9 +5845,10 @@ function makeHanziQ(){
     return { prompt:zi, sub:`组词：${word}｜它的拼音是哪个？`, speakText:`${zi}，${word}的${zi}`, options:shuffle([py,...w]), answer:py };
   }
   /* 看拼音选字：组词必然包含目标字（「妈」→「妈妈」），放进 sub 等于把答案打在屏幕上，去掉。
-     干扰项同时排除同音字，否则 做/作/坐/座 都读 zuò 时题目无解。 */
-  const w=pick([...new Set(HANZI.filter(h=>h[0]!==zi&&h[1]!==py).map(h=>h[0]))],3);
-  return { prompt:py, promptClass:"small", sub:"是哪个汉字？", speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...w]), answer:zi };
+     干扰项既要排除与答案同音（做/作/坐/座 都读 zuò 时题目无解），彼此也不能同音（清/青 同框浪费选项位）。 */
+  const usedPy=new Set([py]), cs=[];
+  for (const h of shuffle(HANZI)){ if(cs.length>=3) break; if(h[0]===zi||usedPy.has(h[1])) continue; usedPy.add(h[1]); cs.push(h[0]); }
+  return { prompt:py, promptClass:"small", sub:"是哪个汉字？", speakText:`${zi}，${word}的${zi}`, options:shuffle([zi,...cs]), answer:zi };
 }
 /* 冒险可出的模块 + 出题函数；并按学习报告正确率计算薄弱模块（正确率最低者优先） */
 function adventurePoolWithRate(){
@@ -6184,12 +6430,12 @@ function renderAchievements(){
 function openBackup(){
   const loggedIn = cloudLoggedIn();
   const cloudInfo = loggedIn
-    ? `<div style="font-size:15px;color:#3F9D3F;background:#F2FAF2;border-radius:10px;padding:8px 10px;margin-bottom:8px">✅ 已用账号 <b>${getStoredUser()}</b> 登录，进度实时同步到 Cloudflare 云端：<b>换平板 / 重装 / 清缓存</b>都不丢。本地下载目录的备份文件 <b>pokemon-study-auto-backup.json</b> 仍作双保险。</div>`
+    ? `<div style="font-size:15px;color:#3F9D3F;background:#F2FAF2;border-radius:10px;padding:8px 10px;margin-bottom:8px">✅ 已用账号 <b>${getStoredUser()}</b> 登录，进度实时同步到 Cloudflare 云端：<b>换平板 / 重装 / 清缓存</b>都不丢。本地下载目录的自动备份 <b>auto-backup-1/-2/-3.json</b>（保留最近 3 份）仍作双保险。</div>`
     : `<div style="font-size:15px;color:#3F9D3F;background:#F2FAF2;border-radius:10px;padding:8px 10px;margin-bottom:8px">✅ 可登录账号把进度同步到云端：<b>换平板 / 重装 / 清缓存</b>都不丢，朋友各自建号互不干扰。本地备份文件仍作双保险。</div>`;
   openDialog(`<h2 style="color:var(--poke-blue)">💾 进度备份</h2>
     <div style="font-size:20px;color:#9b8676;margin-bottom:8px">导出：平板 APK 会保存到「下载 / Download」文件夹；电脑浏览器保存到默认下载目录。导入：选择文件后点导入进度。</div>
     ${cloudInfo}
-    ${window.PokeBridge ? `<div style="font-size:15px;color:#7a6a58;background:#FFF7E8;border-radius:10px;padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:14px"><div>📥 自动备份到平板「下载」文件夹<br><span style="font-size:13px;color:#bbb">进度变化时自动保存（文件名含 auto-backup，始终 1 个文件）</span></div><button class="switch ${state.autoBackup !== false ? 'on':''}" id="autoBkSwitch" role="switch" aria-checked="${state.autoBackup !== false}"><span class="knob"></span></button></div>` : ""}
+    ${window.PokeBridge ? `<div style="font-size:15px;color:#7a6a58;background:#FFF7E8;border-radius:10px;padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:14px"><div>📥 自动备份到平板「下载」文件夹<br><span style="font-size:13px;color:#bbb">进度变化时自动保存（3 个槽位轮换，保留最近 3 份）</span></div><button class="switch ${state.autoBackup !== false ? 'on':''}" id="autoBkSwitch" role="switch" aria-checked="${state.autoBackup !== false}"><span class="knob"></span></button></div>` : ""}
     <button class="big-btn blue" id="expBtn">⬇️ 下载进度文件</button>
     <hr style="margin:14px 0;border:none;border-top:2px dashed #e3d8c2">
     <div style="margin-top:10px"><button class="big-btn" id="impBtn">⬆️ 导入进度</button><input type="file" id="impFile" accept="application/json,.json" style="margin-top:10px;font-size:18px"></div>`);
