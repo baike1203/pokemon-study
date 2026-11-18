@@ -104,6 +104,8 @@ for (let r = 0; r < ROUNDS; r++) {
       check(otherCats.every(k => !belong[k].some(x => x[0] === syl)), '音节跨类重复: ' + syl);
     }
   });
+  const ck = cq.map(q => q.prompt);
+  check(new Set(ck).size === ck.length, '语文同场出现重复题: ' + ck.filter((k,n)=>ck.indexOf(k)!==n).join(' / '));
 
   // 数学试卷专练
   globalThis.mathQuizG1Exam();

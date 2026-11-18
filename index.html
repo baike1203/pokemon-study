@@ -2804,7 +2804,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.51.4";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.51.5";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -4747,27 +4747,57 @@ const YW_MINUS_STROKE = [
 ];
 function chineseQuiz(){
   const qs = [];
+  const usedPrompt = new Set();
+  /* v3.51.5：同一场内题干去重。原来「音节分类」两次 pick 可能抽到同一个音节，
+     出现两道完全相同的题（其他组若题库有重复条目同理）。抽到重复就重抽。 */
+  function addQ(q){
+    if (usedPrompt.has(q.prompt)) return false;
+    usedPrompt.add(q.prompt); qs.push(q); return true;
+  }
   /* ① 音节分类 2 题：给一个音节，判断属于声母/韵母/整体认读哪一类 */
   const cats = [{n:"声母",a:SHENGMU},{n:"韵母",a:YUNMU},{n:"整体认读音节",a:ZHENGTI}];
   for (let k=0;k<2;k++){
-    const c = pick(cats,1)[0], item = pick(c.a,1)[0];
-    qs.push({ id:"ywc"+k, prompt:`「${item[0]}」属于哪一类？`, sub:`例字：${item[1]}`,
-      speakText:item[1], options:shuffle(cats.map(x=>x.n)), answer:c.n });
+    let q;
+    do {
+      const c = pick(cats,1)[0], item = pick(c.a,1)[0];
+      q = { id:"ywc"+k, prompt:`「${item[0]}」属于哪一类？`, sub:`例字：${item[1]}`,
+        speakText:item[1], options:shuffle(cats.map(x=>x.n)), answer:c.n };
+    } while(!addQ(q));
   }
   /* ② 声母辨析 2 题：形近/平翘舌声母，配例字朗读 */
-  pick(YW_SM_CONFUSE,2).forEach((o,k)=>qs.push({ id:"yws"+k,
-    prompt:`哪个是「${o.ch}」的声母？`, sub:"听一听，选声母", speakText:o.ch,
-    options:shuffle([...o.opts]), answer:o.answer }));
+  for (let k=0;k<2;k++){
+    let q;
+    do {
+      const o = pick(YW_SM_CONFUSE,1)[0];
+      q = { id:"yws"+k, prompt:`哪个是「${o.ch}」的声母？`, sub:"听一听，选声母", speakText:o.ch,
+        options:shuffle([...o.opts]), answer:o.answer };
+    } while(!addQ(q));
+  }
   /* ③ 韵母辨析 2 题：ui/iu、ei/ie、前鼻/后鼻 */
-  pick(YW_YM_CONFUSE,2).forEach((o,k)=>qs.push({ id:"ywm"+k,
-    prompt:`哪个是「${o.ch}」的韵母？`, sub:"听一听，选韵母", speakText:o.ch,
-    options:shuffle([...o.opts]), answer:o.answer }));
+  for (let k=0;k<2;k++){
+    let q;
+    do {
+      const o = pick(YW_YM_CONFUSE,1)[0];
+      q = { id:"ywm"+k, prompt:`哪个是「${o.ch}」的韵母？`, sub:"听一听，选韵母", speakText:o.ch,
+        options:shuffle([...o.opts]), answer:o.answer };
+    } while(!addQ(q));
+  }
   /* ④ 四字词语填空 2 题：同音字干扰是刻意的，靠词语语境定答案 */
-  pick(YW_IDIOMS,2).forEach((o,k)=>qs.push({ id:"ywi"+k,
-    prompt:o.q, sub:"选一个字，组成四字词语", options:shuffle([...o.opts]), answer:o.answer }));
+  for (let k=0;k<2;k++){
+    let q;
+    do {
+      const o = pick(YW_IDIOMS,1)[0];
+      q = { id:"ywi"+k, prompt:o.q, sub:"选一个字，组成四字词语", options:shuffle([...o.opts]), answer:o.answer };
+    } while(!addQ(q));
+  }
   /* ⑤ 减一笔 2 题：减一笔的结果唯一，避免「加一笔」多解争议 */
-  pick(YW_MINUS_STROKE,2).forEach((o,k)=>qs.push({ id:"ywd"+k,
-    prompt:o.q, sub:"减一笔", options:shuffle([...o.opts]), answer:o.answer }));
+  for (let k=0;k<2;k++){
+    let q;
+    do {
+      const o = pick(YW_MINUS_STROKE,1)[0];
+      q = { id:"ywd"+k, prompt:o.q, sub:"减一笔", options:shuffle([...o.opts]), answer:o.answer };
+    } while(!addQ(q));
+  }
   shuffle(qs);
   runQuiz({ title:"📚 语文 · 一年级试卷专练", color:"#2FB69C", questions:qs, moduleKey:"chinese",
     onFinish(acc){ openDialog(`<h2 style="color:#2FB69C">🎉 语文闯关成功！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">${acc>=80?"🏆":"💪"}</div><div style="font-size:26px;margin:10px 0">${acc>=80?"语文小达人！":"继续加油，明天会更棒！"}奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('chinese')">收下精灵球 ⚡</button>`, {closable:false}); }
