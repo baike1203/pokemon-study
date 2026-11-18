@@ -188,7 +188,13 @@ check(!API.hasShinyArt(152) && !API.hasShinyArt(200), '152+ 不应标记为有�
 check(API.hasShinyArt(906) && API.hasShinyArt(1000) && API.hasShinyArt(1025), '额外编号 906/1000/1025 应有闪光图');
 check(API.SHINY_READY_MAX === 151, 'SHINY_READY_MAX 应为 151');
 check(API.GYM_TOTAL === 20 && Math.ceil(API.GYM_TOTAL * API.GYM_PASS_RATE) === 16, '题数/门槛常量不对');
-check(API.GYM_MAX_TRIES === 2, '每日次数应为 2');
+check(API.GYM_MAX_TRIES === 1, '每日次数应为 1');
+
+/* 每日 1 次：打了一次没通关 → 当天不能再打（v3.52.1） */
+S.gymCleared = false; S.gymTries = 0;
+check(API.gymStatus().canPlay === true && API.gymStatus().triesLeft === 1, '1 次模式首局应可玩且剩余 1 次');
+S.gymTries = 1;
+check(API.gymStatus().canPlay === false && API.gymStatus().triesLeft === 0, '1 次模式打完后当天仍可挑战');
 
 /* ---------- 8. 哈希稳定性（同输入必同输出、不同日期大概率不同） ---------- */
 check(API.gymHash('abc') === API.gymHash('abc'), 'gymHash 不稳定');

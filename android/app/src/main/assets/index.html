@@ -2873,7 +2873,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.52.0";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.52.1";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -6074,7 +6074,7 @@ function startAdventure(){
    - 选馆主用 date+name 的确定性哈希，同一天刷新多少次都是同一只，跨天自动换。 */
 const GYM_TOTAL = 20;          // 总题数
 const GYM_PASS_RATE = 0.8;     // 通关门槛（首答正确率）
-const GYM_MAX_TRIES = 2;       // 每日挑战次数
+const GYM_MAX_TRIES = 1;       // 每日挑战次数（每天一次机会，没通关就等明天）
 const GYM_LOG_KEEP_DAYS = 30;  // 战绩保留天数（也只用于近 7 天馆主去重）
 
 /* FNV-1a：给「日期+孩子名字」算一个稳定哈希，保证同一天选到同一只馆主 */
@@ -6158,7 +6158,7 @@ function gymHome(){
   }
   if (s.triesLeft <= 0){
     openDialog(`<h2 style="color:#B8860B">🏛 今日道馆</h2><div style="font-size:64px">🌙</div>
-      <div style="font-size:26px;margin:10px 0">今天的 ${GYM_MAX_TRIES} 次挑战都用完啦，<br>明天 0 点再来吧！</div>
+      <div style="font-size:26px;margin:10px 0">今天的挑战机会用完啦，<br>明天 0 点再来吧！</div>
       <button class="big-btn" onclick="document.querySelector('#dialogClose').click()">知道啦</button>`);
     return;
   }
