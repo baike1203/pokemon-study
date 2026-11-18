@@ -314,6 +314,11 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
   border-radius: 50%; background: radial-gradient(circle, #FFF7D6 0%, #FFEFB5 55%, #FFE28A 100%);
   box-shadow: 0 0 0 4px #F5B301, 0 0 26px rgba(245,179,1,.55); }
 .gym-boss-img { width: 156px; height: 156px; object-fit: contain; animation: shinyBreath 2.6s ease-in-out infinite; }
+/* v3.53.0：门口只给剪影（brightness(0) 把官方图压成纯黑），名字/编号/属性全藏，悬念留到入场动画里揭晓。
+   用滤镜而不是另存剪影图：1025 只通用、透明边缘不糊、任意尺寸不失真。 */
+.gym-boss-img.silhouette { filter: brightness(0); animation: silhouetteBreath 3.2s ease-in-out infinite; }
+@keyframes silhouetteBreath { 0%, 100% { transform: scale(1); opacity: .84; } 50% { transform: scale(1.045); opacity: .96; } }
+.gym-boss-name--mystery { letter-spacing: 6px; color: #a3927f; }
 .gym-boss-badge { position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); background: #F5B301; color: #fff;
   font-size: 15px; font-weight: 800; padding: 2px 12px; border-radius: 999px; white-space: nowrap; box-shadow: 0 3px 8px rgba(180,140,0,.35); }
 .gym-boss-name { font-size: 30px; font-weight: 800; color: #8a6300; margin-top: 12px; }
@@ -331,10 +336,136 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .gym-victory-meta { font-size: 18px; color: #a3927f; }
 .gym-victory-line { font-size: 23px; color: #5b4a3a; line-height: 1.6; margin: 8px 0; }
 .gym-reward { font-size: 22px; color: #2E7D32; font-weight: 700; margin-bottom: 10px; }
+
+/* ---------- 道馆对战场景（v3.53.0）：体育馆夜景 + 镜头推进 + 剪影揭晓 ----------
+   层叠关系：nav(50) < #gymArena(90) < overlay(100) < dialog。
+   全部动画只用 transform / opacity / filter（合成层），不用 canvas，避免与 TTS 抢主线程。
+   镜头推进靠「各层不同终点 scale」做 2D 视差，不用 perspective 3D（WebView 上易边缘模糊）。 */
+#gymArena { position: fixed; inset: 0; z-index: 90; display: none; overflow: hidden; background: #16233a; }
+#gymArena.show { display: block; }
+#gymArena .ar-world { position: absolute; inset: 0; transform-origin: 50% 48%; background: #101a2b; transition: filter .45s ease; }
+#gymArena.dim .ar-world { filter: blur(3px) brightness(.62); }
+/* 答题期：overlay 让出背景，场景露在 dialog 四周 */
+body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.ar-veil { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s ease;
+  background: radial-gradient(ellipse 70% 60% at 50% 52%, rgba(8,14,24,.15), rgba(8,14,24,.7) 78%); }
+#gymArena.dim .ar-veil { opacity: 1; }
+
+/* 穹顶 + 灯带 */
+.ar-sky { position: absolute; left: -14%; right: -14%; top: -16%; height: 58%;
+  background: linear-gradient(180deg, #070d18 0%, #14203a 52%, #1e3050 100%); --z: 1.02; }
+.ar-truss { position: absolute; left: 0; right: 0; bottom: 0; height: 9px; background: #080f1c;
+  box-shadow: 0 -1px 0 rgba(130,180,240,.28); }
+.ar-lamp { position: absolute; top: 36%; left: calc(5% + var(--i) * 11.4%); width: 8.5%; height: 30px;
+  border-radius: 50%; opacity: 0; background: radial-gradient(ellipse at 50% 50%, #FFFCE6 0%, #FFE9A0 42%, rgba(255,225,140,0) 72%); }
+#gymArena.play .ar-lamp { animation: arLampOn .45s ease-out both; animation-delay: calc(var(--i) * .08s); }
+@keyframes arLampOn { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: scale(1); } }
+
+/* 看台三层（越近越亮、越宽，clip-path 做出向外扩张的透视） */
+.ar-stand { position: absolute; left: -18%; right: -18%; }
+/* 每层看台的顶沿亮线：把"天空 / 远景 / 中景 / 近景"的层级分开，否则暗底上会糊成一片 */
+.ar-stand::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: rgba(165,205,248,.34); }
+.ar-stand--far  { top: 21%; height: 11%;
+  background: repeating-linear-gradient(180deg, rgba(255,255,255,.05) 0 2px, rgba(0,0,0,0) 2px 17px), linear-gradient(180deg, #1e3252, #27405f);
+  clip-path: polygon(28% 0, 72% 0, 95% 100%, 5% 100%); --z: 1.06; }
+.ar-stand--mid  { top: 32%; height: 11%;
+  background: repeating-linear-gradient(180deg, rgba(255,255,255,.06) 0 2px, rgba(0,0,0,0) 2px 17px), linear-gradient(180deg, #2a4667, #34557c);
+  clip-path: polygon(19% 0, 81% 0, 103% 100%, -3% 100%); --z: 1.1; }
+.ar-stand--near { top: 43%; height: 11.5%;
+  background: repeating-linear-gradient(180deg, rgba(255,255,255,.07) 0 2px, rgba(0,0,0,0) 2px 17px), linear-gradient(180deg, #34567d, #406691);
+  clip-path: polygon(10% 0, 90% 0, 116% 100%, -16% 100%); --z: 1.14; }
+.ar-crowd { position: absolute; inset: 0; }
+.ar-crowd i { position: absolute; display: block; border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.35); transform: translateY(0); }
+#gymArena.play .ar-crowd i { animation: arCheer 1.5s ease-in-out infinite; animation-delay: calc(var(--i) * -.17s); }
+@keyframes arCheer { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+/* 答题期一律停掉应援：20 道题可能持续十几分钟，78 个无限动画会白烧电和帧率 */
+#gymArena.idle .ar-crowd i { animation-play-state: paused !important; }
+
+/* 场地（透视梯形 + 中线 + 中央圆） */
+.ar-floor { position: absolute; left: -40%; right: -40%; top: 54%; bottom: -22%;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.045) 0 3px, rgba(0,0,0,0) 3px 62px),
+              linear-gradient(180deg, #2f6b9d 0%, #2E6EA6 38%, #275f92 100%);
+  clip-path: polygon(33% 0, 67% 0, 116% 100%, -16% 100%); --z: 1.2; }
+.ar-floor-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px;
+  background: linear-gradient(180deg, rgba(234,244,255,.15), rgba(234,244,255,.6)); }
+.ar-floor-ring { position: absolute; left: 50%; top: 14%; width: 24%; height: 40%; margin-left: -12%;
+  border: 4px solid rgba(234,244,255,.45); border-radius: 50%; }
+.ar-floor-edge { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: rgba(234,244,255,.7);
+  box-shadow: 0 0 18px rgba(180,220,255,.5); }
+
+/* 聚光灯 + 落地波纹 */
+.ar-spot { position: absolute; left: 50%; top: 6%; width: 58%; height: 74%; transform: translateX(-50%);
+  opacity: 0; pointer-events: none;
+  background: radial-gradient(ellipse 44% 52% at 50% 70%, rgba(255,250,225,.5), rgba(255,249,219,.18) 40%, rgba(255,249,219,0) 72%); }
+#gymArena.play .ar-spot { animation: arSpotOn .7s ease-out 2.35s both; }
+@keyframes arSpotOn { from { opacity: 0; } to { opacity: 1; } }
+.ar-shock { position: absolute; left: 50%; top: 68%; width: 20%; height: 7%; opacity: 0;
+  border: 4px solid rgba(255,246,205,.9); border-radius: 50%; }
+#gymArena.play .ar-shock { animation: arShock .7s ease-out 3s both; }
+@keyframes arShock {
+  0%   { opacity: 0;   transform: translate(-50%,-50%) scale(.3); }
+  18%  { opacity: .85; }
+  100% { opacity: 0;   transform: translate(-50%,-50%) scale(3); }
+}
+
+/* 馆主：先以剪影从场地下方升起，落定后由黑转彩色 */
+.ar-boss { position: absolute; left: 50%; top: 52%; width: clamp(200px, 26vw, 310px);
+  opacity: 0; transform: translate(-50%, 90px) scale(.3);
+  filter: brightness(0) drop-shadow(0 16px 22px rgba(0,0,0,.5)); }
+#gymArena.play .ar-boss { animation: arBossRise .7s cubic-bezier(.2,1.5,.4,1) 2.55s both,
+                                     arBossReveal .55s ease 3.25s both; }
+@keyframes arBossRise {
+  0%   { opacity: 0; transform: translate(-50%, 90px) scale(.3); }
+  70%  { opacity: 1; transform: translate(-50%, -10px) scale(1.07); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes arBossReveal {
+  from { filter: brightness(0) drop-shadow(0 16px 22px rgba(0,0,0,.5)); }
+  to   { filter: brightness(1) drop-shadow(0 12px 14px rgba(0,0,0,.42)) drop-shadow(0 0 20px rgba(255,205,80,.55)); }
+}
+/* 揭晓星屑 */
+.ar-spark { position: absolute; left: 50%; top: 62%; width: 9px; height: 9px; border-radius: 50%;
+  background: #FFF3C0; opacity: 0; box-shadow: 0 0 10px rgba(255,230,140,.95); }
+#gymArena.play .ar-spark { animation: arSpark .85s ease-out both; animation-delay: calc(3.3s + var(--i) * .04s); }
+@keyframes arSpark {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(.4); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.25); }
+}
+
+/* 名字横幅（3.75s 滑入） */
+.ar-namebar { position: absolute; left: 26px; bottom: 24px; display: flex; align-items: center; gap: 12px;
+  padding: 10px 26px; border-radius: 999px; opacity: 0; transform: translate(0, 26px);
+  background: linear-gradient(180deg, rgba(255,251,232,.97), rgba(255,238,178,.97));
+  border: 3px solid #F5B301; box-shadow: 0 10px 30px rgba(0,0,0,.4), 0 0 0 4px rgba(255,255,255,.16); }
+#gymArena.play .ar-namebar { animation: arNameIn .5s cubic-bezier(.2,1.3,.4,1) 3.75s both; }
+@keyframes arNameIn { from { opacity: 0; transform: translate(0, 26px); } to { opacity: 1; transform: translate(0, 0); } }
+.ar-name-tag { font-size: 19px; font-weight: 800; color: #8a6300; background: #FFE9A8; padding: 2px 12px; border-radius: 999px; }
+.ar-name-txt { font-size: 30px; font-weight: 800; color: #6b4b00; white-space: nowrap; }
+.ar-skip { position: absolute; right: 26px; bottom: 18px; font-size: 19px; color: rgba(255,255,255,.55); }
+#gymArena.dim .ar-skip { display: none; }   /* 进答题后点击跳过已无意义，留着只会误导 */
+
+/* 答题期的馆主血条：内联进 .quiz-progress 那一行，不新增垂直高度（1280×800 的答题区不能再挤了） */
+.gym-hp { display: inline-block; vertical-align: middle; width: 132px; height: 14px; margin: 0 8px;
+  border-radius: 999px; overflow: hidden; background: #EFE4CE; box-shadow: inset 0 1px 2px rgba(120,90,40,.3); }
+.gym-hp i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #F0705C, #E03C2E);
+  transition: width .35s ease; }
+.gym-hp-txt { font-size: 19px; font-weight: 700; color: #B8860B; }
+
+/* 镜头推进：各层用同一组关键帧，只改终点 scale/位移 → 天然视差 */
+@keyframes arCamPush {
+  from { transform: scale(1) translateY(-2.5%); }
+  to   { transform: scale(var(--z, 1.1)) translateY(0); }
+}
+#gymArena.play .ar-sky,
+#gymArena.play .ar-stand,
+#gymArena.play .ar-floor { animation: arCamPush 1.9s cubic-bezier(.45,.05,.3,1) .55s both; }
 /* 尊重系统「减少动态效果」：关掉呼吸动画，静态保留金色光晕 */
 @media (prefers-reduced-motion: reduce) {
   .dex-cell.shiny img, .gym-boss-img, .gym-victory-img { animation: none; }
   .dex-cell.shiny img { filter: drop-shadow(0 0 8px rgba(255,190,20,.7)); }
+  .gym-boss-img.silhouette { opacity: .9; }
 }
 
 /* ---------- 底部导航（v3.29：胶囊选中态 + 卡通 SVG 图标 + 齿轮并入导航） ----------
@@ -2873,7 +3004,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.52.1";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.53.0";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -3481,6 +3612,8 @@ function closeDialog(){ busyStudying = false;
   overlay.classList.remove("show");
   activeModule = null;
   stopSpeak();   // v3.29.1：系统嗓音 + 云端音频都要停，否则关弹窗后云语音还在念
+  /* v3.53.0：道馆全屏场景必须随弹窗一起收掉，否则中途点 X 会留下一层挡住整页的 fixed 层 */
+  if (document.body.classList.contains("gym-live")) { try { gymArenaDestroy(); } catch(e){} }
   if (onDialogClose){ const f = onDialogClose; onDialogClose = null; f(); }
 }
 dialogClose.addEventListener("click", () => { sfx.click(); closeDialog(); });
@@ -3880,7 +4013,7 @@ function bindPinyinPad(rowSel, dispSel, alive, onSubmit){
 }
 
 /* 通用答题引擎：答错题重排队尾直到答对（儿童友好） */
-function runQuiz({ title, color, questions, onFinish, speakOnShow = false, moduleKey = null, onAnswer = null, noRetry = false }){
+function runQuiz({ title, color, questions, onFinish, speakOnShow = false, moduleKey = null, onAnswer = null, noRetry = false, progressHTML = null }){
   /* v3.52.0：noRetry=true 用于「道馆挑战」——一题只有一次机会，答错不排队尾（否则 20 题会被拖成 30+ 题），
      进度按"已答题数"推进，正确率仍按首答统计。日常模块不传此参数，行为完全不变。 */
   const myToken = ++quizToken;   // 本场作答令牌；重开/切换时令牌变更，旧计时器回调据此失效
@@ -3899,7 +4032,7 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
     const isSpell = q.answerMode === "spell";
     const isPad = isInput || isSpell;
     openDialog(`<h2 style="color:${color}">${title}</h2>
-      <div class="quiz-progress">第 ${Math.min(doneN+1,total)} / ${total} 题 ⭐ 已答对 ${firstTryRight} 题</div>
+      <div class="quiz-progress">${progressHTML ? progressHTML(doneN) : `第 ${Math.min(doneN+1,total)} / ${total} 题 ⭐ 已答对 ${firstTryRight} 题`}</div>
       ${isSpell
         /* 拼音模式：竖排——题目字在最上，其下是部件显示框，再下是「声母|介母|韵母」三区键盘，最底一行声调 + ⌫/✔。
            顺序跟着「看字 → 想声母 → 想介母 → 想韵母 → 定调」走，孩子视线一路向下不用跳。 */
@@ -6170,13 +6303,13 @@ function gymHome(){
   openDialog(`<h2 style="color:#B8860B">🏛 今日道馆</h2>
     <div class="gym-stage">
       <div class="gym-boss-wrap">
-        <img class="gym-boss-img" src="${shinySpriteUrl(did)}" alt="${POKEMON[did-1]}">
+        <img class="gym-boss-img silhouette" src="${shinySpriteUrl(did)}" alt="神秘馆主的剪影">
         <span class="gym-boss-badge">✦ 闪光</span>
       </div>
-      <div class="gym-boss-name">${POKEMON[did-1]}</div>
-      <div class="gym-boss-meta">No.${String(did).padStart(3,"0")}${typeTxt?` · ${typeTxt}属性`:""}</div>
+      <div class="gym-boss-name gym-boss-name--mystery">？？？</div>
+      <div class="gym-boss-meta">神秘馆主 · 只在今天出现</div>
     </div>
-    <div class="gym-line">「我是今天的馆主，颜色和别的可不太一样哦。<br>答对 ${need} 道题，就让你收服我！」</div>
+    <div class="gym-line">「我是今天的馆主，颜色和别的可不太一样哦。<br>先猜猜我是谁 —— 答对 ${need} 道题，就让你收服我！」</div>
     <div class="gym-rules">
       <div>📚 数学 10 题 ・ 语文 10 题　<b>共 ${GYM_TOTAL} 题</b></div>
       <div>⏱ 每道题只有一次机会，答错不重考</div>
@@ -6208,16 +6341,165 @@ function gymQuestions(){
   return qs.map((q, i) => Object.assign({}, q, { id: "gym" + i }));
 }
 
+/* ==================== 道馆对战场景（v3.53.0） ====================
+   设计：门口只见剪影 → 进场上演 4.2 秒体育馆登场（灯带/镜头推进/聚光灯/馆主升起/转彩色/名字横幅）
+   → 场景转虚化背景，20 道题在此期间作答（馆主 HP 条内联进进度行，不占额外高度）。
+   全部用 transform/opacity/filter，答题期停掉观众应援动画，避免十几分钟里白烧帧率。 */
+const GYM_ARENA_MS = 4200;        // 出场动画总时长（CSS 时间轴上名字横幅在 3.75s 入场）
+const AR_CROWD_COLORS = ["#E8A0A0","#9FC0E8","#A8D6A0","#EFD08A","#BFA8E0","#E8B48C","#8FCBCB","#DDA8C6","#F0C878","#94AEDC"];
+let gymArenaTimers = [], gymArenaFinished = false;
+
+/* 确定性伪随机（xorshift32）：同一天的观众布局固定，跨天换一批，看着像"今天来的观众不一样" */
+function arenaRand(seed){
+  let h = (gymHash(String(seed)) >>> 0) || 0x9e3779b9;
+  return function(){
+    h ^= h << 13; h >>>= 0; h ^= h >>> 17; h ^= h << 5; h >>>= 0;
+    return h / 4294967296;
+  };
+}
+
+function gymArenaEl(){ return document.getElementById("gymArena"); }
+
+function gymArenaDestroy(){
+  gymArenaTimers.forEach(t => clearTimeout(t));
+  gymArenaTimers = [];
+  gymArenaFinished = true;
+  const el = gymArenaEl();
+  if (el && el.parentNode) el.parentNode.removeChild(el);
+  document.body.classList.remove("gym-live");
+}
+
+function gymArenaBuild(bossId){
+  gymArenaDestroy();
+  const did = displayId(bossId), nm = POKEMON[did-1];
+  const el = document.createElement("div");
+  el.id = "gymArena";
+  let lamps = "";
+  for (let i=0;i<8;i++) lamps += `<div class="ar-lamp" style="--i:${i}"></div>`;
+  let sparks = "";
+  for (let k=0;k<8;k++){
+    const a = (Math.PI * 2 * k / 8) + .35;
+    const dx = Math.round(Math.cos(a) * 132), dy = Math.round(Math.sin(a) * 88);
+    sparks += `<span class="ar-spark" style="--dx:${dx}px;--dy:${dy}px;--i:${k}"></span>`;
+  }
+  el.innerHTML = `
+    <div class="ar-world">
+      <div class="ar-sky">${lamps}<div class="ar-truss"></div></div>
+      <div class="ar-stand ar-stand--far"><div class="ar-crowd"></div></div>
+      <div class="ar-stand ar-stand--mid"><div class="ar-crowd"></div></div>
+      <div class="ar-stand ar-stand--near"><div class="ar-crowd"></div></div>
+      <div class="ar-floor"><div class="ar-floor-edge"></div><div class="ar-floor-line"></div><div class="ar-floor-ring"></div></div>
+      <div class="ar-spot"></div>
+      <div class="ar-shock"></div>
+      <img class="ar-boss" src="${shinySpriteUrl(did)}" alt="">
+      ${sparks}
+    </div>
+    <div class="ar-namebar"><span class="ar-name-tag">馆主</span><span class="ar-name-txt">✦ 闪光 ${nm}</span></div>
+    <div class="ar-veil"></div>
+    <div class="ar-skip">轻触屏幕可跳过</div>`;
+  document.body.appendChild(el);
+  document.body.classList.add("gym-live");
+  /* 观众：每层 3 排 × 10 个 = 30 个，共 90 个。排成整齐的"排排坐"比纯随机更像观众席；
+     x 范围按各层看台的斜边内缩，避免点被 clip-path 裁掉 */
+  const AR_ROW_TOP = [18, 48, 78], AR_ROW_SPAN = [[30,70],[22,78],[14,86]];
+  Array.prototype.forEach.call(el.querySelectorAll(".ar-crowd"), (box, L) => {
+    const rand = arenaRand(todayStr() + "|crowd|" + L);
+    const span = AR_ROW_SPAN[L];
+    let html = "";
+    for (let k=0;k<30;k++){
+      const row = k % 3, col = Math.floor(k / 3);
+      const left = span[0] + (span[1] - span[0]) * (col / 9) + (rand() - .5) * 2.6;
+      const top = AR_ROW_TOP[row] + (rand() - .5) * 11;
+      const size = 10 + L + Math.round(rand()*3);
+      const color = AR_CROWD_COLORS[Math.floor(rand()*AR_CROWD_COLORS.length)] || "#D9C9EE";
+      html += `<i style="left:${left.toFixed(2)}%;top:${top.toFixed(2)}%;width:${size}px;height:${size}px;background:${color};--i:${k}"></i>`;
+    }
+    box.innerHTML = html;
+  });
+  return el;
+}
+
+/* 播出场动画；点击任意处或 reduced-motion 时直接进答题 */
+function gymArenaPlay(onDone){
+  const el = gymArenaEl();
+  gymArenaFinished = false;
+  if (!el){ onDone && onDone(); return; }
+  const reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  el.classList.add("show");
+  void el.offsetWidth;                        // 强制重排，保证动画从第 0 帧开始（否则首帧被合并掉）
+  const finish = () => {
+    if (gymArenaFinished) return;
+    gymArenaFinished = true;
+    gymArenaTimers.forEach(t => clearTimeout(t));
+    gymArenaTimers = [];
+    onDone && onDone();
+  };
+  if (reduce){ finish(); return; }
+  el.classList.add("play");
+  try {
+    for (let i=0;i<8;i++) tone(392 + i*44, i*.08, .1, "triangle", .11);        // 灯带逐盏点亮
+    tone(98, .55, 1.7, "sine", .1);                                            // 镜头推进的铺底低频
+    tone(392, 2.5, .16, "triangle", .16);                                       // 馆主升起的音阶
+    tone(523, 2.66, .16, "triangle", .16);
+    tone(659, 2.82, .2, "triangle", .16);
+    tone(70, 3.0, .3, "sine", .26);                                            // 落地闷响
+    tone(523, 3.3, .5, "sine", .18);                                           // 揭示和弦
+    tone(659, 3.3, .5, "sine", .16);
+    tone(784, 3.3, .55, "sine", .16);
+    gymArenaTimers.push(setTimeout(()=>{ try { sfx.reward(); } catch(e){} }, 3750));
+  } catch(e){}
+  el.addEventListener("click", ()=>{
+    if (gymArenaFinished) return;
+    /* 跳过：让 CSS 动画直接到终态（孩子能看见馆主现身），短暂停顿后进第 1 题 */
+    try { el.getAnimations().forEach(a => { try { a.finish(); } catch(e){} }); } catch(e){}
+    gymArenaTimers.push(setTimeout(finish, 220));
+  }, { once: true });
+  gymArenaTimers.push(setTimeout(finish, GYM_ARENA_MS));
+}
+
+/* 进入答题：场景压暗虚化做背景，并停掉观众应援（保留 play 类，否则动画终态会丢失） */
+function gymArenaDim(){
+  const el = gymArenaEl();
+  if (!el) return;
+  el.classList.add("dim", "idle");
+}
+
+/* 道馆 HP：达标题数就是血条格数，答对扣 1 格 —— 与 80% 判定同源，不会出现"血条空了却没通关" */
+function gymNeedRight(){ return Math.ceil(GYM_TOTAL * GYM_PASS_RATE); }
+function gymHpHtml(right){
+  const need = gymNeedRight();
+  const left = Math.max(0, need - right);
+  const pct = need ? (left / need * 100) : 0;
+  return `<span class="gym-hp"><i id="gymHpFill" style="width:${pct}%"></i></span>`
+       + `<span class="gym-hp-txt" id="gymHpTxt">馆主 HP ${left}/${need}</span>`;
+}
+
 function startGymBattle(){
   const s = gymStatus();
   if (!s.canPlay) { gymHome(); return; }
   const qs = gymQuestions();
-  runQuiz({
-    title: `🏛 道馆挑战 · ${POKEMON[displayId(s.boss)-1]}`,
-    color: "#B8860B",
-    questions: qs,
-    noRetry: true,          // 一题一次机会：答错不排队尾
-    onFinish(acc){ finishGymBattle(acc); }
+  const bossId = s.boss;
+  let right = 0;
+  closeDialog();                 // 先收起门口弹窗，让体育馆场景独占一屏
+  gymArenaBuild(bossId);
+  gymArenaPlay(()=>{
+    gymArenaDim();
+    runQuiz({
+      title: `🏛 道馆挑战`,
+      color: "#B8860B",
+      questions: qs,
+      noRetry: true,             // 一题一次机会：答错不排队尾
+      /* 进度行内联馆主 HP 条：不新增垂直高度，避免挤爆 1280×800 的答题区 */
+      progressHTML: (doneN) => `第 ${Math.min(doneN+1, GYM_TOTAL)} / ${GYM_TOTAL} 题　${gymHpHtml(right)}`,
+      onAnswer(q, ok){
+        if (!ok) return;
+        right++;
+        const fill = document.getElementById("gymHpFill"), txt = document.getElementById("gymHpTxt");
+        if (fill) fill.style.width = (Math.max(0, gymNeedRight() - right) / gymNeedRight() * 100) + "%";
+        if (txt) txt.textContent = `馆主 HP ${Math.max(0, gymNeedRight() - right)}/${gymNeedRight()}`;
+      },
+      onFinish(acc){ finishGymBattle(acc); }
+    });
   });
 }
 
@@ -6270,18 +6552,12 @@ function showGymVictory(id, acc, right){
 }
 
 function showGymFail(acc, right, need){
-  const s = gymStatus();
-  const canRetry = s.triesLeft > 0;
+  /* v3.52.1 起每日只有 1 次机会，原来的「再挑战一次」分支永远不会成立，已删掉 */
   openDialog(`<h2 style="color:#B8860B">今天还差一点！</h2>
     <div style="font-size:56px">💪</div>
     <div style="font-size:26px;margin:10px 0">一次答对 <b style="color:#F58A1F">${right}</b> / ${GYM_TOTAL} 题<br>需要 ${need} 题才能收服馆主</div>
     <div style="font-size:22px;color:#9b8676">馆主：「再练一练，明天再来也行哦。」</div>
-    ${canRetry
-      ? `<button class="big-btn yellow" id="gymRetry">再挑战一次（还剩 ${s.triesLeft} 次）</button>
-         <button class="big-btn gray" onclick="document.querySelector('#dialogClose').click()">先休息一下</button>`
-      : `<button class="big-btn gray" onclick="document.querySelector('#dialogClose').click()">今天次数用完啦，明天再来</button>`}`);
-  const rt = document.getElementById("gymRetry");
-  if (rt) rt.addEventListener("click", ()=>{ sfx.click(); startGymBattle(); });
+    <button class="big-btn gray" onclick="document.querySelector('#dialogClose').click()">今天机会用完啦，明天再来</button>`);
 }
 
 let advToken = 0;   // 去冒险作答令牌：重开/切换题目时递增，旧朗读定时器据此作废，避免多题朗读互相打断（对齐 runQuiz 的 quizToken 守卫）
