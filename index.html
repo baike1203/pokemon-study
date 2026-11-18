@@ -183,10 +183,13 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .set-mod, .set-diff { text-align:center; }
 .set-mod small, .set-diff small { display:block; font-size:16px; font-weight:normal; opacity:.85; margin-top:3px; }
 
-.task-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+/* v3.51：改成 flex 居中换行——7 个模块时 grid 的 auto-fit 会排成 5+2 导致右侧大片空白；
+   flex + justify-content:center 让每一行的卡片都水平居中，5+2 / 4+3 / 3+3+1 都不会偏在一侧 */
+.task-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
 
 /* 任务卡片 */
 .task-card {
+  flex: 0 1 calc(20% - 16px); min-width: 200px; max-width: 300px;
   border-radius: 34px; padding: 24px 18px; text-align: center; color: #fff;
   cursor: pointer; position: relative; min-height: 200px;
   box-shadow: 0 12px 26px rgba(120,90,70,.18);
@@ -204,6 +207,7 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .task-card.hanzi   { background: linear-gradient(160deg, var(--card-green-a),  var(--card-green-b)); }
 .task-card.poem    { background: linear-gradient(160deg, var(--card-purple-a), var(--card-purple-b)); }
 .task-card.writing { background: linear-gradient(160deg, var(--card-brown-a),  var(--card-brown-b)); }
+.task-card.chinese { background: linear-gradient(160deg, #DFF6F2, #A9E4D8); }
 .task-card.done { box-shadow: inset 0 0 0 4px rgba(255,255,255,.45), 0 12px 26px rgba(120,90,70,.18); cursor: default; }
 .task-card.done:active { transform: none; }
 .task-card.done::after {
@@ -932,6 +936,7 @@ header{
 .task-card.hanzi  { background: linear-gradient(160deg,#FFFDF9 20%,#F0FAF0); }
 .task-card.poem   { background: linear-gradient(160deg,#FFFDF9 20%,#F5F1FC); }
 .task-card.writing{ background: linear-gradient(160deg,#FFFDF9 20%,#FBF1E4); }
+.task-card.chinese{ background: linear-gradient(160deg,#FFFDF9 20%,#EAF7F3); }
 .task-card::before{
   content:""; position:absolute; left:-2px; top:16%; bottom:16%; width:7px;
   border-radius: 0 7px 7px 0;
@@ -942,6 +947,7 @@ header{
 .task-card.hanzi::before  { background: linear-gradient(180deg,#8FD48F,#4CAF5A); }
 .task-card.poem::before   { background: linear-gradient(180deg,#B79BEF,#8A6BD6); }
 .task-card.writing::before{ background: linear-gradient(180deg,#D9A867,#B9833F); }
+.task-card.chinese::before{ background: linear-gradient(180deg,#6FD8C4,#2FB69C); }
 /* v3.49.5：自定义打卡模块（cls=check）——奶油纸感背景 + 色板竖线（--bar-a/--bar-b 由 renderTasks 按模块顺序注入） */
 .task-card.check { background: linear-gradient(160deg,#FFFDF9 20%,#FBF6EC); }
 .task-card.check::before{ background: linear-gradient(180deg, var(--bar-a,#FFB84D), var(--bar-b,#F08C00)); }
@@ -2791,7 +2797,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.50.10";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.51.0";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -2885,6 +2891,7 @@ function doAutoBackup(){
 function normalizeState(s){
   if (!s || typeof s !== "object") s = defaultState();
   if (!s.activeBook) s.activeBook = "gen1";
+  if (s.mathDiff === "50" || s.mathDiff === "100") s.mathDiff = "20";   // v3.51：撤掉 50/100 档，老存档迁到 20
   if (!s.completedBooks || typeof s.completedBooks !== "object") s.completedBooks = {};
   if (!s.activeAchBook) s.activeAchBook = "gen1";
   // v3.49.0：模块管理——无配置/空配置用默认 6 个；fixed 答题模块永远补齐（防误删/导入缺失）；打卡模块尊重家长删除
@@ -3501,6 +3508,7 @@ const TASKS = [
   { key:"pinyin",  cls:"pinyin",  icon:"🔤", name:"拼音乐园", desc:"选音节 ・ 自己拼读 10 题" },
   { key:"math",    cls:"math",    icon:"🔢", name:"数学闯关", desc:"键盘输入答案 · 10 题" },
   { key:"hanzi",   cls:"hanzi",   icon:"✍️", name:"识字达人", desc:"认一认 10 个汉字" },
+  { key:"chinese", cls:"chinese", icon:"📚", name:"语文", desc:"一年级试卷专练 ・ 10 题" },
   { key:"poem",    cls:"poem",    icon:"📜", name:"古诗小舟", desc:"背一背填一填" },
   { key:"english", cls:"english", icon:"📖", name:"英语 RAZ", desc:"今日阅读打卡" },
   { key:"writing", cls:"writing", icon:"✏️", name:"写字练习", desc:"今日练字打卡" }
@@ -3508,7 +3516,7 @@ const TASKS = [
 /* v3.49.0：模块管理——TASKS 仍是默认模块表；state.taskModules 为家长可编辑的动态配置。
    kind=fixed（答题引擎模块：不可删/改名，仅可排序）| check（打卡模块：可增删改名排序）。
    taskList() 供运行时读取当前模块列表；taskListOf(s) 供 loadState 阶段（state 未初始化）使用。 */
-const FIXED_TASK_KEYS = ["pinyin","math","hanzi","poem"];
+const FIXED_TASK_KEYS = ["pinyin","math","hanzi","poem","chinese"];
 const CHECK_TASK_ICONS = ["📚","📝","🎨","🧮","🎵","🎯","🏃","🌙","🎓","⚽","🧩","🌱"];
 const MAX_CHECK_TASKS = 8;   // 打卡类模块上限（含 RAZ/写字），避免主页卡片过密
 function defaultModules(){ return TASKS.map(t => ({ key:t.key, cls:t.cls, icon:t.icon, name:t.name, desc:t.desc, kind: FIXED_TASK_KEYS.includes(t.key) ? "fixed" : "check", enabled:true })); }   // v3.50.0：enabled 默认开启
@@ -3601,6 +3609,7 @@ function openModule(key){
   if (key==="writing") return writingTask();
   if (key==="hanzi") return hanziTask();
   if (key==="poem") return poemHome();
+  if (key==="chinese") return chineseQuiz();
   // v3.49.0：自定义打卡模块（家长在设置里新增的 check 类）
   const t = taskList().find(x => x.key === key);
   if (t && kindOf(t) === "check") return checkinTask(t);
@@ -4328,7 +4337,7 @@ function openSettings(sub){
       ${accountBlockHTML()}
       <div class="set-modules">
         <button class="big-btn set-mod" data-m="pinyin">🔤 拼音乐园<small>选一选 / 拼一拼 两种玩法</small></button>
-        <button class="big-btn set-mod" data-m="math">🔢 数学闯关<small>一年级专项 + 加减乘除 7 档</small></button>
+        <button class="big-btn set-mod" data-m="math">🔢 数学闯关<small>10 / 20 / 试卷专练 / 乘除</small></button>
         <button class="big-btn set-mod" data-m="hanzi">✍️ 识字达人<small>6 级字库分级</small></button>
         <button class="big-btn set-mod" data-m="poem">📜 古诗小舟<small>12 学期分级</small></button>
       </div>
@@ -4472,7 +4481,7 @@ function openModuleManager(){
       </div>`;   // v3.50.0：固定模块可开关（隐藏后不进今日任务，历史保留）
     }).join("");
     openDialog(`<h2 style="color:#F58A1F">🧩 打卡模块管理</h2>
-      <div style="font-size:16px;color:#9b8676;margin:4px 0 10px;line-height:1.6">管理今日打卡模块：▲▼ 排序、🟢 开关、✏️ 改名、🗑 删除、＋ 新增。<br>答题模块（拼音・数学・识字・古诗）可开关、不可改名删除；隐藏后历史记录保留，随时可重新开启。</div>
+      <div style="font-size:16px;color:#9b8676;margin:4px 0 10px;line-height:1.6">管理今日打卡模块：▲▼ 排序、🟢 开关、✏️ 改名、🗑 删除、＋ 新增。<br>答题模块（拼音・数学・识字・古诗・语文）可开关、不可改名删除；隐藏后历史记录保留，随时可重新开启。</div>
       <div id="mmList" style="max-height:46vh;overflow:auto;border:2px solid #f0e6d8;border-radius:12px;padding:4px 12px">${rows}</div>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
         <button class="big-btn blue" id="mmAdd" style="flex:1">＋ 添加打卡模块</button>
@@ -4614,15 +4623,14 @@ function renderPinyinSettings(){
 }
 function renderMathSettings(){
   const cur = state.mathDiff||"10";
-  const names = {10:"10 以内加减法",20:"20 以内加减法",50:"50 以内加减法",100:"100 以内加减法",mul:"99 乘法口诀",div:"表内除法",g1:"一年级专项"};
+  const names = {10:"10 以内加减法",20:"20 以内加减法",mul:"99 乘法口诀",div:"表内除法",g1:"一年级专项",g1exam:"一年级试卷专练"};
   openDialog(`<h2 style="color:#F58A1F">🔢 数学闯关 · 难度</h2>
     <button class="big-btn yellow" id="setBack" style="min-width:120px;margin-bottom:8px">← 返回</button>
     <div class="py-tabs" style="flex-direction:column;align-items:stretch;gap:14px">
       <button class="big-btn set-diff ${cur==="g1"?"active":""}" data-d="g1">🎒 一年级专项<small>进位加 ・ 退位减 ・ 凑十法 ・ 比多少</small></button>
       <button class="big-btn set-diff ${cur==="10"?"active":""}" data-d="10">➕➖ 10 以内加减法</button>
       <button class="big-btn set-diff ${cur==="20"?"active":""}" data-d="20">➕➖ 20 以内加减法</button>
-      <button class="big-btn set-diff ${cur==="50"?"active":""}" data-d="50">➕➖ 50 以内加减法</button>
-      <button class="big-btn set-diff ${cur==="100"?"active":""}" data-d="100">➕➖ 100 以内加减法</button>
+      <button class="big-btn set-diff ${cur==="g1exam"?"active":""}" data-d="g1exam">📝 一年级试卷专练<small>十位个位 ・ 比大小 ・ 括号填数 ・ 找规律</small></button>
       <button class="big-btn set-diff ${cur==="mul"?"active":""}" data-d="mul">✖️ 99 乘法口诀</button>
       <button class="big-btn set-diff ${cur==="div"?"active":""}" data-d="div">➗ 表内除法</button>
     </div>
@@ -4661,6 +4669,124 @@ function applyTestMode(){
   const bar = document.getElementById("testBar");
   if (bar) bar.style.display = state.testMode ? "flex" : "none";
 }
+/* ===== 语文 · 一年级试卷专练（v3.51）=====
+   独立答题模块 key="chinese"，与拼音乐园/识字达人/古诗小舟并存，家长在模块管理里按进度开关。
+   只取确定数据：SHENGMU/YUNMU/ZHENGTI 三张教学表 + 人工核对过的静态小题库。
+   笔画笔顺、课文填空需要权威数据源，等核对后再加。 */
+const YW_SM_CONFUSE = [
+  { ch:"玻", opts:["b","d","p","q"], answer:"b" },
+  { ch:"得", opts:["d","b","t","p"], answer:"d" },
+  { ch:"坡", opts:["p","q","b","f"], answer:"p" },
+  { ch:"特", opts:["t","f","d","l"], answer:"t" },
+  { ch:"讷", opts:["n","l","m","h"], answer:"n" },
+  { ch:"勒", opts:["l","n","r","i"], answer:"l" },
+  { ch:"知", opts:["zh","z","ch","sh"], answer:"zh" },
+  { ch:"资", opts:["z","zh","c","s"], answer:"z" },
+  { ch:"吃", opts:["ch","c","zh","sh"], answer:"ch" },
+  { ch:"雌", opts:["c","ch","z","s"], answer:"c" },
+  { ch:"诗", opts:["sh","s","zh","ch"], answer:"sh" },
+  { ch:"思", opts:["s","sh","c","z"], answer:"s" }
+];
+const YW_YM_CONFUSE = [
+  { ch:"优", opts:["iu","ui","ie","ei"], answer:"iu" },
+  { ch:"威", opts:["ui","iu","ei","ie"], answer:"ui" },
+  { ch:"耶", opts:["ie","ei","iu","ui"], answer:"ie" },
+  { ch:"爱", opts:["ai","ei","ao","ou"], answer:"ai" },
+  { ch:"昂", opts:["ang","an","eng","en"], answer:"ang" },
+  { ch:"安", opts:["an","ang","en","eng"], answer:"an" },
+  { ch:"鹰", opts:["ing","in","eng","en"], answer:"ing" },
+  { ch:"因", opts:["in","ing","en","eng"], answer:"in" }
+];
+const YW_IDIOMS = [
+  { q:"一（ ）一样", opts:["模","摸","膜","漠"], answer:"模" },
+  { q:"三（ ）六臂", opts:["头","投","透","抖"], answer:"头" },
+  { q:"五（ ）六色", opts:["颜","言","沿","盐"], answer:"颜" },
+  { q:"七（ ）八下", opts:["上","尚","让","止"], answer:"上" },
+  { q:"十（ ）十美", opts:["全","权","泉","圈"], answer:"全" },
+  { q:"（ ）牛一毛", opts:["九","久","酒","韭"], answer:"九" },
+  { q:"四面（ ）方", opts:["八","发","法","罚"], answer:"八" },
+  { q:"一（ ）一意", opts:["心","新","辛","欣"], answer:"心" }
+];
+const YW_MINUS_STROKE = [
+  { q:"「大」减一笔变成什么字？", opts:["人","天","太","犬"], answer:"人" },
+  { q:"「目」减一笔变成什么字？", opts:["日","月","口","白"], answer:"日" },
+  { q:"「三」减一笔变成什么字？", opts:["二","一","干","土"], answer:"二" },
+  { q:"「禾」减一笔变成什么字？", opts:["木","米","未","本"], answer:"木" },
+  { q:"「本」减一笔变成什么字？", opts:["木","禾","未","末"], answer:"木" },
+  { q:"「太」减一笔变成什么字？", opts:["大","犬","天","人"], answer:"大" },
+  { q:"「天」减一笔变成什么字？", opts:["大","太","人","夫"], answer:"大" },
+  { q:"「田」减一笔变成什么字？", opts:["日","目","由","甲"], answer:"日" }
+];
+function chineseQuiz(){
+  const qs = [];
+  /* ① 音节分类 2 题：给一个音节，判断属于声母/韵母/整体认读哪一类 */
+  const cats = [{n:"声母",a:SHENGMU},{n:"韵母",a:YUNMU},{n:"整体认读音节",a:ZHENGTI}];
+  for (let k=0;k<2;k++){
+    const c = pick(cats,1)[0], item = pick(c.a,1)[0];
+    qs.push({ id:"ywc"+k, prompt:`「${item[0]}」属于哪一类？`, sub:`例字：${item[1]}`,
+      speakText:item[1], options:shuffle(cats.map(x=>x.n)), answer:c.n });
+  }
+  /* ② 声母辨析 2 题：形近/平翘舌声母，配例字朗读 */
+  pick(YW_SM_CONFUSE,2).forEach((o,k)=>qs.push({ id:"yws"+k,
+    prompt:`哪个是「${o.ch}」的声母？`, sub:"听一听，选声母", speakText:o.ch,
+    options:shuffle([...o.opts]), answer:o.answer }));
+  /* ③ 韵母辨析 2 题：ui/iu、ei/ie、前鼻/后鼻 */
+  pick(YW_YM_CONFUSE,2).forEach((o,k)=>qs.push({ id:"ywm"+k,
+    prompt:`哪个是「${o.ch}」的韵母？`, sub:"听一听，选韵母", speakText:o.ch,
+    options:shuffle([...o.opts]), answer:o.answer }));
+  /* ④ 四字词语填空 2 题：同音字干扰是刻意的，靠词语语境定答案 */
+  pick(YW_IDIOMS,2).forEach((o,k)=>qs.push({ id:"ywi"+k,
+    prompt:o.q, sub:"选一个字，组成四字词语", options:shuffle([...o.opts]), answer:o.answer }));
+  /* ⑤ 减一笔 2 题：减一笔的结果唯一，避免「加一笔」多解争议 */
+  pick(YW_MINUS_STROKE,2).forEach((o,k)=>qs.push({ id:"ywd"+k,
+    prompt:o.q, sub:"减一笔", options:shuffle([...o.opts]), answer:o.answer }));
+  shuffle(qs);
+  runQuiz({ title:"📚 语文 · 一年级试卷专练", color:"#2FB69C", questions:qs, moduleKey:"chinese",
+    onFinish(acc){ openDialog(`<h2 style="color:#2FB69C">🎉 语文闯关成功！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">${acc>=80?"🏆":"💪"}</div><div style="font-size:26px;margin:10px 0">${acc>=80?"语文小达人！":"继续加油，明天会更棒！"}奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('chinese')">收下精灵球 ⚡</button>`, {closable:false}); }
+  });
+}
+
+/* 一年级试卷专练（数学，v3.51）：贴着真实卷子的高频可判分题型，全部生成式，零题库风险。 */
+function mathQuizG1Exam(){
+  const questions = [];
+  /* ① 十位个位 2 题 */
+  for (let k=0;k<2;k++){
+    const ones = rnd(1,9), n = 10 + ones;
+    questions.push({ id:"ex_a"+k, prompt:`1 个十和 ${ones} 个一合起来是几？`, sub:"数的组成", answerMode:"input", answer:n });
+  }
+  /* ② 算式比大小 2 题（三选一，不用数字键盘） */
+  for (let k=0;k<2;k++){
+    const a=rnd(2,9), b=rnd(2,9), c=rnd(2,9), d=rnd(2,9);
+    const L=a+b, R=c+d, ans = L>R?">" : L<R?"<" : "=";
+    questions.push({ id:"ex_b"+k, prompt:`${a} + ${b}　○　${c} + ${d}`, sub:"比大小：选 >、< 或 =", options:[">","<","="], answer:ans });
+  }
+  /* ③ 括号填数 2 题 */
+  for (let k=0;k<2;k++){
+    const total = rnd(6,10), part = rnd(1,total-1);
+    questions.push({ id:"ex_c"+k, prompt:`（  ）+ ${part} = ${total}`, sub:"括号里填几", answerMode:"input", answer:total-part });
+  }
+  /* ④ 找规律 2 题：控制末项 ≤ 20，一年级上范围 */
+  for (let k=0;k<2;k++){
+    const step = rnd(1,4), start = rnd(1,3);
+    const seq = [start, start+step, start+2*step, start+3*step];
+    questions.push({ id:"ex_d"+k, prompt:`${seq.join("，")}，（  ）`, sub:"找规律填下一个数", answerMode:"input", answer:start+4*step });
+  }
+  /* ⑤ 排队问题 1 题：别忘了算上自己 */
+  {
+    const before=rnd(3,7), after=rnd(2,6);
+    questions.push({ id:"ex_e", prompt:`小朋友排队，小明前面有 ${before} 人，后面有 ${after} 人，一共有几人？`, promptClass:"small", sub:"排队问题：别忘了算上小明自己", answerMode:"input", answer:before+after+1 });
+  }
+  /* ⑥ 进位加 1 题 */
+  {
+    const a=rnd(5,9), b=rnd(11-a,9);
+    questions.push({ id:"ex_f", prompt:`${a} + ${b} = ?`, sub:"进位加法", answerMode:"input", answer:a+b, guide:carryGuideOf(a,b) });
+  }
+  shuffle(questions);
+  runQuiz({ title:"📝 数学 · 一年级试卷专练", color:"#F58A1F", questions, moduleKey:"math",
+    onFinish(acc){ openDialog(`<h2 style="color:#F58A1F">🎉 数学闯关成功！</h2><div style="font-size:30px;margin:16px 0">一次答对率：<b style="color:#3F9D3F">${acc}%</b></div><div style="font-size:64px">${acc>=80?"🏆":"💪"}</div><div style="font-size:26px;margin:10px 0">${acc>=80?"简直是数学小天才！":"继续加油，明天会更棒！"}奖励 1 个精灵球！</div><button class="big-btn" onclick="window.__closeAndReward('math')">收下精灵球 ⚡</button>`, {closable:false}); }
+  });
+}
+
 /* 一年级专项（v3.41）：按部编一年级上/下的核心知识点出题，而非单纯放大数值范围。
    覆盖：10 以内数的分解与组成、20 以内进位加、20 以内退位减、凑十法、比多少。 */
 function mathQuizG1(){
@@ -4700,8 +4826,9 @@ function mathQuizG1(){
 /* 按难度生成 10 道数学题 */
 function mathQuiz(diff){
   if (diff === "g1") return mathQuizG1();       // 一年级专项走独立出题器
-  const names={10:"10 以内",20:"20 以内",50:"50 以内",100:"100 以内",mul:"99 乘法",div:"表内除法"};
-  const cap={10:10,20:20,50:50,100:100}[diff] || 0;
+  if (diff === "g1exam") return mathQuizG1Exam();   // v3.51：一年级试卷专练
+  const names={10:"10 以内",20:"20 以内",mul:"99 乘法",div:"表内除法"};
+  const cap={10:10,20:20}[diff] || 0;
   const questions=[]; const used=new Set();
   while(questions.length<10){
     let a,b,op,ans,guide=null;
