@@ -338,13 +338,16 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 .gym-reward { font-size: 22px; color: #2E7D32; font-weight: 700; margin-bottom: 10px; }
 
 /* ---------- 道馆对战场景（v3.53.0）：体育馆夜景 + 镜头推进 + 剪影揭晓 ----------
-   层叠关系：nav(50) < #gymArena(90) < overlay(100) < dialog。
+   v3.54.0：馆主立绘 + 名字条合成 .ar-boss-unit 整块归位到右上角；打赢后播剑盾式收服演出
+   （抛球 0.88s → 白闪吸收 → 落地 0.62s → 摇三下 0.6/0.64/0.7s → 金环），不再奖励精灵球/超级球。
+   层叠关系：nav(50) < #gymArena(90) < overlay(100) < dialog；气泡是 body 直属节点(z-index 101)才不被弹窗盖住。
    全部动画只用 transform / opacity / filter（合成层），不用 canvas，避免与 TTS 抢主线程。
    镜头推进靠「各层不同终点 scale」做 2D 视差，不用 perspective 3D（WebView 上易边缘模糊）。 */
 #gymArena { position: fixed; inset: 0; z-index: 90; display: none; overflow: hidden; background: #16233a; }
 #gymArena.show { display: block; }
 #gymArena .ar-world { position: absolute; inset: 0; transform-origin: 50% 48%; background: #101a2b; transition: filter .45s ease; }
-#gymArena.dim .ar-world { filter: blur(3px) brightness(.62); }
+#gymArena.dim .ar-world { filter: blur(1px) brightness(.78); }
+#gymArena.retreating .ar-reflect { opacity: 0 !important; transition: opacity .3s ease; }
 /* 答题期：overlay 让出背景，场景露在 dialog 四周 */
 body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .ar-veil { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s ease;
@@ -375,8 +378,10 @@ body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit
   background: repeating-linear-gradient(180deg, rgba(255,255,255,.07) 0 2px, rgba(0,0,0,0) 2px 17px), linear-gradient(180deg, #34567d, #406691);
   clip-path: polygon(10% 0, 90% 0, 116% 100%, -16% 100%); --z: 1.14; }
 .ar-crowd { position: absolute; inset: 0; }
-.ar-crowd i { position: absolute; display: block; border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0,0,0,.35); transform: translateY(0); }
+.ar-crowd i { position: absolute; display: block; border-radius: 2px;
+  box-shadow: 0 0 6px var(--gym-accent, #FFD76A), 0 1px 2px rgba(0,0,0,.45); transform: translateY(0); }
+.ar-crowd i::after { content: ""; position: absolute; left: 50%; top: -4px; width: 5px; height: 5px; margin-left: -2.5px;
+  border-radius: 50%; background: #FFF7D6; box-shadow: 0 0 7px #FFF3C0; }
 #gymArena.play .ar-crowd i { animation: arCheer 1.5s ease-in-out infinite; animation-delay: calc(var(--i) * -.17s); }
 @keyframes arCheer { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 /* 答题期一律停掉应援：20 道题可能持续十几分钟，78 个无限动画会白烧电和帧率 */
@@ -400,6 +405,13 @@ body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit
   background: radial-gradient(ellipse 44% 52% at 50% 70%, rgba(255,250,225,.5), rgba(255,249,219,.18) 40%, rgba(255,249,219,0) 72%); }
 #gymArena.play .ar-spot { animation: arSpotOn .7s ease-out 2.35s both; }
 @keyframes arSpotOn { from { opacity: 0; } to { opacity: 1; } }
+/* 剑盾式锥形光柱：从顶棚打下，剪影在光柱里现身 */
+.ar-beam { position: absolute; left: 50%; top: 0; width: 60%; height: 82%; opacity: 0; pointer-events: none;
+  transform: translateX(-50%) scaleY(.2); clip-path: polygon(46% 0, 54% 0, 80% 100%, 20% 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,.02), var(--gym-accent-soft, rgba(255,220,120,.4)) 45%, rgba(255,255,255,.42) 100%); }
+#gymArena.play .ar-beam { animation: arBeam .9s ease-out 1.6s both; }
+@keyframes arBeam { 0% { opacity: 0; transform: translateX(-50%) scaleY(.2); }
+  60% { opacity: .85; } 100% { opacity: .4; transform: translateX(-50%) scaleY(1); } }
 .ar-shock { position: absolute; left: 50%; top: 68%; width: 20%; height: 7%; opacity: 0;
   border: 4px solid rgba(255,246,205,.9); border-radius: 50%; }
 #gymArena.play .ar-shock { animation: arShock .7s ease-out 3s both; }
@@ -408,13 +420,33 @@ body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit
   18%  { opacity: .85; }
   100% { opacity: 0;   transform: translate(-50%,-50%) scale(3); }
 }
+.ar-shock--outer { width: 26%; height: 9%; border-color: var(--gym-accent, #FFD76A); }
+#gymArena.play .ar-shock--outer { animation-delay: 3.15s; }
+/* 地面倒影：同一张图翻折压扁，透明度很低，只做氛围 */
+.ar-reflect { position: absolute; left: 50%; top: 70%; width: clamp(200px, 26vw, 310px); height: 150px;
+  transform: translateX(-50%); opacity: 0; pointer-events: none; overflow: hidden; }
+.ar-reflect img { width: 100%; height: 100%; object-fit: contain; transform: scaleY(-.55); filter: blur(2px) brightness(.55); }
+#gymArena.play .ar-reflect { animation: arReflectIn .5s ease 3s both; }
+@keyframes arReflectIn { from { opacity: 0; } to { opacity: .28; } }
+/* 答对一次：全场应援棒齐亮 0.42 秒（一次性，绝不常驻） */
+.ar-cheer-flash { position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse 60% 22% at 50% 32%, var(--gym-accent-soft, rgba(255,220,120,.4)), transparent 70%); }
+#gymArena.flash .ar-cheer-flash { animation: arCheerFlash .42s ease-out 1; }
+@keyframes arCheerFlash { 0% { opacity: 0; } 35% { opacity: .9; } 100% { opacity: 0; } }
 
-/* 馆主：先以剪影从场地下方升起，落定后由黑转彩色 */
-.ar-boss { position: absolute; left: 50%; top: 52%; width: clamp(200px, 26vw, 310px);
+/* 馆主：立绘 + 名字条合成一体（.ar-boss-unit）——先以剪影从场地下方升起，
+   答题时整体归位到右上角，名字条自然落在立绘正下方，不再孤零零飘到左下角挨着我家伙伴。
+   位移（入场/归位）放在外层 unit 上，明暗（剪影→彩色）放在内层 img 上，两层互不干扰。 */
+.ar-boss-unit { position: absolute; z-index: 3; left: 50%; top: 46%; width: clamp(200px, 26vw, 310px);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
   opacity: 0; transform: translate(-50%, 90px) scale(.3);
-  filter: brightness(0) drop-shadow(0 16px 22px rgba(0,0,0,.5)); }
-#gymArena.play .ar-boss { animation: arBossRise .7s cubic-bezier(.2,1.5,.4,1) 2.55s both,
-                                     arBossReveal .55s ease 3.25s both; }
+  transition: left .6s cubic-bezier(.4,0,.2,1), top .6s cubic-bezier(.4,0,.2,1), width .6s cubic-bezier(.4,0,.2,1); }
+.ar-boss { width: 100%; display: block; filter: brightness(0) drop-shadow(0 16px 22px rgba(0,0,0,.5)); }
+/* 3.6s 起整体归位到右上角：立绘与名字都在答题框右侧，答题框一寸不缩 */
+.ar-boss-unit.retreat { left: calc(100% - 98px); top: 22px; width: 186px; }
+@media (max-width: 1000px) { .ar-boss-unit.retreat { width: 150px; left: calc(100% - 80px); top: 12px; } }
+#gymArena.play .ar-boss-unit { animation: arBossRise .7s cubic-bezier(.2,1.5,.4,1) 2.55s both; }
+#gymArena.play .ar-boss { animation: arBossReveal .55s ease 3.25s both; }
 @keyframes arBossRise {
   0%   { opacity: 0; transform: translate(-50%, 90px) scale(.3); }
   70%  { opacity: 1; transform: translate(-50%, -10px) scale(1.07); }
@@ -434,23 +466,91 @@ body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit
   100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.25); }
 }
 
-/* 名字横幅（3.75s 滑入） */
-.ar-namebar { position: absolute; left: 26px; bottom: 24px; display: flex; align-items: center; gap: 12px;
-  padding: 10px 26px; border-radius: 999px; opacity: 0; transform: translate(0, 26px);
+/* 受击：馆主身上炸开一圈白光（与 WAAPI 抖动同时触发，0.5s 即散） */
+.ar-hitring { position: absolute; z-index: 2; right: 0; top: 22px; width: 186px; height: 186px; border-radius: 50%;
+  border: 4px solid rgba(255,255,255,.92); opacity: 0; pointer-events: none;
+  box-shadow: 0 0 26px rgba(255,205,120,.9), inset 0 0 20px rgba(255,255,255,.55); }
+#gymArena.hit .ar-hitring { animation: arHitRing .5s ease-out 1; }
+@keyframes arHitRing { 0% { opacity: .95; transform: scale(.45); } 100% { opacity: 0; transform: scale(1.45); } }
+@media (max-width: 1000px) { .ar-hitring { right: 2px; top: 12px; width: 150px; height: 150px; } }
+
+/* 名字横幅：跟在馆主立绘下方，随 .ar-boss-unit 一起位移（3.05s 滑入） */
+.ar-namebar { display: flex; align-items: center; gap: 8px; max-width: 100%;
+  padding: 7px 18px; border-radius: 999px; opacity: 0; transform: translate(0, 20px);
   background: linear-gradient(180deg, rgba(255,251,232,.97), rgba(255,238,178,.97));
-  border: 3px solid #F5B301; box-shadow: 0 10px 30px rgba(0,0,0,.4), 0 0 0 4px rgba(255,255,255,.16); }
-#gymArena.play .ar-namebar { animation: arNameIn .5s cubic-bezier(.2,1.3,.4,1) 3.75s both; }
-@keyframes arNameIn { from { opacity: 0; transform: translate(0, 26px); } to { opacity: 1; transform: translate(0, 0); } }
-.ar-name-tag { font-size: 19px; font-weight: 800; color: #8a6300; background: #FFE9A8; padding: 2px 12px; border-radius: 999px; }
-.ar-name-txt { font-size: 30px; font-weight: 800; color: #6b4b00; white-space: nowrap; }
+  border: 3px solid #F5B301; box-shadow: 0 8px 22px rgba(0,0,0,.42), 0 0 0 4px rgba(255,255,255,.16);
+  transition: padding .5s ease, border-width .5s ease; }
+/* 名字条在「剪影转彩色」时跟着升起（3.05s），3.6s 再和馆主一起滑向右上角，
+   看起来就是「名字认了主，两人一起退场」，不会半路追着立绘跑 */
+#gymArena.play .ar-namebar { animation: arNameIn .5s cubic-bezier(.2,1.3,.4,1) 3.05s both; }
+@keyframes arNameIn { from { opacity: 0; transform: translate(0, 20px); } to { opacity: 1; transform: translate(0, 0); } }
+.ar-name-tag { font-size: 17px; font-weight: 800; color: #8a6300; background: #FFE9A8; padding: 2px 10px; border-radius: 999px;
+  white-space: nowrap; transition: font-size .5s ease, padding .5s ease; }
+.ar-name-txt { font-size: 27px; font-weight: 800; color: #6b4b00; white-space: nowrap; transition: font-size .5s ease; }
+/* 归位到右上角后整体缩小：200px 宽里仍是一行，绝不溢出屏幕右侧 */
+.ar-boss-unit.retreat .ar-namebar { padding: 4px 12px; border-width: 2px; gap: 6px; }
+.ar-boss-unit.retreat .ar-name-tag { font-size: 12px; padding: 1px 7px; }
+.ar-boss-unit.retreat .ar-name-txt { font-size: 16px; }
+/* 我方伙伴立绘：只做视觉，血条始终内联在进度行 */
+.ar-mine { position: absolute; left: 22px; bottom: 10%; width: clamp(120px, 13vw, 170px); opacity: 0;
+  transform: translateY(20px); pointer-events: none; filter: drop-shadow(0 10px 14px rgba(0,0,0,.5)); }
+#gymArena.play .ar-mine { animation: arMineIn .5s ease 3.5s both; }
+@keyframes arMineIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+/* 馆主台词：放在 .ar-world 之外，答题期虚化背景时仍清晰可读 */
+.ar-bubble { position: fixed; z-index: 101; right: 300px; top: 40px; max-width: 38%; opacity: 0; transform: translateY(12px);
+  transition: opacity .28s ease, transform .28s ease;
+  padding: 12px 20px; border-radius: 18px 18px 18px 4px; pointer-events: none;
+  background: rgba(255,251,235,.96); border: 3px solid var(--gym-accent, #F5B301); color: #5b4310;
+  font-size: 22px; font-weight: 800; line-height: 1.35; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+/* 显示窗口由 JS 控制：说完 2 秒多自动淡出，绝不常驻抢注意力 */
+.ar-bubble.show { opacity: 1; transform: translateY(0); }
+.ar-bubble.pop { animation: arBubblePop .38s ease 1; }
+/* 窄屏下弹窗几乎占满宽度，台词气泡会压到弹窗，直接隐藏 */
+@media (max-width: 1000px) { .ar-bubble { display: none; } }
+@keyframes arBubblePop { 0% { transform: translateY(0) scale(1); } 45% { transform: translateY(0) scale(1.06); } 100% { transform: translateY(0) scale(1); } }
 .ar-skip { position: absolute; right: 26px; bottom: 18px; font-size: 19px; color: rgba(255,255,255,.55); }
 #gymArena.dim .ar-skip { display: none; }   /* 进答题后点击跳过已无意义，留着只会误导 */
+
+/* ---------- 收服演出（v4.1）：馆主移到场地中央 → 精灵球砸过去 → 摇三下 → 星光炸开 ----------
+   剑盾式节奏：全部用 transform/opacity 的 WAAPI，答题结束后只播一次，不常驻不掉帧。 */
+#gymArena.catch .ar-world { filter: none; }          /* 答题期压暗虚化，收服时重新点亮 */
+#gymArena.catch .ar-veil { opacity: 0; }
+#gymArena.catch .ar-skip { display: none; }
+/* 全屏白闪（球命中 / 收进球的瞬间） */
+.ar-catch-flash { position: absolute; inset: 0; z-index: 7; background: #fff; opacity: 0; pointer-events: none; }
+.ar-catch-flash.on { animation: arCatchFlash .55s ease-out 1; }
+@keyframes arCatchFlash { 0% { opacity: 0; } 15% { opacity: .92; } 55% { opacity: .3; } 100% { opacity: 0; } }
+/* 馆主回到场地中央（收服台），名字条先淡出把舞台让给精灵球 */
+.ar-boss-unit.catch-center { left: 50%; top: 40%; width: clamp(240px, 30vw, 360px); }
+/* 必须 !important 关掉入场动画：arNameIn 是 fill:both 的，会一直把 opacity 顶在 1，普通规则压不住 */
+.ar-boss-unit.catch-center .ar-namebar { animation: none !important; opacity: 0; transition: opacity .25s ease; }
+/* 精灵球：上红下白 + 黑腰线 + 中心钮，纯 CSS，不新增图片资源。
+   纵向对准馆主立绘中心 = 立绘顶(40%vh) + 立绘高的一半（宽度就是高度，故用 clamp 同步算） */
+.ar-ball { position: absolute; z-index: 6; left: 50%; top: calc(40% + clamp(120px, 15vw, 180px));
+  width: 64px; height: 64px; margin: -32px 0 0 -32px; opacity: 0; pointer-events: none;
+  filter: drop-shadow(0 12px 16px rgba(0,0,0,.5)); }
+.ar-ball i { position: absolute; inset: 0; border-radius: 50%; overflow: hidden;
+  background: linear-gradient(180deg, #E9504A 0 46%, #262626 46% 54%, #F8F6F1 54% 100%);
+  box-shadow: inset -7px -7px 14px rgba(0,0,0,.28), inset 6px 6px 12px rgba(255,255,255,.34), 0 0 0 3px #262626; }
+.ar-ball i::after { content: ""; position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px;
+  border-radius: 50%; background: #F8F6F1; border: 4px solid #262626; box-shadow: 0 0 8px rgba(255,255,255,.85); }
+/* 收服成功：场地中央炸开一圈金环 */
+.ar-catch-burst { position: absolute; z-index: 7; left: 50%; top: calc(40% + clamp(120px, 15vw, 180px));
+  width: 220px; height: 220px; margin: -110px 0 0 -110px; border-radius: 50%; border: 6px solid rgba(255,231,150,.95);
+  opacity: 0; pointer-events: none;
+  box-shadow: 0 0 46px rgba(255,214,100,.95), inset 0 0 40px rgba(255,236,170,.75); }
+.ar-catch-burst.on { animation: arCatchBurst 1.05s ease-out 1; }
+@keyframes arCatchBurst { 0% { opacity: 0; transform: scale(.3); } 20% { opacity: 1; } 100% { opacity: 0; transform: scale(1.7); } }
 
 /* 答题期的馆主血条：内联进 .quiz-progress 那一行，不新增垂直高度（1280×800 的答题区不能再挤了） */
 .gym-hp { display: inline-block; vertical-align: middle; width: 132px; height: 14px; margin: 0 8px;
   border-radius: 999px; overflow: hidden; background: #EFE4CE; box-shadow: inset 0 1px 2px rgba(120,90,40,.3); }
 .gym-hp i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #F0705C, #E03C2E);
   transition: width .35s ease; }
+.gym-hp.mine { background: #E4EDD8; box-shadow: inset 0 1px 2px rgba(70,100,40,.25); }
+.gym-hp.mine i { background: linear-gradient(90deg, #7DCB6A, #43A34B); }
+.gym-hp.mine.brace i { animation: gymBrace .35s ease 2; }
+@keyframes gymBrace { 50% { opacity: .3; } }
 .gym-hp-txt { font-size: 19px; font-weight: 700; color: #B8860B; }
 
 /* 镜头推进：各层用同一组关键帧，只改终点 scale/位移 → 天然视差 */
@@ -461,6 +561,19 @@ body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit
 #gymArena.play .ar-sky,
 #gymArena.play .ar-stand,
 #gymArena.play .ar-floor { animation: arCamPush 1.9s cubic-bezier(.45,.05,.3,1) .55s both; }
+/* 环屏：夹在远景与中景看台之间；只写 GYM BATTLE 与属性，绝不写馆主名 */
+.ar-screen { position: absolute; left: 50%; top: 27.5%; width: 54%; height: 7.5%; transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: center; gap: 14px; overflow: hidden; border-radius: 6px;
+  border: 2px solid var(--gym-accent, #F5B301); color: #FFF3C4;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 3px, transparent 3px 9px), linear-gradient(180deg, #0b1424, #13223a);
+  box-shadow: 0 0 18px var(--gym-accent-soft, rgba(255,220,120,.4)), inset 0 0 14px rgba(0,0,0,.6); }
+.ar-screen-label { font-size: clamp(16px, 2vw, 26px); font-weight: 900; letter-spacing: .18em; text-shadow: 0 0 10px var(--gym-accent, #F5B301); }
+.ar-screen-type { font-size: clamp(15px, 1.8vw, 22px); font-weight: 800; padding: 2px 12px; border-radius: 999px;
+  background: var(--gym-accent, #F5B301); color: #1b2436; }
+.ar-screen-sweep { position: absolute; inset: 0; transform: translateX(-110%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent); }
+#gymArena.play .ar-screen-sweep { animation: arSweep 1.05s ease-in-out 3.1s both; }
+@keyframes arSweep { from { transform: translateX(-110%); } to { transform: translateX(110%); } }
 /* 尊重系统「减少动态效果」：关掉呼吸动画，静态保留金色光晕 */
 @media (prefers-reduced-motion: reduce) {
   .dex-cell.shiny img, .gym-boss-img, .gym-victory-img { animation: none; }
@@ -3004,7 +3117,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.53.0";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.54.0";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -3401,9 +3514,11 @@ function checkDailyReset(){
 /* ==================== 3. 音效与朗读 ==================== */
 let audioCtx = null;
 function ctx(){ if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === "suspended") audioCtx.resume(); return audioCtx; }
-function tone(freq, start, dur, type = "sine", vol = 0.25){
+function tone(freq, start, dur, type = "sine", vol = 0.25, toFreq = 0){
   try { const ac = ctx(); const o = ac.createOscillator(), g = ac.createGain();
-    o.type = type; o.frequency.value = freq; g.gain.setValueAtTime(vol, ac.currentTime + start);
+    o.type = type; o.frequency.value = freq;
+    if (toFreq) o.frequency.exponentialRampToValueAtTime(toFreq, ac.currentTime + start + dur);
+    g.gain.setValueAtTime(vol, ac.currentTime + start);
     g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + start + dur);
     o.connect(g); g.connect(ac.destination); o.start(ac.currentTime + start); o.stop(ac.currentTime + start + dur + 0.05);
   } catch(e){}
@@ -3414,7 +3529,12 @@ const sfx = {
   wrong:   () => tone(180, 0, .3, "sawtooth", .18),
   reward:  () => { tone(523,0,.12); tone(659,.11,.12); tone(784,.22,.12); tone(1047,.33,.3); },
   open:    () => { tone(300,0,.1,"square",.2); tone(500,.12,.1,"square",.2); tone(900,.25,.4); },
-  fanfare: () => { [523,659,784,1047,784,1047].forEach((f,i)=>tone(f, i*.15, .2)); }
+  fanfare: () => { [523,659,784,1047,784,1047].forEach((f,i)=>tone(f, i*.15, .2)); },
+  /* v4 道馆：鼓点 / 光柱whoosh / 命中 / 落空，均为合成音，不新增音频资源 */
+  drum:   () => { tone(110,0,.26,"sine",.26,55); tone(165,.03,.16,"triangle",.11,80); },
+  whoosh: () => tone(320,0,.36,"sawtooth",.09,1200),
+  hit:    () => { tone(240,0,.12,"square",.15,90); tone(720,.05,.14,"triangle",.12); },
+  miss:   () => tone(170,0,.3,"sawtooth",.15,80)
 };
 /* ==================== 语音引擎：自动挑选更自然的中文嗓音 ==================== */
 let ALL_VOICES = [], ZH_VOICES = [], CURRENT_VOICE = null;
@@ -3612,8 +3732,9 @@ function closeDialog(){ busyStudying = false;
   overlay.classList.remove("show");
   activeModule = null;
   stopSpeak();   // v3.29.1：系统嗓音 + 云端音频都要停，否则关弹窗后云语音还在念
-  /* v3.53.0：道馆全屏场景必须随弹窗一起收掉，否则中途点 X 会留下一层挡住整页的 fixed 层 */
-  if (document.body.classList.contains("gym-live")) { try { gymArenaDestroy(); } catch(e){} }
+  /* v3.53.0：道馆全屏场景必须随弹窗一起收掉，否则中途点 X 会留下一层挡住整页的 fixed 层
+     v4.1：收服演出期间例外——要先把答题框收起来、让馆主与精灵球独占一屏，场景必须留着 */
+  if (document.body.classList.contains("gym-live") && !gymCinema) { try { gymArenaDestroy(); } catch(e){} }
   if (onDialogClose){ const f = onDialogClose; onDialogClose = null; f(); }
 }
 dialogClose.addEventListener("click", () => { sfx.click(); closeDialog(); });
@@ -4013,7 +4134,7 @@ function bindPinyinPad(rowSel, dispSel, alive, onSubmit){
 }
 
 /* 通用答题引擎：答错题重排队尾直到答对（儿童友好） */
-function runQuiz({ title, color, questions, onFinish, speakOnShow = false, moduleKey = null, onAnswer = null, noRetry = false, progressHTML = null }){
+function runQuiz({ title, color, questions, onFinish, speakOnShow = false, moduleKey = null, onAnswer = null, noRetry = false, progressHTML = null, afterAnswer = null }){
   /* v3.52.0：noRetry=true 用于「道馆挑战」——一题只有一次机会，答错不排队尾（否则 20 题会被拖成 30+ 题），
      进度按"已答题数"推进，正确率仍按首答统计。日常模块不传此参数，行为完全不变。 */
   const myToken = ++quizToken;   // 本场作答令牌；重开/切换时令牌变更，旧计时器回调据此失效
@@ -4124,7 +4245,9 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
       if (firstWrong && onAnswer) onAnswer(q, false);   // 首答错才回调（重试不再扣）
       attemptedFirst.add(q.id);
       if (noRetry) queue.shift(); else queue.push(queue.shift());   // 道馆：答错也直接进下一题，不重考
-      /* 有解析时多留时间读完；道馆 20 题节奏紧，压到 1.5 秒（带解析 2.6 秒） */
+      /* 外部接管切题（道馆撑住对话）：返回 true 则不排自动进题计时器 */
+      if (afterAnswer && afterAnswer(q, false, show)) return;
+      /* 有解析时多留时间读完；道馆 24 题节奏紧，压到 1.5 秒（带解析 2.6 秒） */
       if (!needRelearn) setTimeout(()=>{
         if (myToken !== quizToken) return;
         queue.length ? show() : finish();   // noRetry 下答错可能把队列清空，必须显式收尾
@@ -4983,7 +5106,9 @@ const YW_MINUS_STROKE = [
   { q:"「田」减一笔变成什么字？", opts:["日","目","由","甲"], answer:"日" }
 ];
 /* v3.52.0：与数学同构 —— 出题（10 题）与弹窗分离，供道馆挑战复用 */
-function buildChineseQs(){
+function buildChineseQs(n = 10){
+  const extra = Math.max(0, n - 10);
+  const cnt = i => 2 + (i < extra ? 1 : 0);   // 12 题时 3/3/2/2/2
   const qs = [];
   const usedPrompt = new Set();
   /* v3.51.5：同一场内题干去重。原来「音节分类」两次 pick 可能抽到同一个音节，
@@ -4994,7 +5119,7 @@ function buildChineseQs(){
   }
   /* ① 音节分类 2 题：给一个音节，判断属于声母/韵母/整体认读哪一类 */
   const cats = [{n:"声母",a:SHENGMU},{n:"韵母",a:YUNMU},{n:"整体认读音节",a:ZHENGTI}];
-  for (let k=0;k<2;k++){
+  for (let k=0;k<cnt(0);k++){
     let q;
     do {
       const c = pick(cats,1)[0], item = pick(c.a,1)[0];
@@ -5003,7 +5128,7 @@ function buildChineseQs(){
     } while(!addQ(q));
   }
   /* ② 声母辨析 2 题：形近/平翘舌声母，配例字朗读 */
-  for (let k=0;k<2;k++){
+  for (let k=0;k<cnt(1);k++){
     let q;
     do {
       const o = pick(YW_SM_CONFUSE,1)[0];
@@ -5012,7 +5137,7 @@ function buildChineseQs(){
     } while(!addQ(q));
   }
   /* ③ 韵母辨析 2 题：ui/iu、ei/ie、前鼻/后鼻 */
-  for (let k=0;k<2;k++){
+  for (let k=0;k<cnt(2);k++){
     let q;
     do {
       const o = pick(YW_YM_CONFUSE,1)[0];
@@ -5021,7 +5146,7 @@ function buildChineseQs(){
     } while(!addQ(q));
   }
   /* ④ 四字词语填空 2 题：同音字干扰是刻意的，靠词语语境定答案 */
-  for (let k=0;k<2;k++){
+  for (let k=0;k<cnt(3);k++){
     let q;
     do {
       const o = pick(YW_IDIOMS,1)[0];
@@ -5029,7 +5154,7 @@ function buildChineseQs(){
     } while(!addQ(q));
   }
   /* ⑤ 减一笔 2 题：减一笔的结果唯一，避免「加一笔」多解争议 */
-  for (let k=0;k<2;k++){
+  for (let k=0;k<cnt(4);k++){
     let q;
     do {
       const o = pick(YW_MINUS_STROKE,1)[0];
@@ -5089,7 +5214,9 @@ function makeShapeCountQ(i){
     explain:`图里有 ${counts[0]} 个${two[0].name}、${counts[1]} 个${two[1].name}，所以${two[target].name}有 ${counts[target]} 个。` };
 }
 /* v3.52.0：出题与弹窗分离 —— 本函数只负责「造 10 道题」并返回，供数学模块与道馆挑战共用 */
-function buildG1ExamQs(){
+function buildG1ExamQs(n = 10){
+  const ex = Math.max(0, n - 10);
+  const c1 = 2 + Math.ceil(ex / 2), c2 = 2 + Math.floor(ex / 2);   // 12 题时 3/3/2
   const questions = [];
   const usedPrompt = new Set();
   /* v3.51.2：同一场内题干去重 —— 原来「十位个位 / 比大小 / 括号填数」各出 2 题，
@@ -5098,16 +5225,16 @@ function buildG1ExamQs(){
     if (usedPrompt.has(q.prompt)) return false;
     usedPrompt.add(q.prompt); questions.push(q); return true;
   }
-  /* ① 十位个位 2 题 */
-  for (let k=0;k<2;k++){
+  /* ① 十位个位 */
+  for (let k=0;k<c1;k++){
     let q;
     do {
       const ones = rnd(1,9), n = 10 + ones;
       q = { id:"ex_a"+k, prompt:`1 个十和 ${ones} 个一合起来是几？`, sub:"数的组成", answerMode:"input", answer:n };
     } while(!addQ(q));
   }
-  /* ② 算式比大小 2 题（三选一，不用数字键盘） */
-  for (let k=0;k<2;k++){
+  /* ② 算式比大小（三选一，不用数字键盘） */
+  for (let k=0;k<c2;k++){
     let q;
     do {
       const a=rnd(2,9), b=rnd(2,9), c=rnd(2,9), d=rnd(2,9);
@@ -5154,7 +5281,9 @@ function mathQuizG1Exam(){
 /* 一年级专项（v3.41）：按部编一年级上/下的核心知识点出题，而非单纯放大数值范围。
    覆盖：10 以内数的分解与组成、20 以内进位加、20 以内退位减、凑十法、比多少。 */
 /* v3.52.0：同样拆成纯函数，供道馆挑战复用 */
-function buildG1Qs(){
+function buildG1Qs(n = 10){
+  const ex = Math.max(0, n - 10);
+  const c1 = 2 + Math.ceil(ex / 2), c2 = 3 + Math.floor(ex / 2);   // 12 题时 3/4/3
   const questions = [];
   const usedPrompt = new Set();
   /* v3.51.2：同一场内题干去重。进位加 3 题 / 退位减 3 题最容易撞车（约 25% 场次有重复）。 */
@@ -5163,16 +5292,16 @@ function buildG1Qs(){
     usedPrompt.add(q.prompt); questions.push(q); return true;
   }
   /* 数学答案都是数字 → 一律 answerMode:"input"，用数字键盘输入，不给 ABCD 选项（避免蒙对） */
-  // ① 10 以内数的分解与组成（2 题）：（  ）和 4 组成 9
-  for (let k=0;k<2;k++){
+  // ① 10 以内数的分解与组成：（  ）和 4 组成 9
+  for (let k=0;k<c1;k++){
     let q;
     do {
       const total = rnd(6,10), part = rnd(1,total-1), ans = total - part;
       q = { id:"g1a"+k, prompt:`（  ）和 ${part} 组成 ${total}`, sub:"数的组成", answerMode:"input", answer:ans };
     } while(!addQ(q));
   }
-  // ② 20 以内进位加法（3 题）：个位相加满十，如 9 + 6（和恒在 11~18，必有进位）
-  for (let k=0;k<3;k++){
+  // ② 20 以内进位加法：个位相加满十，如 9 + 6（和恒在 11~18，必有进位）
+  for (let k=0;k<c2;k++){
     let q;
     do {
       const a = rnd(5,9), b = rnd(11-a,9), ans = a + b;
@@ -6205,8 +6334,9 @@ function startAdventure(){
    - 不计入今日任务（独立玩法，避免打乱全勤与大师球节奏）；
    - 馆主池必须 ∩ hasShinyArt()，否则会出现「打完了图鉴里颜色没变」；
    - 选馆主用 date+name 的确定性哈希，同一天刷新多少次都是同一只，跨天自动换。 */
-const GYM_TOTAL = 20;          // 总题数
-const GYM_PASS_RATE = 0.8;     // 通关门槛（首答正确率）
+const GYM_QUESTION_TOTAL = 24; // 题库题数（语文 12 + 数学 12）
+const GYM_WIN_RIGHT = 20;      // 通关所需答对数（BOSS 血 20 格）
+const GYM_MY_HP = 3;           // 我方血条格数（另有 1 次撑住）
 const GYM_MAX_TRIES = 1;       // 每日挑战次数（每天一次机会，没通关就等明天）
 const GYM_LOG_KEEP_DAYS = 30;  // 战绩保留天数（也只用于近 7 天馆主去重）
 
@@ -6298,7 +6428,7 @@ function gymHome(){
   const did = displayId(s.boss);
   const pd = POKEDATA[did] || {};
   const typeTxt = (pd.t || []).join("、");
-  const need = Math.ceil(GYM_TOTAL * GYM_PASS_RATE);
+  const need = GYM_WIN_RIGHT;
   const diffName = ({10:"10 以内加减法",20:"20 以内加减法",mul:"99 乘法口诀",div:"表内除法",g1:"一年级专项",g1exam:"一年级试卷专练"})[state.mathDiff || "10"] || "10 以内加减法";
   openDialog(`<h2 style="color:#B8860B">🏛 今日道馆</h2>
     <div class="gym-stage">
@@ -6311,10 +6441,10 @@ function gymHome(){
     </div>
     <div class="gym-line">「我是今天的馆主，颜色和别的可不太一样哦。<br>先猜猜我是谁 —— 答对 ${need} 道题，就让你收服我！」</div>
     <div class="gym-rules">
-      <div>📚 数学 10 题 ・ 语文 10 题　<b>共 ${GYM_TOTAL} 题</b></div>
-      <div>⏱ 每道题只有一次机会，答错不重考</div>
+      <div>📚 数学 12 题 ・ 语文 12 题　<b>题库共 ${GYM_QUESTION_TOTAL} 题</b></div>
+      <div>⏱ 一题一次机会，答错扣 1 体力；错 3 次撑住，错 4 次失败</div>
       <div>🔢 数学按当前难度：<b>${diffName}</b></div>
-      <div>🎯 达标：<b>${need} / ${GYM_TOTAL}</b> 题　今日剩余挑战：<b>${s.triesLeft}</b> 次</div>
+      <div>🎯 通关：<b>答对 ${need} 题</b>（BOSS 血归零）　今日剩余挑战：<b>${s.triesLeft}</b> 次</div>
     </div>
     <div style="margin-top:14px">
       <button class="big-btn yellow" id="gymStart">⚔️ 开始挑战</button>
@@ -6324,18 +6454,18 @@ function gymHome(){
   $("#gymLater").addEventListener("click", ()=>{ sfx.click(); closeDialog(); });
 }
 
-/* 组卷：数学 10（按当前档位）+ 语文 10，混排打散，并统一重编 id 防两科撞号 */
+/* 组卷：数学 12（按当前档位）+ 语文 12，混排打散，并统一重编 id 防两科撞号 */
 function gymQuestions(){
   const diff = state.mathDiff || "10";
   let math;
-  if (diff === "g1") math = buildG1Qs();
-  else if (diff === "g1exam") math = buildG1ExamQs();
-  else math = buildBasicQs(diff, 10);
-  const chin = buildChineseQs();
+  if (diff === "g1") math = buildG1Qs(12);
+  else if (diff === "g1exam") math = buildG1ExamQs(12);
+  else math = buildBasicQs(diff, 12);
+  const chin = buildChineseQs(12);
   /* subject 只用于统计/测试，引擎不认识也无害 */
   let qs = [
-    ...math.slice(0, 10).map(q => Object.assign({}, q, { subject: "math" })),
-    ...chin.slice(0, 10).map(q => Object.assign({}, q, { subject: "chinese" }))
+    ...math.slice(0, 12).map(q => Object.assign({}, q, { subject: "math" })),
+    ...chin.slice(0, 12).map(q => Object.assign({}, q, { subject: "chinese" }))
   ];
   shuffle(qs);
   return qs.map((q, i) => Object.assign({}, q, { id: "gym" + i }));
@@ -6345,9 +6475,12 @@ function gymQuestions(){
    设计：门口只见剪影 → 进场上演 4.2 秒体育馆登场（灯带/镜头推进/聚光灯/馆主升起/转彩色/名字横幅）
    → 场景转虚化背景，20 道题在此期间作答（馆主 HP 条内联进进度行，不占额外高度）。
    全部用 transform/opacity/filter，答题期停掉观众应援动画，避免十几分钟里白烧帧率。 */
-const GYM_ARENA_MS = 4200;        // 出场动画总时长（CSS 时间轴上名字横幅在 3.75s 入场）
+const GYM_ARENA_MS = 4200;        // 出场动画总时长（CSS 时间轴上名字横幅在 3.05s 入场、3.6s 随馆主归位）
 const AR_CROWD_COLORS = ["#E8A0A0","#9FC0E8","#A8D6A0","#EFD08A","#BFA8E0","#E8B48C","#8FCBCB","#DDA8C6","#F0C878","#94AEDC"];
 let gymArenaTimers = [], gymArenaFinished = false;
+/* 收服演出期间为 true：closeDialog 不再顺手销毁场景（答题框要收起来，馆主和精灵球要在台上）。
+   用 var 声明——closeDialog 在本段之前就定义并可能被早调用，var 提升可避免 TDZ。 */
+var gymCinema = false;
 
 /* 确定性伪随机（xorshift32）：同一天的观众布局固定，跨天换一批，看着像"今天来的观众不一样" */
 function arenaRand(seed){
@@ -6366,14 +6499,21 @@ function gymArenaDestroy(){
   gymArenaFinished = true;
   const el = gymArenaEl();
   if (el && el.parentNode) el.parentNode.removeChild(el);
+  const bubble = document.getElementById("gymTalkBubble");
+  if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble);
   document.body.classList.remove("gym-live");
 }
 
 function gymArenaBuild(bossId){
   gymArenaDestroy();
   const did = displayId(bossId), nm = POKEMON[did-1];
+  const types = (POKEDATA[did] && POKEDATA[did].t) || [];
+  const accent = TYPE_COLOR[types[0]] || "#F5B301";
+  const myId = (state.partnerId && state.dex && state.dex.includes(state.partnerId)) ? state.partnerId : 25;
   const el = document.createElement("div");
   el.id = "gymArena";
+  el.style.setProperty("--gym-accent", accent);
+  el.style.setProperty("--gym-accent-soft", accent + "66");
   let lamps = "";
   for (let i=0;i<8;i++) lamps += `<div class="ar-lamp" style="--i:${i}"></div>`;
   let sparks = "";
@@ -6388,16 +6528,29 @@ function gymArenaBuild(bossId){
       <div class="ar-stand ar-stand--far"><div class="ar-crowd"></div></div>
       <div class="ar-stand ar-stand--mid"><div class="ar-crowd"></div></div>
       <div class="ar-stand ar-stand--near"><div class="ar-crowd"></div></div>
+      <div class="ar-screen"><span class="ar-screen-type">${types[0] || "一般"}</span><span class="ar-screen-label">GYM BATTLE</span><div class="ar-screen-sweep"></div></div>
       <div class="ar-floor"><div class="ar-floor-edge"></div><div class="ar-floor-line"></div><div class="ar-floor-ring"></div></div>
+      <div class="ar-beam"></div><div class="ar-cheer-flash"></div>
       <div class="ar-spot"></div>
       <div class="ar-shock"></div>
-      <img class="ar-boss" src="${shinySpriteUrl(did)}" alt="">
+      <div class="ar-shock ar-shock--outer"></div>
+      <div class="ar-reflect"><img src="${shinySpriteUrl(did)}" alt=""></div>
       ${sparks}
     </div>
-    <div class="ar-namebar"><span class="ar-name-tag">馆主</span><span class="ar-name-txt">✦ 闪光 ${nm}</span></div>
+    <div class="ar-boss-unit" id="gymBossUnit">
+      <img class="ar-boss" id="gymBoss" src="${shinySpriteUrl(did)}" alt="">
+      <div class="ar-namebar"><span class="ar-name-tag">馆主</span><span class="ar-name-txt">✦ 闪光 ${nm}</span></div>
+    </div>
+    <div class="ar-hitring"></div>
+    <img class="ar-mine" src="${spriteUrl(myId)}" alt="">
     <div class="ar-veil"></div>
     <div class="ar-skip">轻触屏幕可跳过</div>`;
   document.body.appendChild(el);
+  /* 台词气泡独立挂在 body 上（z-index 101 > overlay 100），答题期弹窗不会遮住它 */
+  const bubble = document.createElement("div");
+  bubble.className = "ar-bubble"; bubble.id = "gymTalkBubble";
+  bubble.textContent = "来吧，让我看看你的实力！";
+  document.body.appendChild(bubble);
   document.body.classList.add("gym-live");
   /* 观众：每层 3 排 × 10 个 = 30 个，共 90 个。排成整齐的"排排坐"比纯随机更像观众席；
      x 范围按各层看台的斜边内缩，避免点被 clip-path 裁掉 */
@@ -6412,7 +6565,7 @@ function gymArenaBuild(bossId){
       const top = AR_ROW_TOP[row] + (rand() - .5) * 11;
       const size = 10 + L + Math.round(rand()*3);
       const color = AR_CROWD_COLORS[Math.floor(rand()*AR_CROWD_COLORS.length)] || "#D9C9EE";
-      html += `<i style="left:${left.toFixed(2)}%;top:${top.toFixed(2)}%;width:${size}px;height:${size}px;background:${color};--i:${k}"></i>`;
+      html += `<i style="left:${left.toFixed(2)}%;top:${top.toFixed(2)}%;width:3px;height:${size}px;background:${color};--i:${k}"></i>`;
     }
     box.innerHTML = html;
   });
@@ -6426,17 +6579,26 @@ function gymArenaPlay(onDone){
   if (!el){ onDone && onDone(); return; }
   const reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   el.classList.add("show");
+  const bubble = document.getElementById("gymTalkBubble");
+  /* 入场台词在馆主归位后(3.9s)出现，进答题后再停留一会儿就淡出 */
+  gymArenaTimers.push(setTimeout(()=>{ if (bubble) bubble.classList.add("show"); }, 3900));
   void el.offsetWidth;                        // 强制重排，保证动画从第 0 帧开始（否则首帧被合并掉）
   const finish = () => {
     if (gymArenaFinished) return;
     gymArenaFinished = true;
     gymArenaTimers.forEach(t => clearTimeout(t));
     gymArenaTimers = [];
+    /* 跳过登场时 3.6s 的归位计时器已被清掉，这里兜底补上，馆主不会留在中场被弹窗挡脸 */
+    const b = document.getElementById("gymBossUnit");
+    if (b) b.classList.add("retreat");
+    el.classList.add("retreating");
     onDone && onDone();
   };
   if (reduce){ finish(); return; }
   el.classList.add("play");
   try {
+    if (sfx.drum) sfx.drum();                                                    // 登场鼓点
+    if (sfx.whoosh) sfx.whoosh();                                                // 光柱落下
     for (let i=0;i<8;i++) tone(392 + i*44, i*.08, .1, "triangle", .11);        // 灯带逐盏点亮
     tone(98, .55, 1.7, "sine", .1);                                            // 镜头推进的铺底低频
     tone(392, 2.5, .16, "triangle", .16);                                       // 馆主升起的音阶
@@ -6447,11 +6609,20 @@ function gymArenaPlay(onDone){
     tone(659, 3.3, .5, "sine", .16);
     tone(784, 3.3, .55, "sine", .16);
     gymArenaTimers.push(setTimeout(()=>{ try { sfx.reward(); } catch(e){} }, 3750));
+    /* 归位：与名字条(3.55s)/台词(3.9s)同步，0.6s 到位后正好进答题，总时长仍 4.2s */
+    gymArenaTimers.push(setTimeout(()=>{
+      const b = document.getElementById("gymBossUnit");
+      if (b) b.classList.add("retreat");
+      el.classList.add("retreating");
+    }, 3600));
+    /* 开场白在进入答题后 ~2.8s 淡出，之后只在关键节点说话 */
+    gymArenaTimers.push(setTimeout(()=>{ if (bubble) bubble.classList.remove("show"); }, 7000));
   } catch(e){}
   el.addEventListener("click", ()=>{
     if (gymArenaFinished) return;
     /* 跳过：让 CSS 动画直接到终态（孩子能看见馆主现身），短暂停顿后进第 1 题 */
     try { el.getAnimations().forEach(a => { try { a.finish(); } catch(e){} }); } catch(e){}
+    if (bubble) { bubble.classList.add("show"); clearTimeout(window.__gymBubbleOff); window.__gymBubbleOff = setTimeout(()=>bubble.classList.remove("show"), 2200); }
     gymArenaTimers.push(setTimeout(finish, 220));
   }, { once: true });
   gymArenaTimers.push(setTimeout(finish, GYM_ARENA_MS));
@@ -6464,14 +6635,15 @@ function gymArenaDim(){
   el.classList.add("dim", "idle");
 }
 
-/* 道馆 HP：达标题数就是血条格数，答对扣 1 格 —— 与 80% 判定同源，不会出现"血条空了却没通关" */
-function gymNeedRight(){ return Math.ceil(GYM_TOTAL * GYM_PASS_RATE); }
-function gymHpHtml(right){
-  const need = gymNeedRight();
-  const left = Math.max(0, need - right);
-  const pct = need ? (left / need * 100) : 0;
-  return `<span class="gym-hp"><i id="gymHpFill" style="width:${pct}%"></i></span>`
-       + `<span class="gym-hp-txt" id="gymHpTxt">馆主 HP ${left}/${need}</span>`;
+/* 道馆双血条（v4）：BOSS 20 格红，我方 3 格绿 + 1 次撑住；两条都内联进度行，不增高 */
+function gymNeedRight(){ return GYM_WIN_RIGHT; }
+function gymHpHtml(right, myHP = GYM_MY_HP){
+  const boss = Math.max(0, GYM_WIN_RIGHT - right);
+  const mine = Math.max(0, Math.min(GYM_MY_HP, myHP));
+  return `<span class="gym-hp"><i id="gymHpFill" style="width:${boss / GYM_WIN_RIGHT * 100}%"></i></span>`
+       + `<span class="gym-hp-txt" id="gymHpTxt">馆主 HP ${boss}/${GYM_WIN_RIGHT}</span>`
+       + `<span class="gym-hp mine"><i id="gymMyHpFill" style="width:${mine / GYM_MY_HP * 100}%"></i></span>`
+       + `<span class="gym-hp-txt" id="gymMyHpTxt">我方 ${mine}/${GYM_MY_HP}</span>`;
 }
 
 function startGymBattle(){
@@ -6479,9 +6651,76 @@ function startGymBattle(){
   if (!s.canPlay) { gymHome(); return; }
   const qs = gymQuestions();
   const bossId = s.boss;
-  let right = 0;
+  let right = 0, myHP = GYM_MY_HP, endured = false, settled = false, pausedForEndure = false;
+  let arenaFlashTimer = null, arenaBubbleTimer = null, arenaHitTimer = null;
+  let wrongCount = 0;
+  const cheer = () => {
+    const el = gymArenaEl(); if (!el) return;
+    el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+    clearTimeout(arenaFlashTimer); arenaFlashTimer = setTimeout(()=>el.classList.remove("flash"), 500);
+  };
+  /* 说话：显示 hold 毫秒后自动淡出；pop 只做一次弹跳，动画结束即清掉防残留 */
+  const bubbleSay = (txt, hold = 2200) => {
+    const b = document.getElementById("gymTalkBubble"); if (!b) return;
+    b.textContent = txt;
+    b.classList.add("show");
+    b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
+    clearTimeout(arenaBubbleTimer);
+    arenaBubbleTimer = setTimeout(()=>{
+      b.classList.remove("show");
+      try { b.getAnimations().forEach(a => { try { a.cancel(); } catch(e){} }); } catch(e){}
+    }, hold);
+  };
+  /* 受击：WAAPI 播放一次抖动+爆闪，不碰 CSS animation 属性，
+     否则移除类名时入场的 arBossRise / arBossReveal 会重新播一遍 */
+  const bossHit = () => {
+    const el = gymArenaEl(); if (!el) return;
+    el.classList.remove("hit"); void el.offsetWidth; el.classList.add("hit");
+    clearTimeout(arenaHitTimer); arenaHitTimer = setTimeout(()=>el.classList.remove("hit"), 540);
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const b = document.getElementById("gymBoss");
+    if (!b || typeof b.animate !== "function") return;
+    try {
+      b.animate([
+        { transform: "translate(0, 0) rotate(0deg)",          filter: "brightness(1)" },
+        { transform: "translate(-9px, -6px) rotate(-5deg) scale(1.04)",
+          filter: "brightness(1.75) saturate(1.2) drop-shadow(0 0 26px rgba(255,150,90,.95))", offset: .12 },
+        { transform: "translate(9px, 0) rotate(4deg)",  filter: "brightness(1.5)", offset: .28 },
+        { transform: "translate(-5px, 0) rotate(-2deg)", filter: "brightness(1.15)", offset: .46 },
+        { transform: "translate(5px, 0)",               filter: "brightness(1.05)", offset: .62 },
+        { transform: "translate(-3px, 0)",              filter: "brightness(1)", offset: .8 },
+        { transform: "translate(0, 0) rotate(0deg)",                  filter: "brightness(1)" }
+      ], { duration: 560, easing: "ease-out" });
+    } catch(e){}
+  };
+  /* 台词只在关键节点出现：答对每 5 题一句、答错一句、撑住一句 */
+  const HIT_LINES  = ["漂亮！这一击我记住了。", "唔……有点本事。", "好球！再来一题试试！"];
+  const MISS_LINES = ["答错啦，轮到我还击了！", "哈哈，这题没难住我。", "别急，看清题目再选。"];
   closeDialog();                 // 先收起门口弹窗，让体育馆场景独占一屏
   gymArenaBuild(bossId);
+  const refreshHp = () => {
+    const fill = document.getElementById("gymHpFill"), txt = document.getElementById("gymHpTxt");
+    const mfill = document.getElementById("gymMyHpFill"), mtxt = document.getElementById("gymMyHpTxt");
+    const boss = Math.max(0, GYM_WIN_RIGHT - right);
+    if (fill) fill.style.width = (boss / GYM_WIN_RIGHT * 100) + "%";
+    if (txt) txt.textContent = `馆主 HP ${boss}/${GYM_WIN_RIGHT}`;
+    if (mfill){ mfill.style.width = (Math.max(0, myHP) / GYM_MY_HP * 100) + "%"; mfill.parentNode.classList.toggle("brace", endured && myHP === 1); }
+    if (mtxt) mtxt.textContent = `我方 ${Math.max(0, myHP)}/${GYM_MY_HP}`;
+  };
+  const end = (win) => {
+    if (settled) return;
+    settled = true;
+    quizToken++;                 // 挡住 runQuiz 后续 show() 与切题计时器
+    const bub = document.getElementById("gymTalkBubble");
+    if (bub && bub.parentNode) bub.parentNode.removeChild(bub);
+    if (win){
+      /* 赢了不立刻拆场景：先演「馆主移到中央 → 精灵球砸过去 → 摇三下 → 收服成功」 */
+      gymCatchSequence(bossId, right, myHP);
+      return;
+    }
+    try { gymArenaDestroy(); } catch(e){}
+    finishGymBattleFail(right, myHP);
+  };
   gymArenaPlay(()=>{
     gymArenaDim();
     runQuiz({
@@ -6489,76 +6728,242 @@ function startGymBattle(){
       color: "#B8860B",
       questions: qs,
       noRetry: true,             // 一题一次机会：答错不排队尾
-      /* 进度行内联馆主 HP 条：不新增垂直高度，避免挤爆 1280×800 的答题区 */
-      progressHTML: (doneN) => `第 ${Math.min(doneN+1, GYM_TOTAL)} / ${GYM_TOTAL} 题　${gymHpHtml(right)}`,
+      /* 进度行内联双血条：不新增垂直高度，避免挤爆 1280×800 的答题区 */
+      progressHTML: () => `✅ 已答对 ${right} / ${GYM_WIN_RIGHT}　${gymHpHtml(right, myHP)}`,
       onAnswer(q, ok){
-        if (!ok) return;
-        right++;
-        const fill = document.getElementById("gymHpFill"), txt = document.getElementById("gymHpTxt");
-        if (fill) fill.style.width = (Math.max(0, gymNeedRight() - right) / gymNeedRight() * 100) + "%";
-        if (txt) txt.textContent = `馆主 HP ${Math.max(0, gymNeedRight() - right)}/${gymNeedRight()}`;
+        if (settled) return;
+        if (ok){
+          right++;
+          refreshHp(); cheer(); bossHit();
+          if (sfx.hit) sfx.hit();
+          /* 每 5 题才说一句（第 5/10/15 题各不同），避免每题弹台词分散注意力 */
+          if (right % 5 === 0 && right < GYM_WIN_RIGHT) bubbleSay(HIT_LINES[(right / 5 - 1) % HIT_LINES.length], 2000);
+          if (right >= GYM_WIN_RIGHT) end(true);   // BOSS 血清零：立刻收尾，剩余题不出
+        } else {
+          myHP--; wrongCount++;
+          if (sfx.miss) sfx.miss();
+          bubbleSay(MISS_LINES[(wrongCount - 1) % MISS_LINES.length], 2000);
+          if (myHP <= 0){
+            if (!endured){ endured = true; myHP = 1; pausedForEndure = true; refreshHp(); }
+            else { myHP = 0; refreshHp(); end(false); }
+          } else refreshHp();
+        }
       },
-      onFinish(acc){ finishGymBattle(acc); }
+      /* 撑住时由外部接管切题：弹对话等孩子点「继续战斗」，不能 1.5s 后自动进下一题 */
+      afterAnswer(q, ok, resume){
+        if (!pausedForEndure || settled) return false;
+        pausedForEndure = false;
+        bubbleSay("就差一点……你还能撑住吗？", 3000);
+        openDialog(`<h2 style="color:var(--poke-blue)">💪 撑住了！</h2><div style="font-size:56px">🛡️</div><div style="font-size:26px;line-height:1.6">在最后一刻咬牙撑住了！<br>再答对 ${GYM_WIN_RIGHT - right} 题就能赢！</div><button class="big-btn yellow" id="gymEndureGo">继续战斗！🔥</button>`, {closable:false});
+        const go = document.getElementById("gymEndureGo");
+        /* 注意：不能调 closeDialog()——它会销毁 gym-live 场景，导致背景跳回图鉴。
+           直接 resume() 由 runQuiz 的 openDialog 覆盖当前对话即可。 */
+        if (go) go.addEventListener("click", ()=>{ sfx.click(); if (!settled) resume(); });
+        return true;
+      },
+      onFinish(){ end(right >= GYM_WIN_RIGHT); }   // 题库耗尽（理论不会发生）时兜底
     });
   });
 }
 
-/* 结算：扣次数、写战绩、判定通关 */
-function finishGymBattle(acc){
+/* 结算：扣次数、写战绩、判定通关（v4：单轮，白对 20 = 胜，累计错 4 = 挂） */
+function recordGymResult(right, passed){
   const t = todayStr();
   const bossId = state.gymBossId;
-  const need = Math.ceil(GYM_TOTAL * GYM_PASS_RATE);
-  const right = Math.round(acc / 100 * GYM_TOTAL);
-  const passed = right >= need;
   state.gymDate = t;
   state.gymTries = (state.gymTries || 0) + 1;                 // 中途关窗不会走到这里 → 不扣次数、不记成绩
   if (!state.gymLog || typeof state.gymLog !== "object") state.gymLog = {};
-  state.gymLog[t] = { boss: bossId, acc: acc, right: right, cleared: passed };
+  state.gymLog[t] = { boss: bossId, acc: Math.round(right / GYM_QUESTION_TOTAL * 100), right: right, cleared: passed };
   /* 战绩只留最近 30 天，避免存档无限增长 */
   const keys = Object.keys(state.gymLog).sort();
   if (keys.length > GYM_LOG_KEEP_DAYS) keys.slice(0, keys.length - GYM_LOG_KEEP_DAYS).forEach(k => { delete state.gymLog[k]; });
-  if (passed){
-    state.gymCleared = true;
-    if (!Array.isArray(state.shinyDex)) state.shinyDex = [];
-    if (!state.shinyDex.includes(bossId)) state.shinyDex.push(bossId);
-    state.superBalls = (state.superBalls || 0) + 1;
-    state.balls = (state.balls || 0) + 1;
-    saveState();
-    try { renderDex(); renderHeader(); renderBalls(); renderGymBtn(); } catch(e){}
-    showGymVictory(bossId, acc, right);
-  } else {
-    saveState();
-    try { renderGymBtn(); } catch(e){}
-    showGymFail(acc, right, need);
+  return bossId;
+}
+/* 胜利落库：战绩 + 闪光图鉴。
+   v4.1 起道馆不再奖励精灵球/超级球——打赢的唯一奖励就是「这只闪光归你」。
+   在收服演出开始前就写盘：动画被打断（切后台/锁屏）也不会白打一场。 */
+function commitGymWin(bossId, right, myHP){
+  const id = recordGymResult(right, true) || bossId;
+  state.gymCleared = true;
+  if (!Array.isArray(state.shinyDex)) state.shinyDex = [];
+  if (!state.shinyDex.includes(id)) state.shinyDex.push(id);
+  saveState();
+  try { renderDex(); renderHeader(); renderBalls(); renderGymBtn(); } catch(e){}
+  return id;
+}
+
+/* ==================== 收服演出（v4.1）====================
+   剑盾式节奏（约 3.5 秒，只播一次）：
+     ① 答题框收起 → 馆主从右上角滑回场地中央，名字条淡出
+     ② 精灵球从我家伙伴方向划弧砸向馆主
+     ③ 白闪 + 馆主被吸进球里 → 球落地弹一下
+     ④ 球摇三下（每下之间空一拍，越摇越用力）
+     ⑤ 金环 + 星光炸开 → 弹「收服成功」对话框
+   实现约束：
+   - 平移全部走 WAAPI，绝不用 `.class { animation }`，否则移除类名会重播入场动画；
+   - 球/闪光/金环都是临时 DOM，场景销毁时一起没；
+   - 关答题框不能调 closeDialog 的默认行为（它会拆场景），靠 gymCinema 放行。 */
+function gymCatchSequence(bossId, right, myHP){
+  const id = commitGymWin(bossId, right, myHP);
+  const el = gymArenaEl();
+  const unit = document.getElementById("gymBossUnit");
+  const bossImg = document.getElementById("gymBoss");
+  const reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  /* 没有场景（理论上不会）或系统要求减少动态：直接给结果，别让孩子干等 */
+  if (!el || !unit || typeof unit.animate !== "function" || reduce){
+    try { gymArenaDestroy(); } catch(e){}
+    try { sfx.fanfare(); } catch(e){}
+    showGymVictory(id, right);
+    return;
+  }
+  gymCinema = true;
+  closeDialog();                         // 收起答题框；gymCinema 保证场景不被拆掉
+  el.classList.add("catch");
+  el.classList.remove("dim", "idle");    // 重新点亮体育馆，观众继续应援
+  unit.classList.remove("retreat");
+  unit.classList.add("catch-center");    // 0.6s 从左上方滑回场地中央
+
+  const ball = document.createElement("div");
+  ball.className = "ar-ball"; ball.id = "gymCatchBall";
+  ball.innerHTML = "<i></i>";
+  el.appendChild(ball);
+  const flash = document.createElement("div");
+  flash.className = "ar-catch-flash"; flash.id = "gymCatchFlash";
+  el.appendChild(flash);
+  const burst = document.createElement("div");
+  burst.className = "ar-catch-burst"; burst.id = "gymCatchBurst";
+  el.appendChild(burst);
+
+  const timers = [];
+  const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+  /* 节奏对齐 Switch 剑盾：抛球划一道明显的长弧（0.88s）、球落地弹一下（0.62s）、
+     三下摇晃每下 0.6~0.7s 且中间各空 0.24s 让孩子屏住呼吸，摇完再静默 0.22s 才炸金环。
+     总长约 5.7s —— 太短没悬念（原来 3.5s 像快进），太长孩子会失去耐心。 */
+  const T_THROW = 260, T_HIT = 1140, T_FALL = 1680, T_W1 = 2500, T_W2 = 3340, T_W3 = 4220, T_BURST = 5140, T_END = 5680;
+  const DROP = "translate(0, 100px)";     // 落地后的位置，后面所有摇摆都从这里起步，绝不跳位
+
+  try {
+    if (sfx.whoosh) sfx.whoosh();
+    /* ② 抛球：从我家伙伴那一侧（左下）划一道长弧过来，边飞边转。
+       0.88s 的飞行 + 前慢后更慢的缓动，球在空中能看清轨迹，不像原来 0.62s 一闪就到 */
+    later(()=>{
+      if (!ball.animate) return;
+      try {
+        ball.animate([
+          { transform: "translate(-520px, 250px) scale(.42) rotate(-400deg)", opacity: 0 },
+          { transform: "translate(-410px, 30px) scale(.57) rotate(-310deg)", opacity: 1, offset: .16 },
+          { transform: "translate(-215px, -125px) scale(.78) rotate(-170deg)", opacity: 1, offset: .48 },
+          { transform: "translate(-60px, -70px) scale(.96) rotate(-30deg)", opacity: 1, offset: .8 },
+          { transform: "translate(0, 0) scale(1) rotate(0deg)", opacity: 1 }
+        ], { duration: 880, easing: "cubic-bezier(.26,.03,.36,1)", fill: "forwards" });
+      } catch(e){}
+      tone(300, 0, .85, "sawtooth", .08, 950);   // 滑音跟着整段飞行，别在球还在飞时就断
+    }, T_THROW);
+    /* ③ 命中：白闪 + 馆主缩成一点被吸进球 */
+    later(()=>{
+      flash.classList.remove("on"); void flash.offsetWidth; flash.classList.add("on");
+      if (sfx.hit) sfx.hit();
+      if (bossImg && bossImg.animate){
+        try {
+          bossImg.animate([
+            { filter: "brightness(1)", opacity: 1 },
+            { filter: "brightness(2.2) saturate(1.3)", opacity: 1, offset: .35 },
+            { filter: "brightness(2.6)", opacity: .15 }
+          ], { duration: 460, easing: "ease-in", fill: "forwards" });
+        } catch(e){}
+      }
+      try {
+        unit.animate([
+          { transform: "translate(-50%, 0) scale(1) rotate(0deg)" },
+          { transform: "translate(-50%, 0) scale(1.08) rotate(0deg)", offset: .25 },
+          { transform: "translate(-50%, 0) scale(.05) rotate(20deg)", opacity: 0 }
+        ], { duration: 520, easing: "cubic-bezier(.5,0,.9,.6)", fill: "forwards" });
+      } catch(e){}
+      tone(180, 0, .2, "square", .16, 90);
+    }, T_HIT);
+    /* 球落地：重力下落 → 触地压扁 → 轻轻回弹 → 躺住。0.62s，比原来 0.38s 从容得多 */
+    later(()=>{
+      if (!ball.animate) return;
+      try {
+        ball.animate([
+          { transform: "translate(0, 0) scale(1)", easing: "cubic-bezier(.5,0,.9,.6)" },
+          { transform: "translate(0, 100px) scale(1.1, .9)", offset: .62, easing: "cubic-bezier(.2,.8,.4,1)" },
+          { transform: "translate(0, 86px) scale(.97, 1.05)", offset: .8, easing: "cubic-bezier(.5,0,.9,.6)" },
+          { transform: DROP + " scale(1)" }
+        ], { duration: 620, fill: "forwards" });
+      } catch(e){}
+      tone(96, 0, .26, "sine", .2);
+    }, T_FALL);
+    /* ④ 摇三下：幅度一次比一次大（18°/22°/26°），每一下都是一次带阻尼的倾倒—回落，
+       摇完停 0.24s 再摇下一下。原来 0.38s 一摇 + 0.48s 间隔，像在催进度，没有悬念。 */
+    const wobble = (at, deg, ms) => later(()=>{
+      if (!ball.animate) return;
+      try {
+        ball.animate([
+          { transform: DROP + " rotate(0deg)", easing: "cubic-bezier(.4,0,.6,1)" },
+          { transform: DROP + ` rotate(${-deg}deg)`, offset: .24, easing: "cubic-bezier(.4,0,.5,1)" },
+          { transform: DROP + ` rotate(${-deg * .84}deg)`, offset: .4 },
+          { transform: DROP + ` rotate(${deg * .78}deg)`, offset: .58 },
+          { transform: DROP + ` rotate(${deg * .34}deg)`, offset: .74 },
+          { transform: DROP + ` rotate(${-deg * .12}deg)`, offset: .88 },
+          { transform: DROP + " rotate(0deg)" }
+        ], { duration: ms, fill: "forwards" });
+      } catch(e){}
+      tone(520, 0, .13, "square", .11);
+    }, at);
+    wobble(T_W1, 18, 600);
+    wobble(T_W2, 22, 640);
+    wobble(T_W3, 26, 700);
+    /* ⑤ 第三下摇完 → 金环 + 星光炸开，收服成功 */
+    later(()=>{
+      burst.classList.remove("on"); void burst.offsetWidth; burst.classList.add("on");
+      try { sfx.fanfare(); } catch(e){}
+      try { starBurst(window.innerWidth / 2, window.innerHeight * .62, 22); } catch(e){}
+    }, T_BURST);
+    later(()=>{
+      gymCinema = false;      // 结算弹窗之后的 closeDialog 要能正常拆场景
+      showGymVictory(id, right);
+    }, T_END);
+  } catch(e){
+    gymCinema = false;
+    try { gymArenaDestroy(); } catch(err){}
+    showGymVictory(id, right);
   }
 }
 
-function showGymVictory(id, acc, right){
+function finishGymBattleFail(right, myHP){
+  recordGymResult(right, false);
+  saveState();
+  try { renderGymBtn(); } catch(e){}
+  showGymFail(right, myHP);
+}
+
+function showGymVictory(id, right){
   const did = displayId(id);
-  try { sfx.fanfare(); confetti(70); starBurst(window.innerWidth/2, window.innerHeight/2, 20); } catch(e){}
+  try { confetti(70); starBurst(window.innerWidth/2, window.innerHeight/2, 20); } catch(e){}
   openDialog(`<div id="gymResult">
-    <div class="new-tag">✦ 道馆挑战成功 ✦</div>
+    <div class="new-tag">✦ 收服成功 ✦</div>
     <div class="gym-victory-card">
       <img class="gym-victory-img" src="${shinySpriteUrl(did)}" alt="闪光 ${POKEMON[did-1]}">
       <div class="gym-victory-name">✦ 闪光 ${POKEMON[did-1]} ✦</div>
-      <div class="gym-victory-meta">No.${String(did).padStart(3,"0")}　一次答对 ${right} / ${GYM_TOTAL} 题</div>
+      <div class="gym-victory-meta">No.${String(did).padStart(3,"0")}　答对 ${right} / ${GYM_WIN_RIGHT} 题，馆主 HP 归零</div>
     </div>
-    <div class="gym-victory-line">馆主认可了你的实力！<br>它愿意跟你走啦～</div>
-    <div class="gym-reward">🎁 奖励：超级球 ×1　精灵球 ×1</div>
+    <div class="gym-victory-line">精灵球摇了三下，安安静静不动了……<br><b style="color:#B8860B">收服成功！</b>闪光 ${POKEMON[did-1]} 加入你的图鉴啦～</div>
     <button class="big-btn yellow" id="gymVictoryOk">收下闪光伙伴 ✨</button>
   </div>`, { closable: false });
   const ok = document.getElementById("gymVictoryOk");
   if (ok) ok.addEventListener("click", ()=>{ sfx.click(); closeDialog(); renderDex(); renderGymBtn(); });
 }
 
-function showGymFail(acc, right, need){
+function showGymFail(right, myHP){
   /* v3.52.1 起每日只有 1 次机会，原来的「再挑战一次」分支永远不会成立，已删掉 */
-  openDialog(`<h2 style="color:#B8860B">今天还差一点！</h2>
+  openDialog(`<h2 style="color:#B8860B">今天挑战失败！</h2>
     <div style="font-size:56px">💪</div>
-    <div style="font-size:26px;margin:10px 0">一次答对 <b style="color:#F58A1F">${right}</b> / ${GYM_TOTAL} 题<br>需要 ${need} 题才能收服馆主</div>
+    <div style="font-size:26px;margin:10px 0">答对 <b style="color:#F58A1F">${right}</b> / ${GYM_WIN_RIGHT} 题<br>我方体力耗尽，错 4 次就失败啦</div>
     <div style="font-size:22px;color:#9b8676">馆主：「再练一练，明天再来也行哦。」</div>
     <button class="big-btn gray" onclick="document.querySelector('#dialogClose').click()">今天机会用完啦，明天再来</button>`);
 }
+
 
 let advToken = 0;   // 去冒险作答令牌：重开/切换题目时递增，旧朗读定时器据此作废，避免多题朗读互相打断（对齐 runQuiz 的 quizToken 守卫）
 const ADV_REVEAL_MS = 900;   // 判定后先停顿，让小朋友看清对错（答错时能看到正确答案），再播战斗动画

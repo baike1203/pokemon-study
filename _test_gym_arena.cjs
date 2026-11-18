@@ -49,7 +49,7 @@ w.__reduce = false;
 w.matchMedia = () => ({ matches: w.__reduce, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} });
 w.__today = '2026-11-18';
 w.__state = { name: '苏打', mathDiff: 'g1exam', dex: [149], shinyDex: [], evoStage: {} };
-w.__q20 = Array.from({ length: 20 }, (_, i) => ({ id: 'gym' + i, prompt: 'Q' + i, options: ['1', '2'], answer: '1' }));
+w.__q24 = Array.from({ length: 24 }, (_, i) => ({ id: 'gym' + i, prompt: 'Q' + i, options: ['1', '2'], answer: '1' }));
 w.__quizOpts = null;
 
 const SRC = [
@@ -63,16 +63,22 @@ const SRC = [
   'var runQuiz=function(o){ __quizOpts=o; };',
   'var finishGymBattle=function(){};',
   'var gymStatus=function(){ return { canPlay:true, boss:149, cleared:false, tries:0, triesLeft:1 }; };',
-  'var gymQuestions=function(){ return __q20.slice(); };',
+  'var gymQuestions=function(){ return __q24.slice(); };',
   'var busyStudying=false, activeModule=null, onDialogClose=null;',
+  'var quizToken=0, gymCinema=false;',
+  'var gymCatchSequence=function(boss, right, hp){ __catch = { boss:boss, right:right, hp:hp }; };',
+  'var __catch=null;',
   'var overlay=(function(){ var d=document.getElementById("overlay"); if(!d){ d=document.createElement("div"); d.id="overlay"; document.body.appendChild(d);} return d; })();',
   'var stopSpeak=function(){};',
+  'var spriteUrl=function(id){return "sprite"+id+".png";};',
+  'var emojiFor=function(){return "";};',
   'var gymArenaTimers=[], gymArenaFinished=false;',
   grabConst('AR_CROWD_COLORS'),
   grab('gymHash'),
   grabConst('GYM_ARENA_MS'),
-  grabConst('GYM_TOTAL'),
-  grabConst('GYM_PASS_RATE'),
+  grabConst('GYM_QUESTION_TOTAL'),
+  grabConst('GYM_WIN_RIGHT'),
+  grabConst('GYM_MY_HP'),
   grab('gymArenaEl'),
   grab('arenaRand'),
   grab('gymArenaDestroy'),
@@ -87,7 +93,7 @@ const SRC = [
 ].join('\n;\n');
 
 /* 在 jsdom 的 window 全局里求值：document / window / matchMedia 才可用 */
-w.eval(grabConst('POKEMON') + '\n;\n' + SRC);
+w.eval(grabConst('POKEMON') + '\n;\n' + grabConst('POKEDATA') + '\n;\n' + grabConst('TYPE_COLOR') + '\n;\n' + SRC);
 
 const API = w.__API;
 const q = s => w.document.querySelectorAll(s);
@@ -148,11 +154,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   /* ---------- F. HP 条 ---------- */
   const h0 = API.gymHpHtml(0), h4 = API.gymHpHtml(4);
-  check(/16\/16/.test(h0), 'F 满血文案错：' + h0);
+  check(/20\/20/.test(h0), 'F 满血文案错：' + h0);
   check(/width:100%/.test(h0), 'F 满血宽度应为 100%：' + h0);
-  check(/12\/16/.test(h4), 'F 答对 4 题应为 12/16：' + h4);
-  check(/width:75%/.test(h4), 'F 12/16 宽度应为 75%：' + h4);
-  check(API.gymNeedRight() === 16, 'F 达标题数应为 16，实际 ' + API.gymNeedRight());
+  check(/16\/20/.test(h4), 'F 答对 4 题应为 16/20：' + h4);
+  check(/width:80%/.test(h4), 'F 16/20 宽度应为 80%：' + h4);
+  check(API.gymNeedRight() === 20, 'F 达标题数应为 20，实际 ' + API.gymNeedRight());
 
   /* ---------- G. startGymBattle 串场：进场后答题、答对就地掉血 ---------- */
   API.gymArenaDestroy();
@@ -166,12 +172,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   w.document.body.insertAdjacentHTML('beforeend', API.gymHpHtml(0));
   check(!!one('#gymHpFill') && !!one('#gymHpTxt'), 'G 血条节点未渲染');
   w.__quizOpts.onAnswer({ id: 'gym0' }, true);
-  check(one('#gymHpFill').style.width === '93.75%', 'G 答对 1 题血条应缩到 93.75%，实际 ' + one('#gymHpFill').style.width);
-  check(/15\/16/.test(one('#gymHpTxt').textContent), 'G 答对 1 题文案应为 15/16，实际 ' + one('#gymHpTxt').textContent);
+  check(one('#gymHpFill').style.width === '95%', 'G 答对 1 题血条应缩到 95%，实际 ' + one('#gymHpFill').style.width);
+  check(/19\/20/.test(one('#gymHpTxt').textContent), 'G 答对 1 题文案应为 19/20，实际 ' + one('#gymHpTxt').textContent);
   for (let i = 0; i < 20; i++) w.__quizOpts.onAnswer({ id: 'x' + i }, true);
   check(one('#gymHpFill').style.width === '0%', 'G 血条不会归零，实际 ' + one('#gymHpFill').style.width);
-  check(/0\/16/.test(one('#gymHpTxt').textContent), 'G 归零文案不对：' + one('#gymHpTxt').textContent);
+  check(/0\/20/.test(one('#gymHpTxt').textContent), 'G 归零文案不对：' + one('#gymHpTxt').textContent);
   check(w.__quizOpts.onAnswer({ id: 'y' }, false) === undefined, 'G 答错不应报错');
+  check(!!w.__catch && w.__catch.boss === 149, 'G 答满 20 题应进收服演出（走 gymCatchSequence）');
   w.__reduce = false;
 
   /* ---------- H. closeDialog 收掉场景（防残留全屏层） ---------- */

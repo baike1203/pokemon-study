@@ -60,9 +60,9 @@ const SRC = [
   grab('SHAPE_KINDS'), grab('shapeSvg'), grab('makeShapeCountQ'),
   grab('buildBasicQs'), grab('buildG1Qs'), grab('buildG1ExamQs'), grab('buildChineseQs'),
   grab('SHINY_READY_MAX'), grab('SHINY_EXTRA_IDS'), grab('hasShinyArt'),
-  grab('GYM_TOTAL'), grab('GYM_PASS_RATE'), grab('GYM_MAX_TRIES'),
+  grab('GYM_QUESTION_TOTAL'), grab('GYM_WIN_RIGHT'), grab('GYM_MAX_TRIES'),
   grab('gymHash'), grab('gymBossOfToday'), grab('gymStatus'), grab('gymQuestions'),
-  'globalThis.__API = { buildBasicQs, buildG1Qs, buildG1ExamQs, buildChineseQs, gymQuestions, gymBossOfToday, gymStatus, hasShinyArt, gymHash, GYM_TOTAL, GYM_PASS_RATE, GYM_MAX_TRIES, SHINY_READY_MAX, SHINY_EXTRA_IDS };'
+  'globalThis.__API = { buildBasicQs, buildG1Qs, buildG1ExamQs, buildChineseQs, gymQuestions, gymBossOfToday, gymStatus, hasShinyArt, gymHash, GYM_QUESTION_TOTAL, GYM_WIN_RIGHT, GYM_MAX_TRIES, SHINY_READY_MAX, SHINY_EXTRA_IDS };'
 ].join('\n;\n');
 
 const e2 = eval;
@@ -100,16 +100,17 @@ for (let i = 0; i < 300; i++) {
 }
 check(true, '语文');
 
-/* ---------- 2. 道馆组卷：20 题、数学语文各 10、题干唯一 ---------- */
+/* ---------- 2. 道馆组卷：24 题、数学语文各 12、题干唯一（v4 规则） ---------- */
 ['10', '20', 'mul', 'div', 'g1', 'g1exam'].forEach(d => {
   S.mathDiff = d;
   for (let i = 0; i < 200; i++) {
     const qs = API.gymQuestions();
-    if (qs.length !== 20) { check(false, `gymQuestions(${d}) 题数=${qs.length}`); break; }
+    if (qs.length !== API.GYM_QUESTION_TOTAL) { check(false, `gymQuestions(${d}) 题数=${qs.length}，应为 ${API.GYM_QUESTION_TOTAL}`); break; }
     const m = qs.filter(q => q.subject === 'math').length;
     const c = qs.filter(q => q.subject === 'chinese').length;
-    if (m !== 10 || c !== 10) { check(false, `gymQuestions(${d}) 数学${m}/语文${c}`); break; }
-    if (new Set(qs.map(q => q.prompt)).size !== 20) { check(false, `gymQuestions(${d}) 有重复题干`); break; }
+    const half = API.GYM_QUESTION_TOTAL / 2;
+    if (m !== half || c !== half) { check(false, `gymQuestions(${d}) 数学${m}/语文${c}，应各 ${half}`); break; }
+    if (new Set(qs.map(q => q.prompt)).size !== qs.length) { check(false, `gymQuestions(${d}) 有重复题干`); break; }
     if (!qs.every((q, idx) => q.id === 'gym' + idx)) { check(false, `gymQuestions(${d}) id 未重编`); break; }
     if (!qs.every(q => q.prompt && q.answer !== undefined)) { check(false, `gymQuestions(${d}) 字段缺失`); break; }
   }
@@ -187,7 +188,8 @@ check(API.hasShinyArt(1) && API.hasShinyArt(151), '1-151 应都有闪光图');
 check(!API.hasShinyArt(152) && !API.hasShinyArt(200), '152+ 不应标记为有闪光图');
 check(API.hasShinyArt(906) && API.hasShinyArt(1000) && API.hasShinyArt(1025), '额外编号 906/1000/1025 应有闪光图');
 check(API.SHINY_READY_MAX === 151, 'SHINY_READY_MAX 应为 151');
-check(API.GYM_TOTAL === 20 && Math.ceil(API.GYM_TOTAL * API.GYM_PASS_RATE) === 16, '题数/门槛常量不对');
+/* v4 规则：题库 24 题（语文 12 + 数学 12），答对 20 题即通关，没有补考 */
+check(API.GYM_QUESTION_TOTAL === 24 && API.GYM_WIN_RIGHT === 20, '题数/门槛常量不对');
 check(API.GYM_MAX_TRIES === 1, '每日次数应为 1');
 
 /* 每日 1 次：打了一次没通关 → 当天不能再打（v3.52.1） */
