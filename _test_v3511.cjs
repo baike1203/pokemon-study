@@ -41,10 +41,11 @@ globalThis.__runCalled = null;
 globalThis.__runQuiz = cfg => { globalThis.__runCalled = cfg; };
 
 globalThis.__carryGuideOf = () => null;
+globalThis.__borrowGuideOf = () => null;
 const e2 = eval;
 e2([
-  'var rnd=__rnd, shuffle=__shuffle, pick=__pick, runQuiz=__runQuiz, carryGuideOf=__carryGuideOf;',
-  grab('SHAPE_KINDS'), grab('shapeSvg'), grab('makeShapeCountQ'), grab('mathQuizG1Exam')
+  'var rnd=__rnd, shuffle=__shuffle, pick=__pick, runQuiz=__runQuiz, carryGuideOf=__carryGuideOf, borrowGuideOf=__borrowGuideOf;',
+  grab('SHAPE_KINDS'), grab('shapeSvg'), grab('makeShapeCountQ'), grab('mathQuizG1Exam'), grab('mathQuizG1')
 ].join('\n;\n'));
 
 let pass = 0, fail = 0;
@@ -87,6 +88,24 @@ const qs = __runCalled.questions;
 check(qs.length === 10, '整场题数=' + qs.length);
 check(qs.filter(q => q.id && q.id.startsWith('ex_g')).length === 1, '图形题不是 1 道');
 check(qs.every(q => q.prompt && q.answer !== undefined), '题目字段缺失');
+
+/* 同一场里不许出现两道完全相同的题（题干相同即视作同题）。
+   v3.51.2 前：十位个位 / 比大小 / 括号填数各有 2 题，随机值撞车就会出重复。 */
+function assertNoDup(fn, tag, rounds) {
+  let bad = 0, sample = '';
+  for (let i = 0; i < rounds; i++) {
+    fn();
+    const list = __runCalled.questions;
+    const keys = list.map(q => q.prompt.replace(/<[^>]*>/g, ''));  /* 图形 SVG 不算题干差异 */
+    if (new Set(keys).size !== keys.length) {
+      bad++;
+      if (!sample) sample = keys.filter((k, n) => keys.indexOf(k) !== n).join(' / ');
+    }
+  }
+  check(bad === 0, tag + ' 出现重复题 ' + bad + '/' + rounds + ' 场，例：' + sample);
+}
+assertNoDup(globalThis.mathQuizG1Exam, 'g1exam', 3000);
+assertNoDup(globalThis.mathQuizG1, 'g1', 3000);
 
 console.log('通过', pass, '失败', fail, '｜形体覆盖', [...seen].join('/'));
 process.exit(fail ? 1 : 0);

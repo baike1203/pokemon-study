@@ -2804,7 +2804,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.51.1";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.51.2";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -4798,21 +4798,37 @@ function makeShapeCountQ(i){
 }
 function mathQuizG1Exam(){
   const questions = [];
+  const usedPrompt = new Set();
+  /* v3.51.2：同一场内题干去重 —— 原来「十位个位 / 比大小 / 括号填数」各出 2 题，
+     随机数撞车时约 14% 的场次会出现两道一模一样的题。抽到重复就重抽。 */
+  function addQ(q){
+    if (usedPrompt.has(q.prompt)) return false;
+    usedPrompt.add(q.prompt); questions.push(q); return true;
+  }
   /* ① 十位个位 2 题 */
   for (let k=0;k<2;k++){
-    const ones = rnd(1,9), n = 10 + ones;
-    questions.push({ id:"ex_a"+k, prompt:`1 个十和 ${ones} 个一合起来是几？`, sub:"数的组成", answerMode:"input", answer:n });
+    let q;
+    do {
+      const ones = rnd(1,9), n = 10 + ones;
+      q = { id:"ex_a"+k, prompt:`1 个十和 ${ones} 个一合起来是几？`, sub:"数的组成", answerMode:"input", answer:n };
+    } while(!addQ(q));
   }
   /* ② 算式比大小 2 题（三选一，不用数字键盘） */
   for (let k=0;k<2;k++){
-    const a=rnd(2,9), b=rnd(2,9), c=rnd(2,9), d=rnd(2,9);
-    const L=a+b, R=c+d, ans = L>R?">" : L<R?"<" : "=";
-    questions.push({ id:"ex_b"+k, prompt:`${a} + ${b}　○　${c} + ${d}`, sub:"比大小：选 >、< 或 =", options:[">","<","="], answer:ans });
+    let q;
+    do {
+      const a=rnd(2,9), b=rnd(2,9), c=rnd(2,9), d=rnd(2,9);
+      const L=a+b, R=c+d, ans = L>R?">" : L<R?"<" : "=";
+      q = { id:"ex_b"+k, prompt:`${a} + ${b}　○　${c} + ${d}`, sub:"比大小：选 >、< 或 =", options:[">","<","="], answer:ans };
+    } while(!addQ(q));
   }
   /* ③ 括号填数 2 题 */
   for (let k=0;k<2;k++){
-    const total = rnd(6,10), part = rnd(1,total-1);
-    questions.push({ id:"ex_c"+k, prompt:`（  ）+ ${part} = ${total}`, sub:"括号里填几", answerMode:"input", answer:total-part });
+    let q;
+    do {
+      const total = rnd(6,10), part = rnd(1,total-1);
+      q = { id:"ex_c"+k, prompt:`（  ）+ ${part} = ${total}`, sub:"括号里填几", answerMode:"input", answer:total-part };
+    } while(!addQ(q));
   }
   /* ④ 找规律 1 题：控制末项 ≤ 20，一年级上范围（让位给图形计数） */
   {
@@ -4842,21 +4858,36 @@ function mathQuizG1Exam(){
    覆盖：10 以内数的分解与组成、20 以内进位加、20 以内退位减、凑十法、比多少。 */
 function mathQuizG1(){
   const questions = [];
+  const usedPrompt = new Set();
+  /* v3.51.2：同一场内题干去重。进位加 3 题 / 退位减 3 题最容易撞车（约 25% 场次有重复）。 */
+  function addQ(q){
+    if (usedPrompt.has(q.prompt)) return false;
+    usedPrompt.add(q.prompt); questions.push(q); return true;
+  }
   /* 数学答案都是数字 → 一律 answerMode:"input"，用数字键盘输入，不给 ABCD 选项（避免蒙对） */
   // ① 10 以内数的分解与组成（2 题）：（  ）和 4 组成 9
   for (let k=0;k<2;k++){
-    const total = rnd(6,10), part = rnd(1,total-1), ans = total - part;
-    questions.push({ id:"g1a"+k, prompt:`（  ）和 ${part} 组成 ${total}`, sub:"数的组成", answerMode:"input", answer:ans });
+    let q;
+    do {
+      const total = rnd(6,10), part = rnd(1,total-1), ans = total - part;
+      q = { id:"g1a"+k, prompt:`（  ）和 ${part} 组成 ${total}`, sub:"数的组成", answerMode:"input", answer:ans };
+    } while(!addQ(q));
   }
   // ② 20 以内进位加法（3 题）：个位相加满十，如 9 + 6（和恒在 11~18，必有进位）
   for (let k=0;k<3;k++){
-    const a = rnd(5,9), b = rnd(11-a,9), ans = a + b;
-    questions.push({ id:"g1b"+k, prompt:`${a} + ${b} = ?`, sub:"进位加法", answerMode:"input", answer:ans, guide:carryGuideOf(a,b) });
+    let q;
+    do {
+      const a = rnd(5,9), b = rnd(11-a,9), ans = a + b;
+      q = { id:"g1b"+k, prompt:`${a} + ${b} = ?`, sub:"进位加法", answerMode:"input", answer:ans, guide:carryGuideOf(a,b) };
+    } while(!addQ(q));
   }
   // ③ 20 以内退位减法（3 题）：个位不够减，如 13 − 8（被减数个位恒小于减数，必退位）
   for (let k=0;k<3;k++){
-    const a = rnd(11,18), ones = a % 10, b = rnd(ones+1,9), ans = a - b;
-    questions.push({ id:"g1c"+k, prompt:`${a} − ${b} = ?`, sub:"退位减法", answerMode:"input", answer:ans, guide:borrowGuideOf(a,b) });
+    let q;
+    do {
+      const a = rnd(11,18), ones = a % 10, b = rnd(ones+1,9), ans = a - b;
+      q = { id:"g1c"+k, prompt:`${a} − ${b} = ?`, sub:"退位减法", answerMode:"input", answer:ans, guide:borrowGuideOf(a,b) };
+    } while(!addQ(q));
   }
   // ④ 凑十法（1 题）：9 + 5 = 10 + （  ），答案是从 5 里分出 1 之后剩下的 4
   {
