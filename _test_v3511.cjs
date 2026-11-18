@@ -45,7 +45,8 @@ globalThis.__borrowGuideOf = () => null;
 const e2 = eval;
 e2([
   'var rnd=__rnd, shuffle=__shuffle, pick=__pick, runQuiz=__runQuiz, carryGuideOf=__carryGuideOf, borrowGuideOf=__borrowGuideOf;',
-  grab('SHAPE_KINDS'), grab('shapeSvg'), grab('makeShapeCountQ'), grab('mathQuizG1Exam'), grab('mathQuizG1')
+  grab('SHAPE_KINDS'), grab('shapeSvg'), grab('makeShapeCountQ'),
+  grab('mathQuizG1Exam'), grab('buildG1ExamQs'), grab('mathQuizG1'), grab('buildG1Qs')
 ].join('\n;\n'));
 
 let pass = 0, fail = 0;

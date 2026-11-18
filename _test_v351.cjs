@@ -44,7 +44,8 @@ function sfx(){}
   'rnd', 'pick', 'shuffle', 'carryGuideOf',
   'SHENGMU', 'YUNMU', 'ZHENGTI',
   'YW_SM_CONFUSE', 'YW_YM_CONFUSE', 'YW_IDIOMS', 'YW_MINUS_STROKE',
-  'chineseQuiz', 'SHAPE_KINDS', 'shapeSvg', 'makeShapeCountQ', 'mathQuizG1Exam'
+  'chineseQuiz', 'buildChineseQs', 'SHAPE_KINDS', 'shapeSvg', 'makeShapeCountQ',
+  'mathQuizG1Exam', 'buildG1ExamQs'
 ].map(grab).join('\n;\n'));
 
 let fail = 0;
