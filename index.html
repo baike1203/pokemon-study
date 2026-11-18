@@ -339,6 +339,7 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 
 /* ---------- 道馆对战场景（v3.53.0）：体育馆夜景 + 镜头推进 + 剪影揭晓 ----------
    v3.54.0：馆主立绘 + 名字条合成 .ar-boss-unit 整块归位到右上角；打赢后播剑盾式收服演出
+   v3.54.1：答题期给馆主留「站位通道」（--boss-lane），答题框在剩余区域居中——平板窄视口下不再把馆主整个盖住
    （抛球 0.88s → 白闪吸收 → 落地 0.62s → 摇三下 0.6/0.64/0.7s → 金环），不再奖励精灵球/超级球。
    层叠关系：nav(50) < #gymArena(90) < overlay(100) < dialog；气泡是 body 直属节点(z-index 101)才不被弹窗盖住。
    全部动画只用 transform / opacity / filter（合成层），不用 canvas，避免与 TTS 抢主线程。
@@ -350,6 +351,13 @@ main { position: fixed; top: 88px; bottom: 100px; left: 0; right: 0; overflow-y:
 #gymArena.retreating .ar-reflect { opacity: 0 !important; transition: opacity .3s ease; }
 /* 答题期：overlay 让出背景，场景露在 dialog 四周 */
 body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* v3.54.1：答题期在右侧留一条「馆主站位通道」。
+   之前答题框 max-width 900 居中，平板 CSS 视口只有 ~960 时右边只剩几十 px，
+   186px 高的馆主整块被压在弹窗下面（看都看不见）。现在 overlay 右侧让出通道，
+   答题框在剩余区域居中：宽屏（>=1280）框仍是 900 宽、一点不缩；窄屏才按实际空间收窄。
+   馆主站进通道里，两者永远不重叠。 */
+body.gym-live { --boss-lane: clamp(108px, 14vw, 184px); }
+body.gym-live .overlay { padding-right: calc(var(--boss-lane) + 14px); }
 .ar-veil { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s ease;
   background: radial-gradient(ellipse 70% 60% at 50% 52%, rgba(8,14,24,.15), rgba(8,14,24,.7) 78%); }
 #gymArena.dim .ar-veil { opacity: 1; }
@@ -442,9 +450,12 @@ body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit
   opacity: 0; transform: translate(-50%, 90px) scale(.3);
   transition: left .6s cubic-bezier(.4,0,.2,1), top .6s cubic-bezier(.4,0,.2,1), width .6s cubic-bezier(.4,0,.2,1); }
 .ar-boss { width: 100%; display: block; filter: brightness(0) drop-shadow(0 16px 22px rgba(0,0,0,.5)); }
-/* 3.6s 起整体归位到右上角：立绘与名字都在答题框右侧，答题框一寸不缩 */
-.ar-boss-unit.retreat { left: calc(100% - 98px); top: 22px; width: 186px; }
-@media (max-width: 1000px) { .ar-boss-unit.retreat { width: 150px; left: calc(100% - 80px); top: 12px; } }
+/* 3.6s 起整体归位到右侧通道：立绘与名字都站在答题框右边那条空档里，答题框一寸不缩。
+   ⚠️ 入场 keyframes 是 fill:both 的，结束后 transform 一直停在 translate(-50%)，
+   所以绘制位置 = left - 宽度的一半；这里把那一半补回去，右缘才真正离屏边 8px。
+   不补的话在 960 宽的平板上会左偏 60px，整块躲进答题框后面。 */
+.ar-boss-unit.retreat { left: calc(100% - var(--boss-lane, 184px) * .5 - 1px); top: 16px;
+  width: calc(var(--boss-lane, 184px) - 14px); }
 #gymArena.play .ar-boss-unit { animation: arBossRise .7s cubic-bezier(.2,1.5,.4,1) 2.55s both; }
 #gymArena.play .ar-boss { animation: arBossReveal .55s ease 3.25s both; }
 @keyframes arBossRise {
@@ -466,13 +477,14 @@ body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit
   100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.25); }
 }
 
-/* 受击：馆主身上炸开一圈白光（与 WAAPI 抖动同时触发，0.5s 即散） */
-.ar-hitring { position: absolute; z-index: 2; right: 0; top: 22px; width: 186px; height: 186px; border-radius: 50%;
+/* 受击：馆主身上炸开一圈白光（与 WAAPI 抖动同时触发，0.5s 即散）
+   尺寸跟着 --boss-lane 走，通道收窄时圈也同步收小，始终正好罩住馆主 */
+.ar-hitring { position: absolute; z-index: 2; right: 8px; top: 16px;
+  width: calc(var(--boss-lane, 184px) - 14px); height: calc(var(--boss-lane, 184px) - 14px); border-radius: 50%;
   border: 4px solid rgba(255,255,255,.92); opacity: 0; pointer-events: none;
   box-shadow: 0 0 26px rgba(255,205,120,.9), inset 0 0 20px rgba(255,255,255,.55); }
 #gymArena.hit .ar-hitring { animation: arHitRing .5s ease-out 1; }
 @keyframes arHitRing { 0% { opacity: .95; transform: scale(.45); } 100% { opacity: 0; transform: scale(1.45); } }
-@media (max-width: 1000px) { .ar-hitring { right: 2px; top: 12px; width: 150px; height: 150px; } }
 
 /* 名字横幅：跟在馆主立绘下方，随 .ar-boss-unit 一起位移（3.05s 滑入） */
 .ar-namebar { display: flex; align-items: center; gap: 8px; max-width: 100%;
@@ -487,17 +499,18 @@ body.gym-live .overlay { background: transparent; backdrop-filter: none; -webkit
 .ar-name-tag { font-size: 17px; font-weight: 800; color: #8a6300; background: #FFE9A8; padding: 2px 10px; border-radius: 999px;
   white-space: nowrap; transition: font-size .5s ease, padding .5s ease; }
 .ar-name-txt { font-size: 27px; font-weight: 800; color: #6b4b00; white-space: nowrap; transition: font-size .5s ease; }
-/* 归位到右上角后整体缩小：200px 宽里仍是一行，绝不溢出屏幕右侧 */
-.ar-boss-unit.retreat .ar-namebar { padding: 4px 12px; border-width: 2px; gap: 6px; }
-.ar-boss-unit.retreat .ar-name-tag { font-size: 12px; padding: 1px 7px; }
-.ar-boss-unit.retreat .ar-name-txt { font-size: 16px; }
+/* 归位后名字条整体缩小，跟着通道宽度走：宽屏 16px、平板 12~14px，一行仍塞得下 */
+.ar-boss-unit.retreat .ar-namebar { padding: 4px 10px; border-width: 2px; gap: 4px; flex-wrap: wrap; justify-content: center; row-gap: 1px; }
+/* 「馆主」小标签在通道里太占宽（约占 1/4），身份由上下文已经很清楚，收掉 */
+.ar-boss-unit.retreat .ar-name-tag { display: none; }
+.ar-boss-unit.retreat .ar-name-txt { font-size: clamp(11px, 1.35vw, 16px); white-space: normal; line-height: 1.22; }
 /* 我方伙伴立绘：只做视觉，血条始终内联在进度行 */
 .ar-mine { position: absolute; left: 22px; bottom: 10%; width: clamp(120px, 13vw, 170px); opacity: 0;
   transform: translateY(20px); pointer-events: none; filter: drop-shadow(0 10px 14px rgba(0,0,0,.5)); }
 #gymArena.play .ar-mine { animation: arMineIn .5s ease 3.5s both; }
 @keyframes arMineIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-/* 馆主台词：放在 .ar-world 之外，答题期虚化背景时仍清晰可读 */
-.ar-bubble { position: fixed; z-index: 101; right: 300px; top: 40px; max-width: 38%; opacity: 0; transform: translateY(12px);
+/* 馆主台词：放在 .ar-world 之外，答题期虚化背景时仍清晰可读；横向跟着馆主通道走 */
+.ar-bubble { position: fixed; z-index: 101; right: calc(var(--boss-lane, 184px) + 92px); top: 40px; max-width: 38%; opacity: 0; transform: translateY(12px);
   transition: opacity .28s ease, transform .28s ease;
   padding: 12px 20px; border-radius: 18px 18px 18px 4px; pointer-events: none;
   background: rgba(255,251,235,.96); border: 3px solid var(--gym-accent, #F5B301); color: #5b4310;
@@ -3117,7 +3130,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.54.0";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.54.1";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */

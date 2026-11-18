@@ -28,7 +28,13 @@ const unitHtml = /<div class="ar-boss-unit"[\s\S]*?<\/div>\s*<\/div>/.exec(
 check(!!unitHtml, '场景 HTML 里没有「馆主立绘 + 名字条」的整体外壳 .ar-boss-unit');
 check(/class="ar-boss" id="gymBoss"/.test(html), '馆主 emoji 立绘节点 class/id 变了');
 check(html.indexOf('id="gymBossUnit"') < html.indexOf('class="ar-namebar"'), '名字条没有排在馆主立绘之后（应在立绘下方）');
-check(/\.ar-boss-unit\.retreat \{[^}]*left: calc\(100% - \d+px\)/.test(html), '归位规则不在 .ar-boss-unit 上（名字条不会跟着走）');
+check(/\.ar-boss-unit\.retreat \{[^}]*left: calc\(100% - var\(--boss-lane/.test(html), '归位规则不在 .ar-boss-unit 上，或没按通道宽度计算（名字条不会跟着走）');
+/* v3.54.1：平板视口只有 ~960 时答题框几乎占满，必须给馆主留一条站位通道，否则整块被压在弹窗下 */
+check(/body\.gym-live \{ --boss-lane: clamp\(/.test(html), '没有定义馆主站位通道 --boss-lane');
+check(/body\.gym-live \.overlay \{ padding-right: calc\(var\(--boss-lane\)/.test(html), '答题期 overlay 没给馆主让位置，答题框还是会盖住它');
+check(/\.ar-boss-unit\.retreat \{[^}]*\* \.5/.test(html), 'retreat 没补偿入场动画残留的 translate(-50%)，馆主会左偏半个身位');
+check(/\.ar-hitring \{[^}]*calc\(var\(--boss-lane/.test(html), '受击光圈没跟着通道缩放，窄屏会歪到馆主身外');
+check(/\.ar-boss-unit\.retreat \.ar-name-tag \{ display: none/.test(html), '归位后「馆主」小标签还占着通道，名字条会溢出');
 check(!/\.ar-boss\.retreat/.test(html), '还留着旧的 .ar-boss.retreat，会与整体归位打架');
 check(!/\.ar-namebar \{[^}]*position: absolute/.test(html), '名字条仍是绝对定位（会被钉死在左下角）');
 check(!/left: 210px; bottom: 24px/.test(html), '旧的名字条左下角坐标还在');
