@@ -3130,7 +3130,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.54.1";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.54.2";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -5896,25 +5896,29 @@ function pokeInfoHTML(id){
   return `<div class="poke-info">${rows}</div>`;
 }
 function openPokeDetail(id){
-  const did = displayId(id), isPartner = state.partnerId === id;
-  const pd = POKEDATA[did] || {};
+  /* v3.54.2 修复「点图鉴格子弹出另一只」：图鉴格子渲染用的是原始 id（POKEMON[id-1]/spriteUrl(id)/No.id），
+     弹窗必须逐字段一致地用同一个 id。旧版这里标题用 id、图和名字却走 displayId(id)，
+     一旦 displayId 在某版本/缓存里带进化形态映射（did≠id），就会「点 N 弹出 N+1」。
+     统一用 id，彻底消除这条不一致路径。闪光判定也用 id，与格子 cell 的 isShiny 同源。 */
+  const isPartner = state.partnerId === id;
+  const pd = POKEDATA[id] || {};
   const typeTxt = (pd.t||[]).join('、');
-  const isShiny = (Array.isArray(state.shinyDex) ? state.shinyDex : []).includes(id);   // v3.52.0：道馆收服的闪光形态
+  const isShiny = (Array.isArray(state.shinyDex) ? state.shinyDex : []).includes(id);
   openDialog(`<h2 style="color:var(--poke-blue)">No.${String(id).padStart(3,"0")}${(state.evoStage[id]||0)>0?' （进化形态）':''}${isShiny?' <span class="shiny-tag">✦ 闪光</span>':''}</h2>
     <div class="poke-detail">
       <div class="pd-left">
-        <img src="${isShiny?shinySpriteUrl(did):spriteUrl(did)}" class="${isShiny?'pd-shiny-img':''}" style="width:220px;height:220px;image-rendering:auto;object-fit:contain">
-        <div class="poke-name">${isShiny?'✦ ':''}${POKEMON[did-1]}</div>
+        <img src="${isShiny?shinySpriteUrl(id):spriteUrl(id)}" class="${isShiny?'pd-shiny-img':''}" style="width:220px;height:220px;image-rendering:auto;object-fit:contain">
+        <div class="poke-name">${isShiny?'✦ ':''}${POKEMON[id-1]}</div>
         ${isShiny?'<div style="font-size:17px;color:#B8860B;font-weight:700;margin-top:2px">闪光宝可梦</div>':''}
       </div>
-      <div class="pd-right">${pokeInfoHTML(did)}</div>
+      <div class="pd-right">${pokeInfoHTML(id)}</div>
     </div>
     <div style="margin:10px 0">
       <button class="big-btn blue" id="pokeSpeak">🔊 听一听</button>
       <button class="big-btn ${isPartner?'yellow':'blue'}" id="pokePartner">${isPartner?'🔄 换一个伙伴':'🤝 设为今日伙伴'}</button>
       <button class="big-btn yellow" id="pokeClose">✖️ 关闭</button>
     </div>`);
-  $("#pokeSpeak").addEventListener("click", ()=>{ sfx.click(); speak(`${POKEMON[did-1]}。${typeTxt}属性宝可梦。${pd.d||''}`); });
+  $("#pokeSpeak").addEventListener("click", ()=>{ sfx.click(); speak(`${POKEMON[id-1]}。${typeTxt}属性宝可梦。${pd.d||''}`); });
   $("#pokePartner").addEventListener("click", ()=>{
     sfx.click();
     if (isPartner){ unsetPartner(); }
