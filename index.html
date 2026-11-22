@@ -674,6 +674,67 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 .num-key:disabled { filter: grayscale(1); opacity: .55; cursor: default; }
 .num-key.num-fn { font-size: 26px; background: #FFF0DC; }
 .num-key.num-ok { font-size: 30px; background: #D9F2D6; border-color: #9BD697; box-shadow: 0 4px 0 #86c483; color: #1B6E20; }
+.feq-wrap { display: flex; gap: 22px; align-items: center; justify-content: center; }
+.feq-left { flex: 1 1 auto; min-width: 300px; max-width: 500px; }
+.feq-q { font-size: 30px !important; line-height: 1.2; white-space: nowrap; }
+.feq-pic { display: flex; align-items: center; justify-content: center; gap: 16px; min-height: 104px;
+  background: #FFF7E8; border: 3px solid #F5D9A0; border-radius: 20px; margin-bottom: 12px; padding: 8px 10px; }
+.feq-group { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; align-content: center; max-width: 210px; }
+.feq-dot { width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 -3px 0 rgba(0,0,0,.14); }
+.feq-divider { width: 3px; height: 66px; background: #D9B87C; border-radius: 2px; flex: 0 0 3px; }
+.feq-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.feq-col-title { font-size: 18px; color: #8a6d5c; font-weight: bold; margin-bottom: 8px; text-align: center; }
+.feq-line { display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 9px;
+  font-size: 24px; font-weight: bold; color: #6b533f; }
+.feq-op { min-width: 17px; text-align: center; }
+.feq-slot { width: 46px; height: 46px; flex: 0 0 46px; border: 3px solid #E4CBA6; background: #FFFDF6; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 26px; color: #cdbba6; cursor: pointer;
+  font-family: inherit; font-weight: bold; padding: 0; }
+.feq-slot.filled { color: var(--text-dark); border-color: #F0B95A; background: #FFF6DB; }
+.feq-slot.focus { outline: 3px solid #4A9EE8; outline-offset: 1px; border-color: #4A9EE8; }
+.feq-slot.right { background: #D2F5CE; border-color: #4FB14E; color: #1B6E20; }
+.feq-slot.wrong { background: #FFD6DA; border-color: #E07A82; color: #B71C1C; }
+.feq-hint { font-size: 17px; color: #a58f78; text-align: center; margin-top: 2px; }
+/* ===== 式子输入（answerMode:"eq"）· M2 大括号看图列式 =====
+   □ ○ □ = □(单位)：三个数字槽 + 一个 +/− 运算符按钮，运算符必须孩子自己选。
+   贴 fourEq 的双列骨架，左式子右键盘，不额外吃竖向空间。 */
+.eq-wrap { display: flex; gap: 22px; align-items: center; justify-content: center; }
+.eq-left { flex: 1 1 auto; min-width: 300px; max-width: 500px; }
+.eq-q { font-size: 28px !important; line-height: 1.25; }
+.eq-line { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px;
+  margin: 16px 0 6px; font-size: 30px; font-weight: bold; color: #6b533f; }
+.eq-slot { width: 52px; height: 52px; flex: 0 0 52px; border: 3px solid #E4CBA6; background: #FFFDF6; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; font-size: 28px; color: #cdbba6; cursor: pointer;
+  font-family: inherit; font-weight: bold; padding: 0; }
+.eq-slot.filled { color: var(--text-dark); border-color: #F0B95A; background: #FFF6DB; }
+.eq-slot.focus { outline: 3px solid #4A9EE8; outline-offset: 1px; border-color: #4A9EE8; }
+.eq-slot.right { background: #D2F5CE; border-color: #4FB14E; color: #1B6E20; }
+.eq-slot.wrong { background: #FFD6DA; border-color: #E07A82; color: #B71C1C; }
+.eq-op-pick { display: flex; flex-direction: column; gap: 6px; }
+.eq-op-btn { min-width: 66px; padding: 5px 10px; border-radius: 12px; border: 3px solid #E4CBA6;
+  background: #FFFDF6; font-family: inherit; cursor: pointer; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; line-height: 1.15; }
+.eq-op-btn .op-sym { font-size: 26px; font-weight: bold; }
+.eq-op-btn .op-txt { font-size: 13px; color: #a58f78; margin-top: 2px; white-space: nowrap; }
+.eq-op-btn.sel .op-txt { color: #5B3FA0; }
+.eq-op-btn.right .op-txt { color: #1B6E20; }
+.eq-op-btn.wrong .op-txt { color: #B71C1C; }
+.eq-op-btn.sel { border-color: #9B7BE8; background: #EEE7FF; color: #5B3FA0; }
+.eq-op-btn.right { background: #D2F5CE; border-color: #4FB14E; color: #1B6E20; }
+.eq-op-btn.wrong { background: #FFD6DA; border-color: #E07A82; color: #B71C1C; }
+.eq-unit { font-size: 24px; color: #8a6d5c; }
+.eq-hint { font-size: 17px; color: #a58f78; text-align: center; }
+/* ===== 字母按钮区（answerMode:"letter"）· M8 字母顺序 ===== */
+.letter-bank { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; max-width: 720px; margin: 10px auto 0; }
+.letter-key { min-width: 50px; min-height: 50px; padding: 0 8px; border-radius: 13px; border: 3px solid #FFD9A0;
+  background: #FFF7EC; font-family: inherit; font-size: 26px; font-weight: bold; color: var(--text-dark); cursor: pointer;
+  box-shadow: 0 3px 0 #ecc98d; transition: transform .1s ease; }
+.letter-key:active { transform: translateY(3px); box-shadow: none; }
+.letter-key:disabled { filter: grayscale(1); opacity: .55; cursor: default; }
+.letter-key.right { background: #D2F5CE; border-color: #4FB14E; color: #1B6E20; }
+.letter-key.wrong { background: #FFD6DA; border-color: #E07A82; color: #B71C1C; }
+.letter-key.dim { opacity: .45; }
+.quiz-question.lt-q { font-size: 30px !important; line-height: 1.25; letter-spacing: 0; }
 /* ===== 算术图形引导（凑十法 / 破十法 · 十格演示） =====
    一年级「进位加 / 退位减」用 5×2 十格框 + 圆点把「补几凑十、拆十几减几」画出来，
    孩子看着圆点动一遍就懂为什么这样算，比背口诀直观。 */
@@ -961,6 +1022,13 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   /* 窄屏：数字键盘改为竖排（题目在上、键盘在下） */
   .num-row { flex-direction: column; gap: 10px; }
   .num-left { max-width: 420px; width: 100%; min-width: 0; }
+  .feq-wrap { flex-direction: column; gap: 12px; }
+  .feq-left { min-width: 240px; max-width: 100%; }
+  .feq-pic { min-height: 76px; }
+  .feq-dot { width: 20px; height: 20px; }
+  .feq-slot { width: 38px; height: 38px; flex-basis: 38px; font-size: 22px; }
+  .feq-line { font-size: 20px; gap: 3px; }
+  .feq-col-title { font-size: 16px; }
   .num-pad { flex: 0 0 auto; width: 100%; max-width: 330px; gap: 10px; }
   .num-key { min-height: 62px; font-size: 30px; }
   .num-key.num-fn { font-size: 22px; }
@@ -1059,6 +1127,22 @@ nav button.active .ic-fill { fill: #FFC9C2; }
   .opt-grid { gap: 8px; }
   .num-row { gap: 8px; }
   .num-left { max-width: 100%; }
+  .feq-wrap { gap: 8px; }
+  .feq-q { font-size: 25px !important; }
+  .feq-slot { width: 36px; height: 36px; flex-basis: 36px; font-size: 21px; }
+  .feq-line { margin-bottom: 6px; }
+  .eq-wrap { gap: 8px; }
+  .eq-q { font-size: 23px !important; }
+  .eq-line { margin: 8px 0 4px; gap: 5px; font-size: 24px; }
+  .eq-slot { width: 38px; height: 38px; flex-basis: 38px; font-size: 21px; }
+  .eq-op-pick { gap: 4px; }
+  .eq-op-btn { min-width: 46px; padding: 3px 6px; }
+  .eq-op-btn .op-sym { font-size: 20px; }
+  .eq-op-btn .op-txt { font-size: 11px; }
+  .eq-hint { font-size: 15px; }
+  .letter-bank { gap: 6px; max-width: 100%; margin-top: 8px; }
+  .letter-key { min-width: 44px; min-height: 44px; font-size: 23px; border-width: 3px; border-radius: 12px; }
+  .quiz-question.lt-q { font-size: 24px !important; }
   .num-pad { max-width: 300px; gap: 8px; }
   .num-display { font-size: 42px; min-height: 60px; border-width: 3px; border-radius: 16px; }
   .num-key { min-height: 54px; border-radius: 16px; border-width: 3px; font-size: 26px; box-shadow: 0 3px 0 #ecc98d; }
@@ -3135,7 +3219,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.54.3";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.54.4";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -4151,6 +4235,232 @@ function bindPinyinPad(rowSel, dispSel, alive, onSubmit){
   return { detach };
 }
 
+function feqLineHtml(i, op){
+  return `<div class="feq-line" data-line="${i}">
+    <span class="feq-slot" data-i="${i*3}"></span><span class="feq-op">${op}</span>
+    <span class="feq-slot" data-i="${i*3+1}"></span><span class="feq-op">=</span>
+    <span class="feq-slot" data-i="${i*3+2}"></span>
+  </div>`;
+}
+function feqPicHtml(p){
+  const dots = (n,c) => `<div class="feq-group">${Array.from({length:n},()=>`<span class="feq-dot" style="background:${c}"></span>`).join("")}</div>`;
+  return dots(p.a,"#6FA8DC") + `<div class="feq-divider"></div>` + dots(p.b,"#F6A34C");
+}
+function judgeFourEq(vals, q){
+  const { a, b, total } = q.parts;
+  const w = [[a,b,total],[b,a,total],[total,a,b],[total,b,a]];
+  const got = i => [0,1,2].map(k => Number(vals[i*3+k]));
+  const same = (x,y) => x[0]===y[0] && x[1]===y[1] && x[2]===y[2];
+  const g = [0,1,2,3].map(got);
+  const inSet = (v, set) => set.some(x=>same(v,x));
+  const lines = [ inSet(g[0],[w[0],w[1]]), inSet(g[1],[w[0],w[1]]),
+                  inSet(g[2],[w[2],w[3]]), inSet(g[3],[w[2],w[3]]) ];
+  const addOK = (same(g[0],w[0])&&same(g[1],w[1])) || (same(g[0],w[1])&&same(g[1],w[0]));
+  const subOK = (same(g[2],w[2])&&same(g[3],w[3])) || (same(g[2],w[3])&&same(g[3],w[2]));
+  /* 只标真正填错的格子：错行里先找与孩子所填最贴近的正确式，再逐格比对 */
+  const wrongCells = [];
+  [0,1,2,3].forEach(li => {
+    if (lines[li]) return;
+    const cand = li < 2 ? [w[0],w[1]] : [w[2],w[3]];
+    let best = cand[0], bestScore = -1;
+    cand.forEach(c => { const sc = c.filter((v,k)=>v===g[li][k]).length; if (sc > bestScore){ bestScore=sc; best=c; } });
+    [0,1,2].forEach(k => { if (g[li][k] !== best[k]) wrongCells.push(li*3+k); });
+  });
+  return { ok: addOK && subOK, lines, wrongCells, fixVals: [].concat(w[0],w[1],w[2],w[3]) };
+}
+function bindFourEqPad(wrapSel, padSel, alive, onSubmit){
+  const wrap = $(wrapSel), pad = $(padSel);
+  if (!wrap || !pad) return null;
+  const slots = [...wrap.querySelectorAll(".feq-slot")];
+  if (slots.length !== 12) return null;
+  let focus = 0, pendingTen = false, keyHandler = null;
+  function detach(){ if (keyHandler){ document.removeEventListener("keydown", keyHandler); keyHandler = null; } }
+  function paint(){
+    slots.forEach((s,i)=>{
+      const v = s.dataset.v || "";
+      s.textContent = v || "□";
+      s.classList.toggle("filled", !!v);
+      s.classList.toggle("focus", i === focus);
+    });
+  }
+  function setFocus(i){ focus = Math.max(0, Math.min(11, i)); pendingTen = false; paint(); }
+  function press(n){
+    const s = slots[focus]; if (!s) return;
+    sfx.click();
+    if (pendingTen){ s.dataset.v += n; pendingTen = false; focus = Math.min(focus+1,11); }
+    else {
+      s.dataset.v = String(n);
+      /* 只有 total 会出现两位数：加法结果格 2/5、减法被减数格 6/9。
+         减数与差都是一位数，填 1 必须立刻跳格，否则 3-2=1 会卡住等第二位。 */
+      if ([2,5,6,9].indexOf(focus) >= 0 && n === "1") pendingTen = true;
+      else focus = Math.min(focus+1,11);
+    }
+    paint();
+  }
+  function back(){
+    const s = slots[focus];
+    if (pendingTen) pendingTen = false;
+    else if (s && s.dataset.v) delete s.dataset.v;
+    else if (focus > 0){ focus--; const p = slots[focus]; if (p) delete p.dataset.v; }
+    paint();
+  }
+  function submit(){
+    if (!alive()) return;
+    if (pendingTen) pendingTen = false;                 // 结果就是 1
+    if (slots.some(s => !s.dataset.v)){
+      const h = wrap.querySelector(".feq-hint");
+      if (h){ h.textContent = "还有空格没填哦～"; h.classList.add("warn");
+        setTimeout(()=>{ if (h.isConnected){ h.textContent="点格子选中，按数字自动跳下一格"; h.classList.remove("warn"); } }, 1200); }
+      return;
+    }
+    detach();
+    onSubmit(slots.map(s => s.dataset.v));
+  }
+  wrap.addEventListener("click", e => {
+    const s = e.target.closest(".feq-slot"); if (!s || !alive()) return;
+    setFocus(Number(s.dataset.i));
+  });
+  pad.addEventListener("click", e => {
+    const b = e.target.closest(".num-key"); if (!b || b.disabled || !alive()) return;
+    if (b.dataset.act === "del") back(); else if (b.dataset.act === "ok") submit(); else press(b.dataset.n);
+  });
+  keyHandler = e => {
+    if (!alive() || !wrap.isConnected || !$("#overlay").classList.contains("show")) return detach();
+    if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    if (/^[0-9]$/.test(e.key)) press(e.key);
+    else if (e.key === "Backspace"){ e.preventDefault(); back(); }
+    else if (e.key === "ArrowRight" || e.key === "ArrowDown"){ e.preventDefault(); setFocus(focus+1); }
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp"){ e.preventDefault(); setFocus(focus-1); }
+    else if (e.key === "Enter" || e.key === " "){ e.preventDefault(); submit(); }
+  };
+  document.addEventListener("keydown", keyHandler);
+  paint();
+  return { detach };
+}
+
+/* ===== 式子输入（answerMode:"eq"）· M2 大括号看图列式 =====
+   □ ○ □ = □(单位)：三个数字槽 + 一个 +/− 运算符按钮。运算符必须孩子自己选（真卷考的就是选运算）。
+   复用右侧数字键盘；结果格可能是两位数（10 以内加减为主，但 9+9=18 要能填）。 */
+function eqLineHtml(q){
+  return `<div class="eq-line" id="eqLine">
+    <span class="eq-slot" data-i="0"></span>
+    <span class="eq-op-pick" id="eqOpPick">
+      <button type="button" class="eq-op-btn" data-op="+"><span class="op-sym">+</span><span class="op-txt">合起来</span></button>
+      <button type="button" class="eq-op-btn" data-op="−"><span class="op-sym">−</span><span class="op-txt">去掉</span></button>
+    </span>
+    <span class="eq-slot" data-i="1"></span>
+    <span class="eq-op">=</span>
+    <span class="eq-slot" data-i="2"></span>
+    ${q.unit?`<span class="eq-unit">${q.unit}</span>`:""}
+  </div>`;
+}
+/* 判定：三数字槽按「被操作数、操作数、结果」比对，运算符单独比对。
+   加法两种顺序都算对（5+4 与 4+5 是同一幅图）；减法顺序固定（大减小）。
+   返回 markRight/markWrong 供 judge 标色。 */
+function judgeEq(vals, op, q){
+  const { a, b, op:wantOp, c } = q.eq;
+  const nums = vals.map(v=>Number(v));
+  const addOK = wantOp === "+";
+  let numOK, fix;
+  if (addOK){
+    numOK = ((nums[0]===a && nums[1]===b) || (nums[0]===b && nums[1]===a)) && nums[2]===c;
+    fix = [a, b, c];
+  } else {
+    numOK = nums[0]===a && nums[1]===b && nums[2]===c;
+    fix = [a, b, c];
+  }
+  const opOK = op === wantOp;
+  return {
+    ok: numOK && opOK,
+    markRight: function(){
+      document.querySelectorAll(".eq-slot").forEach(s=>s.classList.add("right"));
+      const sel=document.querySelector(".eq-op-btn.sel"); if(sel) sel.classList.add("right");
+    },
+    markWrong: function(){
+      const slots=[...document.querySelectorAll(".eq-slot")];
+      /* 逐格标错：只标真正填错的那格，对的格保持原样，孩子一眼看出差在哪 */
+      const want = addOK && nums[0]===b && nums[1]===a ? [b,a] : [a,b];
+      slots.forEach((s,i)=>{ if (nums[i]!==fix[i]){ s.classList.add("wrong"); s.textContent=fix[i]; } });
+      const sel=document.querySelector(".eq-op-btn.sel");
+      if (!opOK && sel){ sel.classList.add("wrong"); }
+      const ops=[...document.querySelectorAll(".eq-op-btn")];
+      /* 只加高亮类，不碰 textContent——按钮内部是「符号+文字」两个 span，重写会毁掉结构 */
+      ops.forEach(o=>{ if (o.dataset.op===wantOp) o.classList.add("right"); });
+    }
+  };
+}
+function bindEqPad(wrapSel, padSel, alive, onSubmit){
+  const wrap=$(wrapSel), pad=$(padSel);
+  if (!wrap || !pad) return null;
+  const slots=[...wrap.querySelectorAll(".eq-slot")];
+  const ops=[...wrap.querySelectorAll(".eq-op-btn")];
+  if (slots.length!==3 || ops.length!==2) return null;
+  let focus=0, op=null, pendingTen=false, keyHandler=null;
+  function detach(){ if(keyHandler){ document.removeEventListener("keydown",keyHandler); keyHandler=null; } }
+  const HINT_BASE = "点格子填数，再选「合起来」或「去掉」";
+  function paint(){
+    slots.forEach((s,i)=>{ const v=s.dataset.v||""; s.textContent=v||"□"; s.classList.toggle("filled",!!v); s.classList.toggle("focus",i===focus); });
+    ops.forEach(o=>o.classList.toggle("sel",o.dataset.op===op));
+    const h=wrap.querySelector(".eq-hint");
+    if (h && !h.classList.contains("warn")) h.textContent = pendingTen ? "可再按一位数（如 12），或点下一格确认" : HINT_BASE;
+  }
+  function setFocus(i){ focus=Math.max(0,Math.min(2,i)); pendingTen=false; paint(); }
+  function chooseOp(v){ sfx.click(); op=v; pendingTen=false; paint(); }
+  function press(n){
+    const s=slots[focus]; if(!s) return; sfx.click();
+    if (pendingTen){ s.dataset.v+=n; pendingTen=false; focus=Math.min(focus+1,2); }
+    else {
+      s.dataset.v=String(n);
+      /* 10~18 的两位数首位都是 1：任一格按 1 都先停在原地等第二位。
+         只想填一位 1 时，点下一格 / 选运算符 / 按 ✔ 即可收尾（三者都会清 pendingTen）。 */
+      pendingTen = (n==="1");
+      if (!pendingTen) focus=Math.min(focus+1,2);
+    }
+    paint();
+  }
+  function back(){
+    const s=slots[focus];
+    if (pendingTen){ pendingTen=false; if(s) delete s.dataset.v; }
+    else if (s && s.dataset.v) delete s.dataset.v;
+    else if (focus>0){ focus--; const p=slots[focus]; if(p) delete p.dataset.v; }
+    paint();
+  }
+  function hint(msg){
+    const h=wrap.querySelector(".eq-hint"); if(!h) return;
+    h.textContent=msg; h.classList.add("warn");
+    setTimeout(()=>{ if(h.isConnected){ h.textContent=HINT_BASE; h.classList.remove("warn"); paint(); } },1300);
+  }
+  function submit(){
+    if (!alive()) return;
+    if (pendingTen) pendingTen=false;
+    if (!op) return hint("先点 + 或 − 选运算哦～");
+    if (slots.some(s=>!s.dataset.v)) return hint("还有空格没填哦～");
+    detach(); onSubmit(slots.map(s=>s.dataset.v), op);
+  }
+  wrap.addEventListener("click", e=>{
+    if (!alive()) return;
+    const o=e.target.closest(".eq-op-btn"); if(o){ chooseOp(o.dataset.op); return; }
+    const s=e.target.closest(".eq-slot"); if(s){ setFocus(Number(s.dataset.i)); }
+  });
+  pad.addEventListener("click", e=>{
+    const b=e.target.closest(".num-key"); if(!b || b.disabled || !alive()) return;
+    if (b.dataset.act==="del") back(); else if (b.dataset.act==="ok") submit(); else press(b.dataset.n);
+  });
+  keyHandler=e=>{
+    if (!alive() || !wrap.isConnected || !$("#overlay").classList.contains("show")) return detach();
+    if (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    if (/^[0-9]$/.test(e.key)) press(e.key);
+    else if (e.key==="Backspace"){ e.preventDefault(); back(); }
+    else if (e.key==="+" || e.key==="-"){ e.preventDefault(); chooseOp(e.key==="-"?"−":"+"); }
+    else if (e.key==="ArrowRight" || e.key==="ArrowDown"){ e.preventDefault(); setFocus(focus+1); }
+    else if (e.key==="ArrowLeft" || e.key==="ArrowUp"){ e.preventDefault(); setFocus(focus-1); }
+    else if (e.key==="Enter" || e.key===" "){ e.preventDefault(); submit(); }
+  };
+  document.addEventListener("keydown", keyHandler);
+  paint();
+  return { detach };
+}
+
 /* 通用答题引擎：答错题重排队尾直到答对（儿童友好） */
 function runQuiz({ title, color, questions, onFinish, speakOnShow = false, moduleKey = null, onAnswer = null, noRetry = false, progressHTML = null, afterAnswer = null }){
   /* v3.52.0：noRetry=true 用于「道馆挑战」——一题只有一次机会，答错不排队尾（否则 20 题会被拖成 30+ 题），
@@ -4169,7 +4479,10 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
        两种都不给 ABCD 选项，共用「左题目 / 右键盘」骨架 */
     const isInput = q.answerMode === "input";
     const isSpell = q.answerMode === "spell";
-    const isPad = isInput || isSpell;
+    const isFourEq = q.answerMode === "fourEq";
+    const isEq = q.answerMode === "eq";
+    const isLetter = q.answerMode === "letter";
+    const isPad = isInput || isSpell || isFourEq || isEq;
     openDialog(`<h2 style="color:${color}">${title}</h2>
       <div class="quiz-progress">${progressHTML ? progressHTML(doneN) : `第 ${Math.min(doneN+1,total)} / ${total} 题 ⭐ 已答对 ${firstTryRight} 题`}</div>
       ${isSpell
@@ -4200,19 +4513,76 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
              </div>
              <div class="num-pad" id="numPad">${NUMPAD_KEYS}</div>
            </div>`
-        : `<div class="quiz-question ${q.promptClass||""}" id="qPrompt">${q.prompt}</div>
+        : isFourEq
+        ? `<div class="feq-wrap" id="feqWrap">
+             <div class="feq-left">
+               <div class="quiz-question feq-q ${q.promptClass||""}" id="qPrompt">${q.prompt}</div>
+               ${q.sub?`<div class="quiz-sub">${q.sub}</div>`:""}
+               <div class="feq-pic">${feqPicHtml(q.parts)}</div>
+               <div class="feq-cols">
+                 <div><div class="feq-col-title">两道加法</div>${feqLineHtml(0,"+")}${feqLineHtml(1,"+")}</div>
+                 <div><div class="feq-col-title">两道减法</div>${feqLineHtml(2,"−")}${feqLineHtml(3,"−")}</div>
+               </div>
+               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                 <div class="feq-hint">点格子选中，按数字自动跳下一格</div>
+                 ${q.speakText?`<button class="big-btn blue" id="btnSpeak" style="min-width:150px">🔊 再听一遍</button>`:""}
+               </div>
+             </div>
+             <div class="num-pad" id="numPad">${NUMPAD_KEYS}</div>
+           </div>`
+        : isEq
+        ? `<div class="eq-wrap" id="eqWrap">
+             <div class="eq-left">
+               <div class="quiz-question eq-q ${q.promptClass||""}" id="qPrompt">${q.prompt}</div>
+               ${q.sub?`<div class="quiz-sub">${q.sub}</div>`:""}
+               ${eqLineHtml(q)}
+               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                 <div class="eq-hint">点格子填数，再选「合起来」或「去掉」</div>
+                 ${q.speakText?`<button class="big-btn blue" id="btnSpeak" style="min-width:150px">🔊 再听一遍</button>`:""}
+               </div>
+             </div>
+             <div class="num-pad" id="numPad">${NUMPAD_KEYS}</div>
+           </div>`
+        : `<div class="quiz-question ${isLetter?'lt-q':''} ${q.promptClass||""}" id="qPrompt">${q.prompt}</div>
            ${q.sub?`<div class="quiz-sub">${q.sub}</div>`:""}`}
       ${(!isPad && q.speakText)?`<button class="big-btn blue" id="btnSpeak" style="min-width:220px">🔊 再听一遍</button>`:""}
-      ${isPad ? "" : `<div class="opt-grid" id="optGrid"></div>`}
+      ${isPad ? "" : isLetter ? `<div class="letter-bank" id="optGrid"></div>` : `<div class="opt-grid" id="optGrid"></div>`}
       <div class="feedback-line" id="fbLine"></div>`);
     const auto = (q.speakOnShow !== undefined) ? q.speakOnShow : speakOnShow;  // 允许每题单独控制是否自动朗读
     if (q.speakText){ $("#btnSpeak").addEventListener("click", ()=>{ sfx.click(); if(myToken===quizToken) speak(q.speakText, undefined, q.speakFallback); }); if (auto) setTimeout(()=>{ if(myToken===quizToken) speak(q.speakText, undefined, q.speakFallback); },350); }
     if (isInput) numPad = bindNumPad("#numPad", "#numDisplay", ()=>myToken===quizToken, v=>judge(null, v===Number(q.answer), q));
     /* 拼音模式：比对「拼出来的音节」而不是按键路径，所以 j+ie 与 j+i+e 都算对 */
     else if (isSpell) numPad = bindPinyinPad("#pyRow", "#numDisplay", ()=>myToken===quizToken, v=>judge(null, pyNormalize(v)===pyNormalize(q.answer), q));
+    /* 一图四式：12 个槽交给专用绑定，判定结果带逐行对错，让错的那一式标红 */
+    else if (isFourEq) numPad = bindFourEqPad("#feqWrap", "#numPad", ()=>myToken===quizToken, vals=>{
+      const r = judgeFourEq(vals, q);
+      judge(null, r.ok, q, r);
+    });
+    /* 式子输入：三数字槽 + 运算符按钮交给专用绑定，判定带自定义标色 */
+    else if (isEq) numPad = bindEqPad("#eqWrap", "#numPad", ()=>myToken===quizToken, (vals,op)=>{
+      const r = judgeEq(vals, op, q);
+      judge(null, r.ok, q, r);
+    });
     else {
       const grid = $("#optGrid");
-      q.options.forEach(opt => { const b=document.createElement("button"); b.className="opt-btn"; b.textContent=opt; b.addEventListener("click", ()=>judge(b, opt===q.answer, q)); grid.appendChild(b); });
+      let opts;
+      if (isLetter && q.bank){
+        const BANKS = {
+          shengmu: SHENGMU.map(x=>x[0]),
+          yunmu: YUNMU.map(x=>x[0]),
+          danyunmu: ["a","o","e","i","u","ü"],
+          fuyunmu: ["ai","ei","ui","ao","ou","iu","ie","üe","er"]
+        };
+        opts = BANKS[q.bank] || [q.answer];
+        if (opts.indexOf(q.answer) < 0) opts = [q.answer].concat(opts);  // 兜底：答案必须在表里
+      } else opts = q.options || [];
+      opts.forEach(opt => {
+        const b=document.createElement("button");
+        b.className = isLetter ? "letter-key" : "opt-btn";
+        b.textContent=opt;
+        b.addEventListener("click", ()=>judge(b, opt===q.answer, q));
+        grid.appendChild(b);
+      });
     }
     /* 算术图形引导：点「🧩 图形演示」→ 展开十格演示（凑十法/破十法），随时可看 */
     if (q.guide){
@@ -4221,13 +4591,17 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
     }
   }
   /* 统一判定：btn 为 null 表示数字键盘输入；其余逻辑（错题重排队尾、一次答对率统计）对两种模式完全一致 */
-  function judge(btn, ok, q){
+  function judge(btn, ok, q, extra){
     if (myToken !== quizToken) return;
     detachKeys();
-    const fb=$("#fbLine"); const buttons=[...document.querySelectorAll(".opt-btn")];
+    const fb=$("#fbLine"); const buttons=[...document.querySelectorAll(".opt-btn, .letter-key")];
     if (ok){
       sfx.correct();
       if (btn){ btn.classList.add("right"); buttons.forEach(b=>{ if(b!==btn) b.classList.add("dim"); b.disabled=true; }); }
+      else if (extra && extra.markRight) extra.markRight();
+      else if (extra && extra.lines){
+        document.querySelectorAll(".feq-slot").forEach(s=>s.classList.add("right"));
+      }
       else { const d=$("#numDisplay"); if(d){ d.classList.remove("empty"); d.classList.add("right"); } }
       document.querySelectorAll(".num-key").forEach(b=>b.disabled=true);
       fb.textContent = pick(["太棒了！✨","答对啦！👍","真聪明！🌟","好厉害！🎈"],1)[0] + (q.reveal ? ` 就是「${q.reveal}」${q.answer}` : ""); fb.className="feedback-line good";
@@ -4237,6 +4611,14 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
     } else {
       sfx.wrong();
       if (btn){ btn.classList.add("wrong"); buttons.forEach(b=>b.disabled=true); buttons.forEach(b=>{ if(b.textContent===String(q.answer)) b.classList.add("right"); }); }
+      else if (extra && extra.markWrong) extra.markWrong();
+      else if (extra && extra.lines){
+        const slots=[...document.querySelectorAll(".feq-slot")];
+        (extra.wrongCells || []).forEach(i=>{
+          const s=slots[i];
+          if (s){ s.classList.add("wrong"); s.textContent = extra.fixVals[i]; }
+        });
+      }
       else {
         const d=$("#numDisplay");
         if (d){
@@ -4258,7 +4640,10 @@ function runQuiz({ title, color, questions, onFinish, speakOnShow = false, modul
         startMathGuide(gz, q.guide, ()=>myToken===quizToken, ()=>{ if (myToken===quizToken) show(); });
         fb.innerHTML = "别灰心～一步一步看演示（点「下一步」翻页），看完点「✅ 我学会了」再考你一次！" + (q.explain?`<div class="quiz-explain">💡 ${q.explain}</div>`:""); fb.className="feedback-line bad";
       } else {
-        fb.innerHTML = `正确答案是「${q.answer}」${q.reveal?`（${q.reveal}）`:""}${noRetry?"，先记住它，下一题继续！":"，这道题等会儿再试一次！"}` + (q.explain?`<div class="quiz-explain">💡 ${q.explain}</div>`:""); fb.className="feedback-line bad";
+        fb.innerHTML = (extra && extra.lines
+            ? `正确写法：${q.answer.join("　")}${noRetry?"，下一题继续！":"，再试一次！"}`
+            : `正确答案是「${q.answer}」${q.reveal?`（${q.reveal}）`:""}${noRetry?"，先记住它，下一题继续！":"，这道题等会儿再试一次！"}`)
+          + (q.explain?`<div class="quiz-explain">💡 ${q.explain}</div>`:""); fb.className="feedback-line bad";
       }
       if (firstWrong && onAnswer) onAnswer(q, false);   // 首答错才回调（重试不再扣）
       attemptedFirst.add(q.id);
@@ -5125,8 +5510,9 @@ const YW_MINUS_STROKE = [
 ];
 /* v3.52.0：与数学同构 —— 出题（10 题）与弹窗分离，供道馆挑战复用 */
 function buildChineseQs(n = 10){
-  const extra = Math.max(0, n - 10);
-  const cnt = i => 2 + (i < extra ? 1 : 0);   // 12 题时 3/3/2/2/2
+  const withNew = n >= 12;                       // v3.54.4：12 题场（道馆）加入 M7/M8 新题型
+  const extra = Math.max(0, n - (withNew ? 12 : 10));
+  const cnt = i => 2 + (i < extra ? 1 : 0);   // 12 题时旧 5 类各 2 题 = 10，+M7/M8 = 12
   const qs = [];
   const usedPrompt = new Set();
   /* v3.51.5：同一场内题干去重。原来「音节分类」两次 pick 可能抽到同一个音节，
@@ -5179,6 +5565,8 @@ function buildChineseQs(n = 10){
       q = { id:"ywd"+k, prompt:o.q, sub:"减一笔", options:shuffle([...o.opts]), answer:o.answer };
     } while(!addQ(q));
   }
+  /* v3.54.4：12 题场加入语文新题型——M7 音节分解（完整韵母表，无小字提示）、M8 字母排序 */
+  if (withNew){ qs.push(makeSplitQ()); qs.push(makeLetterOrderQ()); }
   shuffle(qs);
   return qs;
 }
@@ -5233,8 +5621,9 @@ function makeShapeCountQ(i){
 }
 /* v3.52.0：出题与弹窗分离 —— 本函数只负责「造 10 道题」并返回，供数学模块与道馆挑战共用 */
 function buildG1ExamQs(n = 10){
+  const withNew = n >= 12;                       // v3.54.4：12 题场（道馆）加入 M1/M2/M4/M6 新题型
   const ex = Math.max(0, n - 10);
-  const c1 = 2 + Math.ceil(ex / 2), c2 = 2 + Math.floor(ex / 2);   // 12 题时 3/3/2
+  const c1 = 2 + Math.ceil(ex / 2) - (withNew ? 1 : 0), c2 = 2 + Math.floor(ex / 2) - (withNew ? 1 : 0);   // 12题场旧题 2/2，让位给新题
   const questions = [];
   const usedPrompt = new Set();
   /* v3.51.2：同一场内题干去重 —— 原来「十位个位 / 比大小 / 括号填数」各出 2 题，
@@ -5260,8 +5649,8 @@ function buildG1ExamQs(n = 10){
       q = { id:"ex_b"+k, prompt:`${a} + ${b}　○　${c} + ${d}`, sub:"比大小：选 >、< 或 =", options:[">","<","="], answer:ans };
     } while(!addQ(q));
   }
-  /* ③ 括号填数 2 题 */
-  for (let k=0;k<2;k++){
+  /* ③ 括号填数：日常 2 题，12 题场 1 题（让位给新题型） */
+  for (let k=0;k<(withNew?1:2);k++){
     let q;
     do {
       const total = rnd(6,10), part = rnd(1,total-1);
@@ -5281,14 +5670,144 @@ function buildG1ExamQs(n = 10){
   }
   /* ⑥ 立体图形计数 1 题：手绘 SVG，数字键盘作答（v3.51.1） */
   questions.push(makeShapeCountQ(0));
-  /* ⑦ 进位加 1 题 */
-  {
+  /* ⑦ 进位加：仅日常场（12 题场让位给新题型） */
+  if (!withNew){
     const a=rnd(5,9), b=rnd(11-a,9);
     questions.push({ id:"ex_f", prompt:`${a} + ${b} = ?`, sub:"进位加法", answerMode:"input", answer:a+b, guide:carryGuideOf(a,b) });
+  }
+  /* v3.54.4：12 题场加入数学新题型——M1 一图四式 / M2 大括号列式 / M4 连加连减 / M6 补画凑数 */
+  if (withNew){
+    questions.push(makeFourEqQ(rnd(2,7), rnd(1,6)));
+    questions.push(makeBraceQ());
+    questions.push(makeChainQ());
+    questions.push(makeBuHuaQ());
   }
   shuffle(questions);
   return questions;
 }
+/* ===== P0 一年级题型（从 four-eq-preview.html 并入 v3.54.4）=====
+   M1一图四式/M2大括号列式/M4连加连减/M6补画凑数 → 数学 g1exam；
+   M7音节分解(无小字提示)/M8字母排序 → 语文。能输入优先，不用 ABCD。 */
+function makeFourEqQ(a, b){
+  const t = a + b;
+  return {
+    id: "feq_" + a + "_" + b,
+    prompt: "看图填数，写出四道算式",
+    answerMode: "fourEq",
+    parts: { a, b, total: t },
+    answer: [`${a}+${b}=${t}`, `${b}+${a}=${t}`, `${t}-${a}=${b}`, `${t}-${b}=${a}`],
+    speakText: `左边${a}个，右边${b}个，一共${t}个。写出两道加法和两道减法。`,
+    explain: "两道加法交换两个数的位置；两道减法用总数分别减去左边和右边。"
+  };
+}
+
+function makeBraceQ(){
+  const type = rnd(0,2);
+  /* 名词与量词必须成套：题干、语音、答案后缀全用同一个 unit，避免出现「上面是鸟、后面写人」 */
+  const THINGS = [["小鸟","只","飞来"],["蝴蝶","只","飞来"],["苹果","个","多了"],["气球","个","多了"],["小花","朵","开了"],["糖果","颗","多了"]];
+  const [noun, unit, verb] = THINGS[rnd(0,THINGS.length-1)];
+  let q;
+  if (type===0){ // 求总数：a + b = c
+    const a=rnd(2,9), b=rnd(2,9);
+    q = { prompt:`有 ${a} ${unit}${noun}，又${verb} ${b} ${unit}，一共有几${unit}？`,
+          eq:{a,b,op:"+",c:a+b}, unit,
+          speakText:`有${a}${unit}${noun}，又${verb}${b}${unit}，一共有几${unit}？`,
+          explain:"求一共，用加法：把两部分合起来。" };
+  } else if (type===1){ // 整体在大括号处求部分：total − a = b
+    const a=rnd(2,8), b=rnd(1,9-a), total=a+b;
+    q = { prompt:`一共有 ${total} ${unit}${noun}，外面有 ${a} ${unit}，里面有几${unit}？`,
+          eq:{a:total,b:a,op:"−",c:b}, unit,
+          speakText:`一共有${total}${unit}${noun}，外面有${a}${unit}，里面有几${unit}？`,
+          explain:"知道总数和其中一部分，求另一部分用减法。" };
+  } else { // 整体在文字里求部分（还剩）：total − b = a
+    const total=rnd(5,12), b=rnd(1,total-1);
+    q = { prompt:`一共 ${total} ${unit}${noun}，拿走 ${b} ${unit}，还剩几${unit}？`,
+          eq:{a:total,b,op:"−",c:total-b}, unit,
+          speakText:`一共${total}${unit}${noun}，拿走${b}${unit}，还剩几${unit}？`,
+          explain:"从总数里去掉一部分，求剩下的用减法。" };
+  }
+  q.id="ex_brace_"+Math.random().toString(36).slice(2,7);
+  q.sub=""; q.answer=`${q.eq.a}${q.eq.op}${q.eq.b}=${q.eq.c}`;
+  q.answerMode="eq";
+  return q;
+}
+
+function makeChainQ(){
+  let a,b,c,ans,sym;
+  if (Math.random()<0.5){ a=rnd(2,7); b=rnd(1,6); c=rnd(1,a+b-1); ans=a+b-c; sym=`${a} + ${b} − ${c}`; }
+  else { a=rnd(6,12); b=rnd(1,a-1); c=rnd(1,6); ans=a-b+c; sym=`${a} − ${b} + ${c}`; }
+  return { id:"ex_chain_"+Math.random().toString(36).slice(2,7),
+    prompt:`${sym} = ?`, sub:"从左往右一步一步算",
+    answerMode:"input", answer:ans,
+    speakText:`${sym.replace("+","加").replace("−","减")}，等于几？`,
+    explain:"从左到右依次计算，先算前两个数，再把结果和第三个数合起来。" };
+}
+
+function makeBuHuaQ(){
+  const have=rnd(2,6), total=have+rnd(2,5);
+  const dots=Array.from({length:have},()=>"○").join("");
+  return { id:"ex_buhua_"+Math.random().toString(36).slice(2,7),
+    prompt:`已经画了 ${dots}，再画几个就是 ${total} 个？`,
+    promptClass:"small",
+    sub:`${have} + （  ） = ${total}`,
+    answerMode:"input", answer:total-have,
+    speakText:`已经画了${have}个圆圈，再画几个就是${total}个？`,
+    explain:`已经画了 ${have} 个，到 ${total} 个还差 ${total-have} 个。` };
+}
+
+function makeSplitQ(){
+  const NORMAL=[
+    ["b","a","bā","八"],["m","a","mā","妈"],["h","ao","hǎo","好"],["g","ou","gǒu","狗"],
+    ["n","i","nǐ","你"],["l","i","lǐ","里"],["sh","u","shū","书"],["x","i","xī","西"],
+    ["q","i","qī","七"],["j","i","jī","鸡"],["z","ao","zǎo","早"],["h","e","hē","喝"],
+    ["m","en","mén","门"],["l","ai","lái","来"],["sh","an","shān","山"],["d","eng","dēng","灯"],
+    ["h","ong","hóng","红"],["x","ing","xīng","星"],["b","ei","bèi","背"],["t","ou","tóu","头"]
+  ];
+  const U_SPECIAL=[
+    ["x","üe","xué","学","drop"],["j","üe","jué","觉","drop"],["q","üe","què","雀","drop"],
+    ["n","üe","nüè","虐","keep"],["l","ü","lǜ","绿","keep"],["n","ü","nǚ","女","keep"],
+    ["j","ü","jǔ","举","drop"],["q","ü","qù","去","drop"]
+  ];
+  /* 多数题考普通韵母，约 1/4 考 ü 对照，保证多样性同时保留教学点 */
+  const special = Math.random()<0.25;
+  const pool = special ? U_SPECIAL : NORMAL;
+  const [sm,ym,full,zi,rule] = pool[rnd(0,pool.length-1)];
+  return splitBuild(sm,ym,full,zi,rule||"");
+}
+
+function splitBuild(sm,ym,full,zi,rule){
+  let explain = `${sm} 和 ${ym} 拼成 ${full}。`;
+  if (rule==="drop") explain += ` j q x 后面的 ü 要去掉两点，写成 ${sm}${ym.replace("ü","u")}。`;
+  else if (rule==="keep") explain += ` n l 后面的 ü 两点要保留，写成 ${sm}${ym}，不能写成 ${sm}${ym.replace("ü","u")}。`;
+  return { id:"ex_split_"+Math.random().toString(36).slice(2,7),
+    prompt:`「${zi} ${full}」是由 ${sm} 和哪个韵母拼成的？`,
+    answerMode:"letter", answer:ym,
+    bank:"yunmu",   // 给完整韵母表，不是 4 个干扰项——真卷是孩子自己写，不给选项
+    speakText:`${full}，是由${sm}和哪个韵母拼成的？`,
+    explain };
+}
+
+function makeLetterOrderQ(){
+  const SEG=[
+    {name:"声母",list:SHENGMU.map(x=>x[0]),pool:SHENGMU.map(x=>x[0])},
+    {name:"单韵母",list:["a","o","e","i","u","ü"],pool:["a","o","e","i","u","ü"]},
+    {name:"复韵母",list:["ai","ei","ui","ao","ou","iu","ie","üe","er"],pool:["ai","ei","ui","ao","ou","iu","ie","üe","er"]}
+  ];
+  const seg=SEG[rnd(0,2)];
+  const start=rnd(0,seg.list.length-4);
+  const win=seg.list.slice(start,start+4);
+  const gap=rnd(0,3);
+  const shown=win.map((x,i)=>i===gap?"（  ）":x).join("　");
+  const ans=win[gap];
+  const bankKey = seg.name==="声母" ? "shengmu" : seg.name==="单韵母" ? "danyunmu" : "fuyunmu";
+  return { id:"ex_letter_"+Math.random().toString(36).slice(2,7),
+    prompt:`按${seg.name}顺序填：${shown}`, sub:"点下面字母表里正确的一个",
+    answerMode:"letter", answer:ans,
+    bank:bankKey,   // 完整字母表，不是 4 个干扰项
+    speakText:`按${seg.name}顺序，空格里应该是哪个字母？`,
+    explain:`${seg.name}表里，${win.join("、")} 是连着的，空格里是 ${ans}。` };
+}
+
 function mathQuizG1Exam(){
   const questions = buildG1ExamQs();
   runQuiz({ title:"📝 数学 · 一年级试卷专练", color:"#F58A1F", questions, moduleKey:"math",
