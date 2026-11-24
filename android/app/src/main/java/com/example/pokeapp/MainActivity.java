@@ -370,7 +370,11 @@ public class MainActivity extends Activity {
                         if (isAutoBackup && actual == null && slot == 1) actual = sp.getString("poke_actual_backup", null);   // 旧版单文件迁移
                         if (isAutoBackup && actual != null) sp.edit().putString(actualKey, actual).apply();   // 迁移值固化到新键
                         Uri target = null;
-                        if (actual != null) {
+                        // v3.54.7：手动导出的文件名带时间戳、天然唯一，绝不能复用自动备份槽位记录的 URI。
+                        // 旧逻辑对手动导出也读 poke_actual_backup_1，一旦自动备份跑过，
+                        // 手动导出的 JSON 就覆盖写进 pokemon-study-auto-backup-1.json，
+                        // Toast 却报时间戳文件名 → 下载目录里根本找不到该文件，而 3 个自动备份还在。
+                        if (isAutoBackup && actual != null) {
                             try (Cursor c = getContentResolver().query(
                                     MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                                     new String[]{MediaStore.Downloads._ID},
@@ -429,9 +433,12 @@ public class MainActivity extends Activity {
                             }
                         }
                         if (showToastOnSuccess) {
+                            // 报 MediaStore 真正落盘的文件名：同名时系统会自动加 (1) 后缀，
+                            // 报期望文件名会让用户在下载目录里白找。
+                            final String savedName = (actual == null || actual.isEmpty()) ? filename : actual;
                             showToast(isAutoBackup
-                                    ? "进度已自动备份到：平板「下载 / Download」\n" + actual
-                                    : "进度文件已下载到：平板「下载 / Download」\n" + filename);
+                                    ? "进度已自动备份到：平板「下载 / Download」\n" + savedName
+                                    : "进度文件已下载到：平板「下载 / Download」\n" + savedName);
                         }
                     } else {
                         File dir = android.os.Environment
