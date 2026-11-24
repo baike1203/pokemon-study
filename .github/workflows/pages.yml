@@ -22,10 +22,22 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v4
+      # v3.54.7 加固：只把「应用运行真正需要」的文件组装进 _site 再上传。
+      # 之前 path:. 会把仓库根目录整包发布，测试脚本 / AI 记忆 / 方案文档一律公开。
+      # 白名单之外的新增文件默认不会上线，从根上杜绝误发布。
+      # 注意：functions/ 是 D1 登录 API（Cloudflare Pages 用），一并保留。
+      - name: Prepare public site (whitelist)
+        run: |
+          set -e
+          mkdir -p _site
+          cp index.html favicon.ico manifest.webmanifest sw.js worker.js _site/
+          cp -r icons assets functions _site/
+          echo "Published top-level items:"
+          ls -1 _site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
