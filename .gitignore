@@ -28,3 +28,27 @@ scripts/__pycache__/
 
 # CI 发布到 Release 用的临时文件（构建产物，不进仓库）
 /poke-study.apk
+
+# 本地测试 / 诊断 / 方案产物：只在本地保留，不提交、不发布到 Pages
+# 注意：pages.yml 用 path: . 全量发布根目录，任何提交进来的文件都会公开
+/.workbuddy/
+/_test_*.cjs
+/_analyze_save.cjs
+/_mkprobe_*.cjs
+/_migrate_step*.cjs
+/_patch_*.cjs
+/_probe_*.html
+/_live_*.html
+/_save_clean.json
+/_actions.json
+/_apk*.html
+/_bak_*.html
+/_lc_*.html
+/_remove_from_git.list
+/图鉴点击诊断.html
+/four-eq-preview.html
+/精灵学院-*.md
+/*v4-*.png
+/_upload_manifest_*.txt
+/_syntax_check.txt
+/_gen_backup_manifest.py
