@@ -3221,7 +3221,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.54.9";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.54.10";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -6287,16 +6287,13 @@ function renderDex(){
     if (owned){
       const nxt = nextForms(id);
       let prog = "";
-      if (nxt){
+      // v3.54.10：只保留「即将进化 ⏳」；下一形态已拥有 / 已是终态都不再显示完成提示
+      if (nxt && !nxt.some(n=>state.dex.includes(n))){
         const c = chainOfId(id);
         const req = EVO_REQ[c.length];
         const need = req ? (req[chainPos(id)] || 1) : 1;   // v3.48.2 B6：need 兜底，防进化链结构异常时进度条 NaN%
         const have = state.copyCount[id]||0;
-        if (nxt.some(n=>state.dex.includes(n))) prog = `<div class="dex-evo-text done">★ 已进化完成</div>`;
-        else prog = `<div class="evo-row"><div class="evo-bar"><div class="evo-fill" style="width:${Math.min(100, have/need*100)}%"></div></div><span class="evo-num">${have}/${need}</span></div><div class="dex-evo-text">即将进化 ⏳</div>`;
-      } else if (chainPos(id) > 0){
-        // 已是进化终态（如 皮卡丘→雷丘 的雷丘、妙蛙花 等）：给完成标记，避免进化到最终形态后下方突然空白
-        prog = `<div class="dex-evo-text done">★ 进化完成</div>`;
+        prog = `<div class="evo-row"><div class="evo-bar"><div class="evo-fill" style="width:${Math.min(100, have/need*100)}%"></div></div><span class="evo-num">${have}/${need}</span></div><div class="dex-evo-text">即将进化 ⏳</div>`;
       }
       cell.innerHTML = `${isShiny?'<span class="shiny-badge">✦</span>':''}<img src="${isShiny?shinySpriteUrl(id):spriteUrl(id)}" loading="lazy"><span class="dex-name">${POKEMON[id-1]}</span><span class="dex-no">No.${String(id).padStart(3,"0")}</span>${prog}`;
       cell.addEventListener("click", ()=>openPokeDetail(id));
