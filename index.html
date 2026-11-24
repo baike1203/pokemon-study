@@ -982,9 +982,7 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 /* 伙伴挂件 */
 #partnerWidget { position: fixed; right: 14px; bottom: 124px; z-index: 60; width: 96px; height: 96px; cursor: grab; touch-action: none; display: none; }
 #partnerWidget img { width: 100%; height: 100%; image-rendering: auto;object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
-#partnerWidget .handle { position: absolute; top: -6px; left: -6px; background: #fff; border: 2px solid var(--poke-yellow); border-radius: 50%; width: 28px; height: 28px; font-size: 16px; display: flex; align-items: center; justify-content: center; color: var(--poke-red); }
-/* v3.54.8：闪光伙伴的 ✦ 角标（与图鉴格子的 shiny-badge 同一视觉语言） */
-#partnerWidget.partner-shiny::after { content: "✦"; position: absolute; right: -8px; top: -8px; width: 26px; height: 26px; border-radius: 50%; background: #FFD54F; border: 2px solid #B8860B; color: #7A5B00; font-size: 16px; line-height: 22px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,.2); }
+/* v3.54.9：挂件不再显示手掌拖拽提示，也不再给闪光伙伴加星标角标（拖动仍作用于整个挂件） */
 /* v3.54.6：必须显式 width:max-content —— 否则首次弹出时 shrink-to-fit 会按 min-width:120px 量宽，
    positionBubble 因而把气泡放到离伙伴仅 14px 的位置，等文字排成真实宽度(约212~240px)后右边缘就压住伙伴图片。
    每天欢迎弹窗「出发」后的第一句问候最容易中招。 */
@@ -1482,7 +1480,6 @@ nav{
 
 <!-- 今日伙伴挂件（可拖动） -->
 <div id="partnerWidget" data-page-node-id="bVluGdwthm2rbZmviCLBmD">
-  <div class="handle" data-page-node-id="A4O15Avznaq8ODXBtaARvl">✋</div>
   <div class="partner-bubble" id="partnerBubble" data-page-node-id="znabiJbihcfFRGzQQhub5s"></div>
   <img id="partnerImg" src="" alt="伙伴" data-page-node-id="XrqwuNCofY86iVjWeXbCzX">
 </div>
@@ -3224,7 +3221,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.54.8";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.54.9";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
