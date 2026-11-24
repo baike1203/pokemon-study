@@ -983,7 +983,10 @@ nav button.active .ic-fill { fill: #FFC9C2; }
 #partnerWidget { position: fixed; right: 14px; bottom: 124px; z-index: 60; width: 96px; height: 96px; cursor: grab; touch-action: none; display: none; }
 #partnerWidget img { width: 100%; height: 100%; image-rendering: auto;object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
 #partnerWidget .handle { position: absolute; top: -6px; left: -6px; background: #fff; border: 2px solid var(--poke-yellow); border-radius: 50%; width: 28px; height: 28px; font-size: 16px; display: flex; align-items: center; justify-content: center; color: var(--poke-red); }
-.partner-bubble { position: fixed; z-index: 70; max-width: 240px; min-width: 120px; background: linear-gradient(180deg,rgba(255,253,245,.82),rgba(255,243,214,.82)); border: 3px solid rgba(255,214,107,.75); border-radius: 20px; padding: 12px 14px; font-size: 20px; line-height: 1.45; color: #5b4636; box-shadow: 0 8px 22px rgba(0,0,0,.22); opacity: 0; transform: scale(.6); transform-origin: center; pointer-events: none; transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1); }
+/* v3.54.6：必须显式 width:max-content —— 否则首次弹出时 shrink-to-fit 会按 min-width:120px 量宽，
+   positionBubble 因而把气泡放到离伙伴仅 14px 的位置，等文字排成真实宽度(约212~240px)后右边缘就压住伙伴图片。
+   每天欢迎弹窗「出发」后的第一句问候最容易中招。 */
+.partner-bubble { position: fixed; z-index: 70; width: max-content; max-width: min(240px, calc(100vw - 24px)); min-width: 120px; background: linear-gradient(180deg,rgba(255,253,245,.82),rgba(255,243,214,.82)); border: 3px solid rgba(255,214,107,.75); border-radius: 20px; padding: 12px 14px; font-size: 20px; line-height: 1.45; color: #5b4636; box-shadow: 0 8px 22px rgba(0,0,0,.22); opacity: 0; transform: scale(.6); transform-origin: center; pointer-events: none; transition: opacity .18s ease, transform .3s cubic-bezier(.34,1.56,.64,1); }
 .partner-bubble.show { opacity: 1; transform: scale(1); }
 .partner-bubble::after { content:""; position:absolute; width:0; height:0; }
 .partner-bubble.ptr-left::after  { right:-14px; top:50%; transform:translateY(-50%); border:9px solid transparent; border-left-color:rgba(255,214,107,.75); }
@@ -3219,7 +3222,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.54.5";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.54.6";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
