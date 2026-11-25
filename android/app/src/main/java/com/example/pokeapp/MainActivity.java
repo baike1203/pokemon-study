@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -16,6 +17,7 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.view.Gravity;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -77,6 +79,11 @@ public class MainActivity extends Activity {
     private long splashStartAt;              // 启动页出现时刻 → 用于补足最短展示时长
     private boolean splashHidden = false;
     private boolean offlineTried = false;    // 是否已切过内置离线副本
+    // v3.54.11：离线版可一键回线上（不必强制停止 App）
+    private Button backOnlineBtn;
+    private boolean retryingOnline = false;  // 正在重试线上地址
+    private boolean offlineActive = false;   // 当前应展示离线副本（防失败页的 onPageFinished 误藏按钮）
+    private Runnable retryTimeout;           // 重试 12 秒仍未就绪 → 退回离线版
 
     private static final long SPLASH_MIN_MS = 600;    // 最短展示：缓存秒开时别一闪而过
     private static final long SLOW_HINT_MS  = 6000;   // 6 秒未就绪 → 提示网络慢
@@ -151,6 +158,31 @@ public class MainActivity extends Activity {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT);
         root.addView(splash, slp);
+
+        // 离线版「回到在线版」按钮：默认隐藏，只在 file:// 离线页显示。
+        // 放左下角，避开右下角的伙伴挂件；圆角描边沿用启动页米黄/棕色调。
+        backOnlineBtn = new Button(this);
+        backOnlineBtn.setText("回到在线版");
+        backOnlineBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        backOnlineBtn.setTextColor(Color.parseColor("#7A4E1E"));
+        backOnlineBtn.setAllCaps(false);
+        GradientDrawable btnBg = new GradientDrawable();
+        btnBg.setColor(Color.parseColor("#FFFFFF"));
+        btnBg.setStroke(2, Color.parseColor("#E6C27A"));
+        btnBg.setCornerRadius(22 * unit);
+        backOnlineBtn.setBackground(btnBg);
+        backOnlineBtn.setPadding(18 * unit, 8 * unit, 18 * unit, 8 * unit);
+        backOnlineBtn.setVisibility(View.GONE);
+        backOnlineBtn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { retryOnline(); }
+        });
+        FrameLayout.LayoutParams obp = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.START);
+        obp.leftMargin = 14 * unit;
+        obp.bottomMargin = 14 * unit;
+        root.addView(backOnlineBtn, obp);
+
         setContentView(root);
         splashView = splash;
 
@@ -200,11 +232,27 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 mainLoaded = true;
                 hideSplash();
+                if (url != null && url.startsWith(LIVE_URL) && !offlineActive) {
+                    // 线上页就绪：撤掉重试状态并隐藏按钮
+                    retryingOnline = false;
+                    if (retryTimeout != null) { splashHandler.removeCallbacks(retryTimeout); retryTimeout = null; }
+                    if (backOnlineBtn != null) {
+                        backOnlineBtn.setEnabled(true);
+                        backOnlineBtn.setText("回到在线版");
+                        backOnlineBtn.setVisibility(View.GONE);
+                    }
+                } else if (offlineTried && backOnlineBtn != null) {
+                    // 离线副本就绪：显示一键回线上按钮
+                    backOnlineBtn.setVisibility(View.VISIBLE);
+                }
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
-                if (!mainLoaded && req.isForMainFrame()) {
+                if (!req.isForMainFrame()) return;
+                if (retryingOnline) {
+                    backToOffline("网络还不行，已留在离线版");
+                } else if (!mainLoaded) {
                     goOffline();
                 }
             }
@@ -648,12 +696,41 @@ public class MainActivity extends Activity {
         }, delay);
     }
 
-    /** 切到内置离线副本（assets/index.html），并更新启动页文案让等待有交代 */
+    /** 首次启动加载线上失败：切到内置离线副本，并更新启动页文案让等待有交代 */
     private void goOffline() {
         if (offlineTried) return;
         offlineTried = true;
         if (splashStatus != null) splashStatus.setText("正在打开离线模式…");
+        backToOffline(null);
+    }
+
+    /** 回到内置离线副本；按钮的显示交给 onPageFinished，避免启动时在启动页上闪一下 */
+    private void backToOffline(String msg) {
+        retryingOnline = false;
+        offlineActive = true;
+        if (retryTimeout != null) { splashHandler.removeCallbacks(retryTimeout); retryTimeout = null; }
+        if (backOnlineBtn != null) {
+            backOnlineBtn.setEnabled(true);
+            backOnlineBtn.setText("回到在线版");
+        }
         webView.loadUrl("file:///android_asset/index.html");
+        if (msg != null) Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+    }
+
+    /** 离线版点「回到在线版」：重新加载线上地址，12 秒还没好就自动退回离线版 */
+    private void retryOnline() {
+        if (retryingOnline) return;
+        retryingOnline = true;
+        offlineActive = false;
+        backOnlineBtn.setEnabled(false);
+        backOnlineBtn.setText("正在连接…");
+        webView.loadUrl(LIVE_URL);
+        retryTimeout = new Runnable() {
+            @Override public void run() {
+                if (retryingOnline) backToOffline("网络还不行，已留在离线版");
+            }
+        };
+        splashHandler.postDelayed(retryTimeout, OFFLINE_MS);
     }
 
     private void hideSystemUI() {

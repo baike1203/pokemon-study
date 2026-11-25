@@ -3221,11 +3221,11 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.54.10";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.54.11";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
-const APP_BUILD = 4;   // v3.54.7：原生层修复手动导出误覆盖自动备份文件，必须重打 APK
+const APP_BUILD = 5;   // v3.54.11：原生层新增离线版「回到在线版」按钮，必须重打 APK
 /* APK 下载直链：指向 GitHub Release 的固定 asset（每次 CI 构建覆盖同一文件）。
    选 Release 而不是仓库文件/Pages，是因为 .git 已 187MB，再塞二进制会失控；
    而 artifact 需要登录 GitHub 才能下，WebView 拿不到。 */
