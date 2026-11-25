@@ -160,7 +160,8 @@ public class MainActivity extends Activity {
         root.addView(splash, slp);
 
         // 离线版「回到在线版」按钮：默认隐藏，只在 file:// 离线页显示。
-        // 放左下角，避开右下角的伙伴挂件；圆角描边沿用启动页米黄/棕色调。
+        // 放在页面左下角、底部导航栏上方 12dp，不盖住「今日任务」等导航键；
+        // 右下角是伙伴挂件，也避开了。圆角描边沿用启动页米黄/棕色调。
         backOnlineBtn = new Button(this);
         backOnlineBtn.setText("回到在线版");
         backOnlineBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
@@ -179,8 +180,10 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams obp = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM | Gravity.START);
+        // 与网页 CSS 一致：@media (max-height:860px) 时 nav 高 68px，否则 100px
+        int navHeightDp = getResources().getConfiguration().screenHeightDp <= 860 ? 68 : 100;
         obp.leftMargin = 14 * unit;
-        obp.bottomMargin = 14 * unit;
+        obp.bottomMargin = (navHeightDp + 12) * unit;
         root.addView(backOnlineBtn, obp);
 
         setContentView(root);
