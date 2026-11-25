@@ -1815,22 +1815,23 @@ const POKEMON = [
 ];
 
 /* 精灵图：Pokémon HOME 3D 渲染图（PokeAPI，清晰立体）。 */
-// 1025 张（+9 张闪光形态）已预处理为静态文件 assets/sprites/home/{id}.png，部署后走 Cloudflare 静态 CDN（自动边缘缓存，秒开）。
+// v3.55.0：1179 张（1025 普通 + 154 闪光）已转 WebP q80，仍是 512×512，
+// 总体积 139.5MB → 19.6MB。原 PNG 保留在仓库作为源图，但页面只请求 .webp。
 // 相比之前的 /api/sprite Function 代理：免去上百个并发请求排队 + 函数实时转发延迟，图鉴加载从 ~10s 降到瞬间。
 // 若部署平台不打包 assets（如某些静态托管），改用直连即可：
 //   const spriteUrl = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/${id}.png`;
 const SPRITES = [];
-const spriteUrl = id => `assets/sprites/home/${id}.png`;
+const spriteUrl = id => `assets/sprites/home/${id}.webp`;
 
 /* ---------- 闪光形态（v3.52.0，道馆挑战用）----------
-   素材：assets/sprites/home/shiny_{id}.png，与普通图同规格 512×512。
+   素材：assets/sprites/home/shiny_{id}.webp，与普通图同规格 512×512。
    2026-11-18 已完成第一世代 1-151 全量下载（18.7MB，逐张校验）；906/1000/1025 为早先已有。
    ⚠️ 颜色由官方闪光图负责，CSS 只负责"发光"（金框/光晕/角标）——色相旋转冒充闪光已被否决。
    扩展：解锁新世代时只需把 SHINY_READY_MAX 提到该世代末编号（如 gen2 → 251），逻辑不用改。 */
 const SHINY_READY_MAX = 151;
 const SHINY_EXTRA_IDS = [906, 1000, 1025];
 function hasShinyArt(id){ return id <= SHINY_READY_MAX || SHINY_EXTRA_IDS.includes(id); }
-function shinySpriteUrl(id){ return `assets/sprites/home/shiny_${id}.png`; }
+function shinySpriteUrl(id){ return `assets/sprites/home/shiny_${id}.webp`; }
 
 /* ---------- 进化链（第一世代） ----------
    每条链首元素为“基础形态”编号；进化时该基础编号的图鉴卡片会升级显示下一个形态。
@@ -3221,7 +3222,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.54.11";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.55.0";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
