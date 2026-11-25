@@ -1323,29 +1323,30 @@ header{
 #hdrClock{
   font-family: var(--pk-font);
   font-weight: 800; letter-spacing: 2px;
-  background: rgba(255,255,255,.16);
-  border: 1px solid rgba(255,255,255,.3);
-  padding: 5px 18px; border-radius: 999px;
+  /* v3.55.3：去掉原来的半透明胶囊，时间直接落在红栏上，靠文字阴影保证可读性 */
   text-shadow: 0 1px 2px rgba(120,30,30,.35), 0 3px 8px rgba(120,30,30,.22);
   display: flex; align-items: center; justify-content: center; box-sizing: border-box;
   transition: background .28s ease, border-color .28s ease, box-shadow .28s ease, padding .28s ease, transform .28s cubic-bezier(.22,1,.36,1);
 }
-/* v3.55.2：灵动岛式自动备份提示——时钟原地展开成深色胶囊，提示完收回时间 */
+/* v3.55.3：自动备份提示——时间淡出、奶白暖色提示条淡入，不叠加黑色灵动岛 */
 #hdrClock .clock-time, #hdrClock .clock-island-msg {
   display: inline-block; vertical-align: middle; white-space: nowrap; overflow: hidden;
-  transition: width .3s cubic-bezier(.22,1,.36,1), opacity .2s ease, margin-left .3s ease;
+  transition: max-width .3s cubic-bezier(.22,1,.36,1), opacity .2s ease;
 }
-#hdrClock .clock-time { width: 6ch; opacity: 1; }
-#hdrClock .clock-island-msg { width: 0; opacity: 0; margin-left: 0; font-size: .62em; font-weight: 700; letter-spacing: 0; }
+/* 正常态用自然宽度居中；max-width 只作为展开/收起的动画上限 */
+#hdrClock .clock-time { max-width: 8ch; opacity: 1; }
+#hdrClock .clock-island-msg { max-width: 0; opacity: 0; font-size: .62em; font-weight: 700; letter-spacing: 0; }
 #hdrClock.island {
   display: flex;                       /* 窄屏媒体查询把时钟 display:none，上岛时需盖过 */
-  background: rgba(28,24,22,.94); border-color: rgba(255,255,255,.55);
-  color: #fff; padding: 6px 18px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.18);
-  transform: translate(-50%,-50%) scale(1.04);
+  background: linear-gradient(180deg,#FFFEFB 0%,#FFE9C4 100%);
+  border: 2px solid #fff; border-radius: 999px;
+  color: #B23B33; padding: 5px 18px;
+  text-shadow: 0 1px 0 #fff;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.9), 0 6px 16px rgba(120,30,30,.28);
+  transform: translate(-50%,-50%) scale(1.03);
 }
-#hdrClock.island .clock-time { width: 0; opacity: 0; }
-#hdrClock.island .clock-island-msg { width: 7.5em; opacity: 1; margin-left: 0; }
+#hdrClock.island .clock-time { max-width: 0; opacity: 0; }
+#hdrClock.island .clock-island-msg { max-width: 10em; opacity: 1; }
 #ballCounter{
   background: linear-gradient(180deg,#FFFEFB 0%,#FFF3DC 100%);
   box-shadow: inset 0 2px 4px rgba(255,255,255,.92), inset 0 -4px 8px rgba(190,130,50,.12), 0 6px 16px rgba(120,70,20,.20);
@@ -3236,7 +3237,7 @@ function clearStoredToken(){
   try { if (window.PokeBridge && window.PokeBridge.saveToken) window.PokeBridge.saveToken(""); } catch(e){}
 }
 function cloudLoggedIn(){ return !!getStoredToken(); }
-const APP_VERSION = "v3.55.2";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
+const APP_VERSION = "v3.55.3";  // 改版时同步更新此值，家长设置面板底部显示，便于确认线上版本
 /* v3.50.7：整数构建号，是 APK versionCode 的唯一真相源（build.gradle 从这里读）。
    规则：只有「原生代码 / manifest / 资源」变了才 +1；纯网页改动不要动它，
    否则会误报「有新版本」，让孩子白下一次 APK。 */
@@ -3969,7 +3970,7 @@ function celebrateAchievement(d){
 
 /* 轻提示 toast */
 function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.classList.add("show"),10); setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.remove(),400); }, 2600); }
-/* v3.55.2：灵动岛式提示——状态栏时钟展开成胶囊显示消息，随后收回时间。
+/* v3.55.3：状态栏提示——时钟淡出、暖色提示条淡入，随后收回时间。
    复用 #hdrClock 单例；连发时只重置计时器，不叠动画。 */
 function topToast(msg){
   const el = document.getElementById("hdrClock");
